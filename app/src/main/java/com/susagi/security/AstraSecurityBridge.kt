@@ -4,51 +4,76 @@ import com.guardian.app.KeywordScorer
 import com.guardian.app.LinkCheckActivity
 import com.guardian.app.RiskStatus
 import com.guardian.app.protect.RegionalScamKeywords
+import com.susagi.safety.Risk
+import com.susagi.safety.SafetyBarrier
+import com.susagi.safety.Signal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * INTERIM FALLBACK IMPLEMENTATION of [SecurityAssessmentContract].
+ * Universal Security Bridge powered by Astra's native [SafetyBarrier] offline engine.
  *
- * Bridges the Android UI layer to available heuristic link analysis and keyword evaluation
- * while awaiting the delivery of Astra's native `com.susagi.safety.SafetyBarrier` engine.
- *
- * NOTE: Tests against this bridge (such as AstraSecurityBridgeTest) verify only this interim
- * heuristic fallback and do NOT represent verification of Astra's genuine native Safety Barrier.
- * Once Astra's SafetyBarrier API lands, this object will delegate directly to it without
- * altering UI consumers.
+ * Provides a unified evaluation pipeline integrating Astra's high-speed deterministic regex
+ * safety rules with on-device regional language and heuristic scorers.
  */
 object AstraSecurityBridge : SecurityAssessmentContract {
 
     private val supportedLanguages = listOf("hi", "en", "ta", "te", "bn", "mr", "kn", "ml", "pa", "gu")
 
     override suspend fun assessUrl(url: String): UrlSecurityDecision = withContext(Dispatchers.Default) {
-        val verdict = LinkCheckActivity.evaluateLinkSafety(url)
+        val astra = SafetyBarrier.analyzeUrl(url)
+        val heuristic = LinkCheckActivity.evaluateLinkSafety(url)
         val lowerUrl = url.lowercase().trim()
 
-        val isHomoglyph = verdict.title.contains("HOMOGLYPH", ignoreCase = true) ||
-                verdict.title.contains("PUNYCODE", ignoreCase = true) ||
+        val isHomoglyph = astra.evidence.any { it.id == Signal.MIXED || it.id == Signal.BRAND } ||
+                heuristic.title.contains("HOMOGLYPH", ignoreCase = true) ||
+                heuristic.title.contains("PUNYCODE", ignoreCase = true) ||
                 lowerUrl.contains("xn--")
-        val isApk = lowerUrl.endsWith(".apk") || lowerUrl.contains(".apk?") ||
-                verdict.title.contains("APK", ignoreCase = true) ||
-                verdict.title.contains("PACKAGE", ignoreCase = true)
-        val isIp = verdict.title.contains("IP HOST", ignoreCase = true) ||
+        val isApk = astra.evidence.any { it.id == Signal.APK } ||
+                lowerUrl.endsWith(".apk") || lowerUrl.contains(".apk?") ||
+                heuristic.title.contains("APK", ignoreCase = true) ||
+                heuristic.title.contains("PACKAGE", ignoreCase = true)
+        val isIp = astra.evidence.any { it.id == Signal.IP } ||
+                heuristic.title.contains("IP HOST", ignoreCase = true) ||
                 Regex("""^https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}""").containsMatchIn(lowerUrl)
 
-        val riskScore = when (verdict.status) {
-            RiskStatus.High -> 85
-            RiskStatus.Suspicious -> 50
-            RiskStatus.Low -> 10
+        val isHigh = astra.risk == Risk.HIGH || heuristic.status == RiskStatus.High
+        val isReview = astra.risk == Risk.REVIEW || heuristic.status == RiskStatus.Suspicious
+        val status = when {
+            isHigh -> RiskStatus.High
+            isReview -> RiskStatus.Suspicious
+            else -> RiskStatus.Low
+        }
+
+        val riskScore = when (status) {
+            RiskStatus.High -> maxOf(85, heuristic.riskScore)
+            RiskStatus.Suspicious -> maxOf(50, heuristic.riskScore)
+            RiskStatus.Low -> minOf(10, heuristic.riskScore)
         }
 
         val reasons = mutableListOf<String>()
-        if (isHomoglyph) reasons.add("Deceptive Unicode / Punycode mixed-script characters mimicking legitimate domain")
-        if (isApk) reasons.add("Direct Android package (.apk) download payload detected")
-        if (isIp) reasons.add("Numeric IP host address used instead of verified registered domain")
-        if (verdict.title.contains("IMPERSONATION", ignoreCase = true)) reasons.add("Financial institution or brand impersonation detected")
-        if (verdict.title.contains("SHORTENER", ignoreCase = true)) reasons.add("URL shortener obscuring final destination")
+        astra.evidence.forEach { evidence ->
+            reasons.add("[${evidence.id.name}] ${evidence.id.explanation}")
+        }
+        if (isHomoglyph && reasons.none { it.contains("Unicode", true) || it.contains("Punycode", true) }) {
+            reasons.add("Deceptive Unicode / Punycode mixed-script characters mimicking legitimate domain")
+        }
+        if (isApk && reasons.none { it.contains("APK", true) }) {
+            reasons.add("Direct Android package (.apk) download payload detected")
+        }
+        if (isIp && reasons.none { it.contains("IP", true) }) {
+            reasons.add("Numeric IP host address used instead of verified registered domain")
+        }
+        if (heuristic.supportingEvidence.isNotEmpty()) {
+            heuristic.supportingEvidence.forEach { ev ->
+                if (!reasons.contains(ev)) reasons.add(ev)
+            }
+        }
+        if (reasons.isEmpty()) {
+            reasons.add(heuristic.detail)
+        }
 
-        val host = try {
+        val host = astra.destinationHost ?: try {
             val uriStr = if (!url.startsWith("http://") && !url.startsWith("https://")) "https://$url" else url
             java.net.URI(uriStr).host ?: ""
         } catch (_: Exception) {
@@ -57,11 +82,11 @@ object AstraSecurityBridge : SecurityAssessmentContract {
 
         UrlSecurityDecision(
             url = url,
-            status = verdict.status,
+            status = status,
             riskScore = riskScore,
-            title = verdict.title,
-            detail = verdict.detail,
-            reasons = if (reasons.isEmpty()) listOf(verdict.detail) else reasons,
+            title = if (status == RiskStatus.Low) "🛡️ VERIFIED SAFE DESTINATION" else heuristic.title,
+            detail = astra.explanation.ifBlank { heuristic.detail },
+            reasons = reasons,
             canonicalHost = host,
             isHomoglyphOrPunycode = isHomoglyph,
             isDirectApkDownload = isApk,
@@ -70,8 +95,11 @@ object AstraSecurityBridge : SecurityAssessmentContract {
     }
 
     override suspend fun assessMessage(text: String, sender: String?): MessageSecurityDecision = withContext(Dispatchers.Default) {
-        val extractedUrl = LinkCheckActivity.extractUrlFromText(text)
-        val urls = if (extractedUrl.isNotBlank()) listOf(extractedUrl) else emptyList()
+        val astra = SafetyBarrier.analyze(null, text)
+        val extractedUrls = astra.destinations.map { it.originalUrl }.ifEmpty {
+            val single = LinkCheckActivity.extractUrlFromText(text)
+            if (single.isNotBlank()) listOf(single) else emptyList()
+        }
 
         var highestLangScore = 0
         val allMatchedKeywords = mutableListOf<String>()
@@ -90,29 +118,46 @@ object AstraSecurityBridge : SecurityAssessmentContract {
         val combinedScore = maxOf(highestLangScore, semanticReport.riskScore)
         val semanticSignals: List<String> = semanticReport.topSignals.map { it.title }
 
+        val astraSignals = astra.evidence.map { it.id.name }
+        val isAstraHigh = astra.risk == Risk.HIGH
+        val isAstraReview = astra.risk == Risk.REVIEW
+
+        val finalScore = when {
+            isAstraHigh -> maxOf(combinedScore, 85)
+            isAstraReview -> maxOf(combinedScore, 50)
+            combinedScore >= 70 -> combinedScore
+            combinedScore >= 35 -> combinedScore
+            else -> minOf(combinedScore, 10)
+        }
+
         val status = when {
-            combinedScore >= 70 -> RiskStatus.High
-            combinedScore >= 35 -> RiskStatus.Suspicious
+            finalScore >= 70 || isAstraHigh -> RiskStatus.High
+            finalScore >= 35 || isAstraReview -> RiskStatus.Suspicious
             else -> RiskStatus.Low
         }
 
         val lowerText = text.lowercase()
         val threatCategory = when {
-            allCategories.any { it.contains("digital_arrest", ignoreCase = true) } ||
+            astra.evidence.any { it.id == Signal.ARREST } ||
+                    allCategories.any { it.contains("digital_arrest", ignoreCase = true) } ||
                     lowerText.contains("digital arrest") ||
                     lowerText.contains("डिजिटल अरेस्ट") ||
                     lowerText.contains("गिरफ्तार") ||
                     (lowerText.contains("सीबीआई") && lowerText.contains("नोटिस")) ||
                     allCategories.any { it.contains("authority", ignoreCase = true) } -> "Digital Arrest Coercion"
-            allCategories.any { it.contains("electricity", ignoreCase = true) } ||
+            astra.evidence.any { it.id == Signal.UTILITY } ||
+                    allCategories.any { it.contains("electricity", ignoreCase = true) } ||
                     lowerText.contains("electricity") ||
                     lowerText.contains("power cut") -> "Utility / Electricity Bill Disconnection Fraud"
-            allCategories.any { it.contains("lottery", ignoreCase = true) } ||
+            astra.evidence.any { it.id == Signal.KYC } ||
+                    allCategories.any { it.contains("lottery", ignoreCase = true) } ||
                     lowerText.contains("lottery") ||
                     lowerText.contains("kyc") -> "KYC / Account Block Extortion"
-            urls.any { it.endsWith(".apk") } -> "Malicious APK Sideload Trap"
-            combinedScore >= 60 -> "Financial / Impersonation Scam"
-            combinedScore >= 35 -> "Unverified High-Pressure Request"
+            astra.evidence.any { it.id == Signal.UPI } -> "UPI PIN / Payment Collect Trap"
+            astra.evidence.any { it.id == Signal.OTP } -> "OTP / Credential Harvesting Fraud"
+            astra.evidence.any { it.id == Signal.APK } || extractedUrls.any { it.endsWith(".apk") } -> "Malicious APK Sideload Trap"
+            finalScore >= 60 -> "Financial / Impersonation Scam"
+            finalScore >= 35 -> "Unverified High-Pressure Request"
             else -> "No Known Scam Pattern"
         }
 
@@ -122,18 +167,18 @@ object AstraSecurityBridge : SecurityAssessmentContract {
             RiskStatus.Low -> "No verified threat triggers found in this message. Always verify unknown senders before taking action."
         }
 
-        val combinedTactics: List<String> = (allCategories + semanticSignals).toSet().toList()
+        val combinedTactics: List<String> = (allCategories + semanticSignals + astraSignals).toSet().toList()
 
         MessageSecurityDecision(
             rawText = text,
             sender = sender,
-            riskScore = combinedScore,
+            riskScore = finalScore,
             status = status,
             threatCategory = threatCategory,
             matchedKeywords = allMatchedKeywords.toSet().toList(),
             detectedTactics = combinedTactics,
             guidance = guidance,
-            extractedUrls = urls
+            extractedUrls = extractedUrls
         )
     }
 
@@ -142,7 +187,7 @@ object AstraSecurityBridge : SecurityAssessmentContract {
         transcriptLines: List<String>
     ): CallSecurityDecision = withContext(Dispatchers.Default) {
         val fullTranscript = transcriptLines.joinToString(" ")
-        val msgDecision = assessMessage(fullTranscript)
+        val msgDecision = assessMessage(fullTranscript, channelOrNumber)
 
         CallSecurityDecision(
             channelOrNumber = channelOrNumber,

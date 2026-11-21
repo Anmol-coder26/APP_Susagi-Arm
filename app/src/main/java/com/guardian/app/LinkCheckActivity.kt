@@ -75,6 +75,14 @@ import com.guardian.app.ui.theme.GxTextLo
 import com.guardian.app.ui.theme.GxTextMid
 import com.guardian.app.ui.theme.GxWarning
 import com.guardian.app.ui.theme.GxWarningSoft
+import com.susagi.safety.Action
+import com.susagi.safety.Assessment
+import com.susagi.safety.Evidence
+import com.susagi.safety.Risk
+import com.susagi.safety.SafetyBarrier
+import com.susagi.safety.SharedDestination
+import com.susagi.safety.Signal
+import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
 data class LinkVerdict(
@@ -89,7 +97,13 @@ data class LinkVerdict(
     },
     val supportingEvidence: List<String> = emptyList(),
     val recommendedAction: String = if (status == RiskStatus.Low) "Inspect destination carefully." else "Avoid opening this destination.",
-    val explicitLimitations: String = "Offline static heuristic evaluation. Destination DNS, SSL certificates, and server-side redirects are not verified without internet connectivity."
+    val explicitLimitations: String = "Offline static heuristic evaluation. Destination DNS, SSL certificates, and server-side redirects are not verified without internet connectivity.",
+    val detectorRisk: Risk = when (status) {
+        RiskStatus.High -> Risk.HIGH
+        RiskStatus.Suspicious -> Risk.REVIEW
+        RiskStatus.Low -> Risk.LOW
+    },
+    val destinationHost: String? = null
 )
 
 sealed class SharedPayload {
@@ -109,9 +123,15 @@ data class UnifiedSecurityAssessment(
     val plainExplanationHi: String,
     val detectedSignals: List<String>,
     val evaluatedUrls: List<LinkVerdict>,
-    val engineLabel: String = "SuSagi Offline Heuristic Rule Engine (Astra SafetyBarrier Fallback)",
+    val engineLabel: String = "Astra SafetyBarrier Offline Heuristic Rule Engine",
     val isTextOnly: Boolean = false,
-    val rawTextSnippet: String = ""
+    val rawTextSnippet: String = "",
+    val riskLevel: Risk = when (status) {
+        RiskStatus.High -> Risk.HIGH
+        RiskStatus.Suspicious -> Risk.REVIEW
+        RiskStatus.Low -> Risk.LOW
+    },
+    val uncertaintyNote: String = "Offline inspection cannot establish ownership, reputation or the destination after navigation."
 )
 
 class LinkCheckActivity : ComponentActivity() {
@@ -702,46 +722,145 @@ class LinkCheckActivity : ComponentActivity() {
                         plainExplanationHi = "साझा की गई सामग्री में कोई पठनीय संदेश या वेब लिंक नहीं मिला।",
                         detectedSignals = emptyList(),
                         evaluatedUrls = emptyList(),
-                        isTextOnly = true
+                        engineLabel = "Astra SafetyBarrier Offline Heuristic Rule Engine",
+                        isTextOnly = true,
+                        riskLevel = Risk.LOW,
+                        uncertaintyNote = "Offline inspection cannot establish ownership, reputation or the destination after navigation."
                     )
                 }
                 is SharedPayload.ViewUrl -> {
-                    val verdict = evaluateLinkSafety(payload.url)
-                    val signals = mutableListOf<String>()
-                    if (verdict.title.contains("IP HOST", ignoreCase = true)) signals.add("Direct Numeric IP Host")
-                    if (verdict.title.contains("HOMOGLYPH", ignoreCase = true) || verdict.title.contains("PUNYCODE", ignoreCase = true)) signals.add("Homoglyph / Punycode Spoof")
-                    if (verdict.title.contains("IMPERSONATION", ignoreCase = true)) signals.add("Brand / Institutional Impersonation")
-                    if (verdict.title.contains("APK", ignoreCase = true) || verdict.title.contains("PACKAGE", ignoreCase = true)) signals.add("Direct Executable / APK Sideload")
-                    if (verdict.title.contains("SHORTENER", ignoreCase = true)) signals.add("Masked Shortener Destination")
-                    if (verdict.title.contains("UPI", ignoreCase = true)) signals.add("Direct UPI Payment Scheme")
-                    if (signals.isEmpty() && verdict.status != RiskStatus.Low) signals.add(verdict.title)
+                    val astra = runBlocking { SafetyBarrier.analyzeUrl(payload.url) }
+                    val fallback = evaluateLinkSafety(payload.url)
 
-                    val explanationEn = when (verdict.status) {
+                    val isHigh = astra.risk == Risk.HIGH || fallback.status == RiskStatus.High
+                    val isReview = astra.risk == Risk.REVIEW || fallback.status == RiskStatus.Suspicious
+                    val status = when {
+                        isHigh -> RiskStatus.High
+                        isReview -> RiskStatus.Suspicious
+                        else -> RiskStatus.Low
+                    }
+
+                    val detectorRisk = when {
+                        astra.risk != Risk.LOW -> astra.risk
+                        fallback.status == RiskStatus.High -> Risk.HIGH
+                        fallback.status == RiskStatus.Suspicious -> Risk.REVIEW
+                        else -> Risk.LOW
+                    }
+
+                    val host = astra.destinationHost ?: extractHost(payload.url)
+                    val signals = mutableListOf<String>()
+                    if (astra.evidence.any { it.id == Signal.BRAND } || fallback.title.contains("IMPERSONATION", ignoreCase = true)) {
+                        signals.add("Brand / Institutional Impersonation")
+                    }
+                    if (astra.evidence.any { it.id == Signal.IP } || fallback.title.contains("IP HOST", ignoreCase = true)) {
+                        signals.add("Direct Numeric IP Host")
+                    }
+                    if (astra.evidence.any { it.id == Signal.MIXED } || fallback.title.contains("HOMOGLYPH", ignoreCase = true) || fallback.title.contains("PUNYCODE", ignoreCase = true)) {
+                        signals.add("Homoglyph / Punycode Spoof")
+                    }
+                    if (astra.evidence.any { it.id == Signal.APK } || fallback.title.contains("APK", ignoreCase = true) || fallback.title.contains("PACKAGE", ignoreCase = true)) {
+                        signals.add("Direct Executable / APK Sideload")
+                    }
+                    if (astra.evidence.any { it.id == Signal.SHORT } || fallback.title.contains("SHORTENER", ignoreCase = true)) {
+                        signals.add("Masked Shortener Destination")
+                    }
+                    if (astra.evidence.any { it.id == Signal.PAYMENT } || fallback.title.contains("UPI", ignoreCase = true)) {
+                        signals.add("Direct UPI Payment Scheme")
+                    }
+                    astra.evidence.forEach { signals.add("[${it.id.name}] ${it.id.explanation}") }
+                    fallback.supportingEvidence.forEach { if (!signals.contains(it)) signals.add(it) }
+
+                    val evaluatedVerdict = LinkVerdict(
+                        url = payload.url,
+                        status = status,
+                        title = if (status == RiskStatus.Low) "🛡️ UNFLAGGED DESTINATION" else fallback.title,
+                        detail = astra.explanation.ifBlank { fallback.detail },
+                        riskScore = when (status) {
+                            RiskStatus.High -> maxOf(85, fallback.riskScore)
+                            RiskStatus.Suspicious -> maxOf(50, fallback.riskScore)
+                            RiskStatus.Low -> minOf(10, fallback.riskScore)
+                        },
+                        supportingEvidence = signals,
+                        recommendedAction = astra.recommendations.firstOrNull() ?: fallback.recommendedAction,
+                        explicitLimitations = astra.uncertainty,
+                        detectorRisk = detectorRisk,
+                        destinationHost = host
+                    )
+
+                    val explanationEn = when (status) {
                         RiskStatus.High -> "This destination exhibits characteristics of malicious infrastructure designed to compromise your device, harvest credentials, or extract unverified payments."
                         RiskStatus.Suspicious -> "This link uses unverified domains, masked shorteners, or direct payment handlers. Proceed with caution."
                         RiskStatus.Low -> "No known malicious patterns or homoglyph spoofs were detected for this destination."
                     }
-                    val explanationHi = when (verdict.status) {
+                    val explanationHi = when (status) {
                         RiskStatus.High -> "यह गंतव्य दुर्भावनापूर्ण सर्वर या अनधिकृत भुगतान से जुड़ा है जो आपकी सुरक्षा या बैंक विवरण को खतरे में डाल सकता है।"
                         RiskStatus.Suspicious -> "इस लिंक में अपुष्ट डोमेन या शॉर्टनर का उपयोग किया गया है। सावधानी बरतें।"
                         RiskStatus.Low -> "इस गंतव्य के लिए कोई ज्ञात सुरक्षा खतरा या दुर्भावनापूर्ण पैटर्न नहीं मिला।"
                     }
 
                     UnifiedSecurityAssessment(
-                        actualRiskScore = verdict.riskScore,
-                        status = verdict.status,
-                        categoryTitle = if (verdict.status == RiskStatus.Low) "UNFLAGGED DESTINATION" else verdict.title,
+                        actualRiskScore = evaluatedVerdict.riskScore,
+                        status = status,
+                        categoryTitle = if (status == RiskStatus.Low) "UNFLAGGED DESTINATION" else evaluatedVerdict.title,
                         plainExplanationEn = explanationEn,
                         plainExplanationHi = explanationHi,
                         detectedSignals = signals,
-                        evaluatedUrls = listOf(verdict),
+                        evaluatedUrls = listOf(evaluatedVerdict),
+                        engineLabel = "Astra SafetyBarrier Offline Heuristic Rule Engine",
                         isTextOnly = false,
-                        rawTextSnippet = payload.url
+                        rawTextSnippet = payload.url,
+                        riskLevel = detectorRisk,
+                        uncertaintyNote = astra.uncertainty
                     )
                 }
                 is SharedPayload.SharedContent -> {
                     val text = payload.rawText
-                    val evaluatedUrls = payload.urls.map { evaluateLinkSafety(it) }
+                    val astra = runBlocking { SafetyBarrier.analyze(null, text) }
+
+                    // Multi-destination evaluation: Each distinct URL is mapped to its own independent assessment
+                    val evaluatedUrls = if (astra.destinations.isNotEmpty()) {
+                        astra.destinations.map { sharedDest ->
+                            val destAssessment = sharedDest.assessment
+                            val destFallback = evaluateLinkSafety(sharedDest.originalUrl)
+                            val destHigh = destAssessment.risk == Risk.HIGH || destFallback.status == RiskStatus.High
+                            val destReview = destAssessment.risk == Risk.REVIEW || destFallback.status == RiskStatus.Suspicious
+                            val destStatus = if (destHigh) RiskStatus.High else if (destReview) RiskStatus.Suspicious else RiskStatus.Low
+                            val destSignals = destAssessment.evidence.map { "[${it.id.name}] ${it.id.explanation}" }
+                            val destDetectorRisk = when {
+                                destAssessment.risk != Risk.LOW -> destAssessment.risk
+                                destFallback.status == RiskStatus.High -> Risk.HIGH
+                                destFallback.status == RiskStatus.Suspicious -> Risk.REVIEW
+                                else -> Risk.LOW
+                            }
+                            LinkVerdict(
+                                url = sharedDest.originalUrl,
+                                status = destStatus,
+                                title = when {
+                                    destAssessment.evidence.any { it.id == Signal.APK } -> "🚨 MALICIOUS PACKAGE / APK SIDELOAD"
+                                    destAssessment.evidence.any { it.id == Signal.BRAND } -> "🚨 FAKE BRAND IMPERSONATION"
+                                    destAssessment.evidence.any { it.id == Signal.USERINFO } -> "🚨 URL USERINFO DECEPTION"
+                                    destAssessment.evidence.any { it.id == Signal.IP } -> "⚠️ RAW NUMERIC IP HOST"
+                                    destAssessment.evidence.any { it.id == Signal.SHORT } -> "⚠️ MASKED URL SHORTENER"
+                                    destAssessment.evidence.any { it.id == Signal.MIXED } -> "⚠️ MIXED SCRIPT HOMOGLYPH"
+                                    destAssessment.evidence.any { it.id == Signal.PAYMENT } -> "⚠️ DIRECT UPI PAYMENT LINK"
+                                    else -> destFallback.title
+                                },
+                                detail = destAssessment.explanation.ifBlank { destFallback.detail },
+                                riskScore = when (destStatus) {
+                                    RiskStatus.High -> maxOf(85, destFallback.riskScore)
+                                    RiskStatus.Suspicious -> maxOf(50, destFallback.riskScore)
+                                    RiskStatus.Low -> minOf(10, destFallback.riskScore)
+                                },
+                                supportingEvidence = if (destSignals.isNotEmpty()) destSignals else destFallback.supportingEvidence,
+                                recommendedAction = destAssessment.recommendations.firstOrNull() ?: destFallback.recommendedAction,
+                                explicitLimitations = destAssessment.uncertainty,
+                                detectorRisk = destDetectorRisk,
+                                destinationHost = destAssessment.destinationHost ?: extractHost(sharedDest.originalUrl)
+                            )
+                        }
+                    } else {
+                        payload.urls.map { evaluateLinkSafety(it) }
+                    }
 
                     // Real offline heuristic rule scoring
                     val keywordReport = KeywordScorer.score(text)
@@ -758,20 +877,34 @@ class LinkCheckActivity : ComponentActivity() {
                     val maxUrlScore = evaluatedUrls.maxOfOrNull { it.riskScore } ?: 0
                     val textScore = maxOf(keywordReport.riskScore, highestRegionalScore)
                     val combinedScore = if (textScore >= 35 && maxUrlScore >= 50) {
-                        // Compound threat: deceptive/urgent text combined with an unverified external destination
                         (textScore + (maxUrlScore * 0.5f).toInt()).coerceAtMost(98)
                     } else {
                         maxOf(textScore, maxUrlScore)
                     }
-                    val finalScore = combinedScore.coerceIn(0, 99)
+
+                    val isAstraHigh = astra.risk == Risk.HIGH
+                    val isAstraReview = astra.risk == Risk.REVIEW
+
+                    val finalScore = when {
+                        isAstraHigh -> maxOf(combinedScore, 85).coerceIn(0, 99)
+                        isAstraReview -> maxOf(combinedScore, 50).coerceIn(0, 99)
+                        else -> combinedScore.coerceIn(0, 99)
+                    }
 
                     val status = when {
-                        finalScore >= 70 || evaluatedUrls.any { it.status == RiskStatus.High } -> RiskStatus.High
-                        finalScore >= 35 || evaluatedUrls.any { it.status == RiskStatus.Suspicious } -> RiskStatus.Suspicious
+                        finalScore >= 70 || evaluatedUrls.any { it.status == RiskStatus.High } || isAstraHigh -> RiskStatus.High
+                        finalScore >= 35 || evaluatedUrls.any { it.status == RiskStatus.Suspicious } || isAstraReview -> RiskStatus.Suspicious
                         else -> RiskStatus.Low
                     }
 
+                    val riskLevel = when {
+                        isAstraHigh || status == RiskStatus.High -> Risk.HIGH
+                        isAstraReview || status == RiskStatus.Suspicious -> Risk.REVIEW
+                        else -> Risk.LOW
+                    }
+
                     val signals = mutableListOf<String>()
+                    astra.evidence.forEach { signals.add("[${it.id.name}] ${it.id.explanation}") }
                     keywordReport.topSignals.forEach { signals.add(if (it.detail.isNotBlank()) "${it.title}: ${it.detail}" else it.title) }
                     regionalMatches.take(4).forEach { signals.add("Matched keyword: '$it'") }
                     evaluatedUrls.filter { it.status != RiskStatus.Low }.forEach {
@@ -780,17 +913,23 @@ class LinkCheckActivity : ComponentActivity() {
 
                     val lower = text.lowercase(Locale.ROOT)
                     val category = when {
-                        lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
+                        astra.evidence.any { it.id == Signal.ARREST } ||
+                                lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
                                 (lower.contains("cbi") && lower.contains("arrest")) ||
                                 (lower.contains("सीबीआई") && lower.contains("नोटिस")) -> "DIGITAL ARREST EXTORTION"
-                        lower.contains("electricity") || lower.contains("power cut") || lower.contains("bijli") ||
+                        astra.evidence.any { it.id == Signal.UTILITY } ||
+                                lower.contains("electricity") || lower.contains("power cut") || lower.contains("bijli") ||
                                 lower.contains("बिजली") -> "UTILITY / ELECTRICITY BILL SCAM"
-                        lower.contains("kyc") || lower.contains("pan") || lower.contains("aadhaar") ||
+                        astra.evidence.any { it.id == Signal.KYC } ||
+                                lower.contains("kyc") || lower.contains("pan") || lower.contains("aadhaar") ||
                                 lower.contains("केवाईसी") -> "BANKING KYC / ACCOUNT BLOCK FRAUD"
-                        lower.contains("lottery") || lower.contains("winner") || lower.contains("kbc") -> "LOTTERY & PRIZE SCAM"
-                        evaluatedUrls.any { it.title.contains("UPI", true) } -> "UNVERIFIED UPI PAYMENT TRAP"
-                        evaluatedUrls.any { it.title.contains("APK", true) } -> "MALICIOUS APK SIDELOAD TRAP"
+                        astra.evidence.any { it.id == Signal.UPI } ||
+                                evaluatedUrls.any { it.title.contains("UPI", true) } -> "UNVERIFIED UPI PAYMENT TRAP"
+                        astra.evidence.any { it.id == Signal.OTP } -> "CREDENTIAL / OTP HARVESTING FRAUD"
+                        astra.evidence.any { it.id == Signal.APK } ||
+                                evaluatedUrls.any { it.title.contains("APK", true) } -> "MALICIOUS APK SIDELOAD TRAP"
                         evaluatedUrls.any { it.title.contains("HOMOGLYPH", true) || it.title.contains("PUNYCODE", true) } -> "HOMOGLYPH DOMAIN SPOOF"
+                        lower.contains("lottery") || lower.contains("winner") || lower.contains("kbc") -> "LOTTERY & PRIZE SCAM"
                         finalScore >= 60 -> "SUSPICIOUS COERCIVE REQUEST"
                         finalScore >= 35 -> "UNVERIFIED URGENT MESSAGE"
                         else -> "VERIFIED LOW-RISK MESSAGE"
@@ -842,8 +981,11 @@ class LinkCheckActivity : ComponentActivity() {
                         plainExplanationHi = explanationHi,
                         detectedSignals = signals.distinct(),
                         evaluatedUrls = evaluatedUrls,
+                        engineLabel = "Astra SafetyBarrier Offline Heuristic Rule Engine",
                         isTextOnly = evaluatedUrls.isEmpty(),
-                        rawTextSnippet = text.take(150)
+                        rawTextSnippet = text.take(150),
+                        riskLevel = riskLevel,
+                        uncertaintyNote = astra.uncertainty
                     )
                 }
             }
@@ -953,14 +1095,19 @@ fun UnifiedSecurityDialog(
                         }
                     }
 
-                    // Actual Detector Risk Score Badge (NO hardcoded fake percentages)
+                    // Actual Detector Risk Badge (Grounded in Astra SafetyBarrier rules)
                     Surface(
                         color = softBg,
                         shape = GxShapePill,
                         border = BorderStroke(0.5.dp, statusColor)
                     ) {
                         Text(
-                            text = "${assessment.actualRiskScore}% RISK",
+                            text = when (assessment.riskLevel) {
+                                Risk.HIGH -> "HIGH RISK"
+                                Risk.REVIEW -> "NEEDS REVIEW"
+                                Risk.LOW -> "LOW RISK"
+                                Risk.UNKNOWN -> "UNKNOWN"
+                            },
                             color = statusColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -994,6 +1141,28 @@ fun UnifiedSecurityDialog(
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = GxTextMid
+                    )
+                }
+            }
+
+            // Honest Uncertainty Disclosure (Zero invented claims)
+            Surface(
+                color = GxSurfaceAlt,
+                shape = GxShapeSm,
+                border = BorderStroke(0.5.dp, GxBorder),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = GxTextLo, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        assessment.uncertaintyNote,
+                        fontSize = 9.sp,
+                        color = GxTextLo,
+                        lineHeight = 12.sp
                     )
                 }
             }
@@ -1115,7 +1284,12 @@ fun UnifiedSecurityDialog(
                                     border = BorderStroke(0.5.dp, urlStatusColor)
                                 ) {
                                     Text(
-                                        urlVerdict.status.name.uppercase(Locale.ROOT),
+                                        when (urlVerdict.detectorRisk) {
+                                            Risk.HIGH -> "HIGH"
+                                            Risk.REVIEW -> "REVIEW"
+                                            Risk.LOW -> "SAFE"
+                                            Risk.UNKNOWN -> "UNKNOWN"
+                                        },
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = urlStatusColor,

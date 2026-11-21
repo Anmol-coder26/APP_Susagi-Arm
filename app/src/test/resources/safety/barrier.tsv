@@ -1,0 +1,29 @@
+split	family	kind	label	input
+validation	v.bank	url	0	https://axisbank.com/login
+validation	v.otp	message	0	Never share your OTP with anyone.
+validation	v.disclose	message	1	Send your OTP to our executive.
+validation	v.user	url	1	https://rbi.org.in@notice.example/login
+validation	v.kyc	message	1	KYC expired. Update to unfreeze your bank account.
+validation	v.pay	message	1	Approve a collect request to receive your refund.
+validation	v.idn	url	0	https://bücher.de/
+validation	v.news	message	0	Police station opening hours have changed.
+test	t.download	url	1	https://bill.example/statement%2Eapk?ref=notice
+test	t.receipt	message	0	INR 850 received by UPI. Reference 01821.
+test	t.gov	message	1	Government notice: pay challan today at https://fees.example
+test	t.bankreminder	message	0	Your KYC appointment is confirmed at your branch.
+test	t.policepay	message	1	पुलिस वारंट जारी है। पैसे भेजें।
+test	t.hinglish	message	1	Refund paane ke liye QR scan karo.
+test	t.advice	message	0	Never enter your UPI PIN to receive a refund.
+test	t.suffix	url	1	https://account-axisbank.com.example/check
+test	t.bankdomain	url	0	https://retail.onlinesbi.sbi/retail/login.htm
+test	t.delivery	message	1	Your courier is waiting: pay the handling fee at https://delivery.example
+test	t.deliveryreceipt	message	0	Parcel delivered. Thank you for shopping with us.
+test	t.paymenturi	url	0	upi://pay?pa=shop%40bank&am=25
+test	t.short	url	0	https://tinyurl.com/example
+test	t.secret	message	1	पहचान के लिए ओटीपी भेजें।
+test	t.routine	message	0	आपका खाता जमा विवरण तैयार है।
+test	t.kychindi	message	1	केवाईसी अपडेट करें वरना खाता बंद होगा।
+test	t.search	url	0	https://example.org/search?q=download.apk
+test	t.legit	message	0	Your verification code is 654321. Do not disclose it.
+test	t.multilink	message	1	Invoice instructions: https://example.org/guide then https://loader.example/install.apk
+test	t.confirm	message	1	Payment verification: share your CVV to confirm the transaction.
