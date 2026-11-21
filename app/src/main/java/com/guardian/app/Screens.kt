@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
@@ -67,6 +68,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -755,198 +757,248 @@ fun HomeScreen(
         }
 
         // ----------------------------------------------------
-        // Status Hero: Luminous Vibrant Defense Dashboard
+        // Quo-Inspired Defense Status Hero (Pure White Surface)
         // ----------------------------------------------------
         item {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .gxFancyGlow(),
+                modifier = Modifier.fillMaxWidth(),
                 shape = GxShapeLg,
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                colors = CardDefaults.cardColors(containerColor = GxSurface),
+                border = BorderStroke(1.dp, GxBorder)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                if (state.protectionEnabled)
-                                    listOf(Color(0xFF047857), Color(0xFF059669), Color(0xFF10B981))
-                                else
-                                    listOf(Color(0xFFB91C1C), Color(0xFFDC2626), Color(0xFFEF4444))
-                            )
-                        )
                         .padding(20.dp)
                 ) {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    GxLiveDot(
-                                        color = Color.White,
-                                        size = 7.dp,
-                                        pulsing = true
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        "CONTINUOUS SHIELD",
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.2.sp
-                                    )
-                                }
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    if (state.protectionEnabled) "All Systems Secure" else "Protection Standby",
-                                    color = Color.White,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    if (state.protectionEnabled)
-                                        "Dual-engine AI actively screening calls, background SMS & tapped links"
-                                    else "Interception hooks are paused. Tap below to resume shield.",
-                                    color = Color.White.copy(alpha = 0.85f),
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp
-                                )
-                            }
-
-                            Spacer(Modifier.width(12.dp))
-
-                            GxRiskRing(
-                                riskScore = if (state.protectionEnabled) 12 else 85,
-                                size = 72.dp,
-                                strokeWidth = 6.dp,
-                                showLabel = false
-                            )
-                        }
-
-                        Spacer(Modifier.height(14.dp))
-
-                        // Quick Toggle Strip inside Hero
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Surface(
-                            color = Color.White.copy(alpha = 0.18f),
-                            shape = GxShapeSm,
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onProtectionChange(!state.protectionEnabled) }
+                            color = GxSafeSoft,
+                            shape = GxShapePill,
+                            border = BorderStroke(1.dp, GxSafe.copy(alpha = 0.25f))
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    if (state.protectionEnabled) "Shield Active · Zero Threats Detected" else "Shield Paused · Click to Activate",
-                                    color = Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                GxLiveDot(
+                                    color = GxSafe,
+                                    size = 6.dp,
+                                    pulsing = state.protectionEnabled
                                 )
-                                Switch(
-                                    checked = state.protectionEnabled,
-                                    onCheckedChange = { onProtectionChange(it) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color(0xFF047857),
-                                        checkedTrackColor = Color.White,
-                                        uncheckedThumbColor = GxTextLo,
-                                        uncheckedTrackColor = GxBorder
-                                    )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    if (state.protectionEnabled) "LOCAL SHIELDS ACTIVE" else "SHIELDS PAUSED",
+                                    color = if (state.protectionEnabled) GxSafe else GxTextLo,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
                                 )
                             }
                         }
+
+                        Switch(
+                            checked = state.protectionEnabled,
+                            onCheckedChange = { onProtectionChange(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = GxPrimary,
+                                uncheckedThumbColor = GxTextLo,
+                                uncheckedTrackColor = GxSurfaceAlt
+                            )
+                        )
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Text(
+                        if (state.protectionEnabled) "On-Device Threat Defense" else "Defense Inactive",
+                        color = GxTextHi,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Text(
+                        if (state.protectionEnabled)
+                            "Deterministic offline analysis defending against digital arrest extortion, electricity disconnection fraud, and phishing links."
+                        else "Sensor listeners and background threat inspection are paused. Toggle switch to resume.",
+                        color = GxTextMid,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Button(
+                        onClick = { showLinkBarrierScreen = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = GxShapeMd,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = GxPrimary,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Check a Message or Link",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
         }
 
         // ----------------------------------------------------
-        // Featured Calling Hub: Make a Secure VoIP Call
+        // Compact Supported-App Share Guidance Card
+        // ----------------------------------------------------
+        item {
+            Surface(
+                color = GxSurfaceAlt,
+                shape = GxShapeMd,
+                border = BorderStroke(1.dp, GxBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Surface(
+                        color = GxPrimary.copy(alpha = 0.08f),
+                        shape = GxShapeSm,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Share, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Instant Share-to-SuSagi",
+                            color = GxTextHi,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            "Highlight text in WhatsApp or SMS → Tap Share → Select SuSagi Guardian for instant offline inspection.",
+                            color = GxTextMid,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // ----------------------------------------------------
+        // Quo-Style Calling Hub Card
         // ----------------------------------------------------
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = GxShapeLg,
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                colors = CardDefaults.cardColors(containerColor = GxSurface),
+                border = BorderStroke(1.dp, GxBorder)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0xFF1E1B4B), Color(0xFF312E81), Color(0xFF4338CA))
-                            )
-                        )
-                        .padding(20.dp)
+                        .padding(18.dp)
                 ) {
-                    Column {
-                        Text(
-                            "E2EE PROTECTED CALLING",
-                            color = Color(0xFFA5B4FC),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Make a Secure VoIP Call",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Call anyone with instant AI detection of digital arrest, coercion & scam intimidation.",
-                            color = Color(0xFFC7D2FE),
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Button(
-                                onClick = {
-                                    ctx.startActivity(Intent(ctx, com.guardian.app.voip.RoomCodeActivity::class.java))
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF10B981),
-                                    contentColor = Color.White
-                                ),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = GxPrimary.copy(alpha = 0.08f),
                                 shape = GxShapeSm,
-                                modifier = Modifier
-                                    .weight(1.3f)
-                                    .height(46.dp)
+                                modifier = Modifier.size(34.dp)
                             ) {
-                                Icon(Icons.Default.PhoneInTalk, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Host New Call", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.PhoneInTalk, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(18.dp))
+                                }
                             }
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    "Protected Voice Calling",
+                                    color = GxTextHi,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "E2EE VoIP with live acoustic threat detector",
+                                    color = GxTextLo,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
 
-                            Button(
-                                onClick = {
-                                    ctx.startActivity(Intent(ctx, com.guardian.app.voip.RoomCodeActivity::class.java))
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White.copy(alpha = 0.15f),
-                                    contentColor = Color.White
-                                ),
-                                shape = GxShapeSm,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(46.dp)
-                            ) {
-                                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Enter PIN", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
+                        Surface(
+                            color = GxSafeSoft,
+                            shape = GxShapePill,
+                            border = BorderStroke(0.5.dp, GxSafe.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                "READY",
+                                color = GxSafe,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                ctx.startActivity(Intent(ctx, com.guardian.app.voip.RoomCodeActivity::class.java))
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GxPrimary,
+                                contentColor = Color.White
+                            ),
+                            shape = GxShapeSm,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                        ) {
+                            Icon(Icons.Default.PhoneInTalk, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Host / Join Call", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        OutlinedButton(
+                            onClick = onOpenCallHistory,
+                            border = BorderStroke(1.dp, GxBorder),
+                            shape = GxShapeSm,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = null, tint = GxTextMid, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Call History", fontSize = 12.sp, color = GxTextHi, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
