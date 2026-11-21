@@ -12,7 +12,8 @@ enum class Risk { LOW, REVIEW, HIGH, UNKNOWN }
 enum class Action { OFFER_OPEN, ASK_CONFIRMATION, RECOMMEND_BLOCK, DO_NOT_OPEN }
 enum class Signal(val risk: Risk, val category: String, val explanation: String, val advice: String) {
     INVALID(Risk.UNKNOWN, "input", "The destination or input could not be assessed.", "Use the official app or enter the address yourself."),
-    LIMIT(Risk.UNKNOWN, "input", "The input exceeds the local analysis limit.", "Check individual destinations separately."),
+    LIMIT(Risk.UNKNOWN, "input", "The input exceeds a local inspection limit.", "Check individual destinations separately."),
+    HTTP(Risk.REVIEW, "transport", "The URL uses an unencrypted HTTP connection.", "Use the official HTTPS address before entering sensitive information."),
     PAYMENT(Risk.REVIEW, "payment", "This URI requests a UPI payment.", "Check the payee and amount in your UPI app."),
     USERINFO(Risk.HIGH, "phishing", "User information precedes the destination host.", "Close the link and open the official service directly."),
     BRAND(Risk.HIGH, "impersonation", "The destination uses a bank name or lookalike outside its listed domain.", "Open the bank app independently."),
@@ -45,7 +46,7 @@ object SafetyBarrier {
     private val banks = mapOf("axisbank" to listOf("axisbank.com"), "sbi" to listOf("sbi.co.in","onlinesbi.sbi","sbi.bank.in"),
         "hdfc" to listOf("hdfcbank.com","hdfcbank.bank.in"), "icici" to listOf("icicibank.com","icici.bank.in"),
         "rbi" to listOf("rbi.org.in"), "pnb" to listOf("pnbindia.in"))
-    private val links = Regex("""(?:[a-z][a-z0-9+.-]{0,31}://|www\.)[^\s<>"\p{Cc}]+""", RegexOption.IGNORE_CASE)
+    private val links = Regex("""(?:[a-z][a-z0-9+.-]{0,31}://|(?:mailto|tel|javascript|data):|www\.)[^\s<>"\p{Cc}]*""", RegexOption.IGNORE_CASE)
     private val authority = Regex("""\b(?:police|cbi|fir|warrant|arrest)\b|पुलिस|गिरफ्तार|वारंट""")
     private val coercion = Regex("""\b(?:transfer|pay|skype)\b|video call|do not disconnect|stay on the line|पैसे भेज|पैसे ट्रांसफर""")
     private val credit = Regex("""refund|receive|cashback|paane|paisa lene|रिफंड|पाने|प्राप्त""")
@@ -73,8 +74,9 @@ object SafetyBarrier {
         val raw = text.orEmpty()
         if (raw.length > MAX) evidence.add(Evidence(Signal.LIMIT))
         val bounded = raw.take(MAX)
-        val destinations = links.findAll(bounded).map { it.value }.distinct().map { original ->
-            val assessment = if (bounded.length < raw.length && bounded.endsWith(original)) {
+        val destinations = links.findAll(bounded).distinctBy { it.value }.map { match ->
+            val original = match.value
+            val assessment = if (bounded.length < raw.length && match.range.last == bounded.lastIndex && !raw[MAX].isWhitespace()) {
                 assess(listOf(Evidence(Signal.LIMIT)))
             } else inspect(original)
             evidence += assessment.evidence
@@ -93,7 +95,7 @@ object SafetyBarrier {
             if (government.containsMatchIn(normalized)) add(Signal.NOTICE)
             if (delivery.containsMatchIn(normalized)) add(Signal.FEE)
         }
-        if (raw.isBlank() && direct == null) add(Signal.INVALID)
+        if (bounded.isBlank() && direct == null) add(Signal.INVALID)
         assess(evidence, direct?.destinationHost, destinations)
     }
 
@@ -129,6 +131,7 @@ object SafetyBarrier {
         if (uri.port > 65535 || host.length !in 1..253 || host.split('.').any { it.isEmpty() || (it.startsWith("xn--") && IDN.toUnicode(it) == it) }) return invalid()
         val evidence = mutableListOf<Evidence>()
         fun add(id: Signal) { evidence.add(Evidence(id,host)) }
+        if (scheme == "http") add(Signal.HTTP)
         if ('@' in auth) add(Signal.USERINFO)
         if (host.startsWith("[") || host.all { it.isDigit() || it == '.' }) add(Signal.IP)
         fun below(root: String) = host == root || host.endsWith(".$root")
@@ -146,8 +149,13 @@ object SafetyBarrier {
             }) add(Signal.MIXED)
         if (uri.path.orEmpty().substringAfterLast('/').substringBefore(';').endsWith(".apk", true)) add(Signal.APK)
         if (!nested) {
+            var redirectsChecked = 0
             uri.rawQuery.orEmpty().split('&').forEach { entry ->
                 if (URLDecoder.decode(entry.substringBefore('='), "UTF-8").lowercase(Locale.ROOT) in listOf("redirect","redirect_uri","returnurl","next","url","target")) {
+                    if (++redirectsChecked > 8) {
+                        if (redirectsChecked == 9) add(Signal.LIMIT)
+                        return@forEach
+                    }
                     val value = URLDecoder.decode(entry.substringAfter('=', ""), "UTF-8")
                     val dest = try { uri.resolve(value).toString() } catch (_: IllegalArgumentException) { "" }
                     val target = inspect(dest, true)

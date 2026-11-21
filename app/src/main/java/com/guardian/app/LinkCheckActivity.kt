@@ -75,6 +75,8 @@ import com.guardian.app.ui.theme.GxTextLo
 import com.guardian.app.ui.theme.GxTextMid
 import com.guardian.app.ui.theme.GxWarning
 import com.guardian.app.ui.theme.GxWarningSoft
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.lifecycle.lifecycleScope
 import com.susagi.safety.Action
 import com.susagi.safety.Assessment
 import com.susagi.safety.Evidence
@@ -82,7 +84,13 @@ import com.susagi.safety.Risk
 import com.susagi.safety.SafetyBarrier
 import com.susagi.safety.SharedDestination
 import com.susagi.safety.Signal
+import com.susagi.safety.hindiGuidance
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 data class LinkVerdict(
@@ -137,6 +145,9 @@ data class UnifiedSecurityAssessment(
 class LinkCheckActivity : ComponentActivity() {
 
     private val assessmentState = mutableStateOf<UnifiedSecurityAssessment?>(null)
+    private val isAnalyzing = mutableStateOf<Boolean>(true)
+    private var analysisJob: Job? = null
+    private var activeAnalysisId: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -165,12 +176,27 @@ class LinkCheckActivity : ComponentActivity() {
             is SharedPayload.SharedContent -> Log.d(TAG, "Incoming intent: ACTION_SEND text (chars: ${payload.rawText.length}, urls: ${payload.urls.size})")
         }
 
-        val assessment = assessPayload(payload)
-        assessmentState.value = assessment
+        // Cancel previous in-flight analysis job to avoid race conditions or stale results
+        analysisJob?.cancel()
+        val currentId = System.nanoTime()
+        activeAnalysisId = currentId
+        isAnalyzing.value = true
+
+        analysisJob = lifecycleScope.launch(Dispatchers.Default) {
+            val assessment = assessPayloadAsync(payload)
+            if (isActive && activeAnalysisId == currentId) {
+                withContext(Dispatchers.Main) {
+                    assessmentState.value = assessment
+                    isAnalyzing.value = false
+                }
+            }
+        }
 
         setContent {
             GuardianTheme {
-                val currentAssessment = assessmentState.value ?: assessment
+                val currentAssessment = assessmentState.value
+                val analyzing = isAnalyzing.value
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -178,22 +204,48 @@ class LinkCheckActivity : ComponentActivity() {
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    UnifiedSecurityDialog(
-                        assessment = currentAssessment,
-                        onProceedToUrl = { urlToOpen ->
-                            openInExternalBrowser(urlToOpen)
-                            finish()
-                        },
-                        onDismiss = {
-                            finish()
-                        },
-                        onCopyReport = {
-                            copyReportToClipboard(currentAssessment)
-                        },
-                        onAlertFamily = {
-                            shareFamilyAlert(currentAssessment)
+                    if (analyzing || currentAssessment == null) {
+                        Surface(
+                            shape = GxShapeMd,
+                            color = GxSurface,
+                            border = BorderStroke(1.dp, GxBorder),
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                CircularProgressIndicator(color = GxPrimary, modifier = Modifier.size(24.dp))
+                                Text(
+                                    "Analyzing content with Astra SafetyBarrier...",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = GxTextHi
+                                )
+                            }
                         }
-                    )
+                    } else {
+                        UnifiedSecurityDialog(
+                            assessment = currentAssessment,
+                            onProceedToUrl = { urlToOpen ->
+                                // Guard against stale callbacks: Verify destination belongs to active assessment
+                                if (currentAssessment.evaluatedUrls.any { it.url == urlToOpen }) {
+                                    openInExternalBrowser(urlToOpen)
+                                    finish()
+                                }
+                            },
+                            onDismiss = {
+                                finish()
+                            },
+                            onCopyReport = {
+                                copyReportToClipboard(currentAssessment)
+                            },
+                            onAlertFamily = {
+                                shareFamilyAlert(currentAssessment)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -711,8 +763,12 @@ class LinkCheckActivity : ComponentActivity() {
             )
         }
 
-        fun assessPayload(payload: SharedPayload): UnifiedSecurityAssessment {
-            return when (payload) {
+        fun assessPayload(payload: SharedPayload): UnifiedSecurityAssessment = runBlocking {
+            assessPayloadAsync(payload)
+        }
+
+        suspend fun assessPayloadAsync(payload: SharedPayload): UnifiedSecurityAssessment = withContext(Dispatchers.Default) {
+            when (payload) {
                 is SharedPayload.Empty -> {
                     UnifiedSecurityAssessment(
                         actualRiskScore = 0,
@@ -729,7 +785,7 @@ class LinkCheckActivity : ComponentActivity() {
                     )
                 }
                 is SharedPayload.ViewUrl -> {
-                    val astra = runBlocking { SafetyBarrier.analyzeUrl(payload.url) }
+                    val astra = SafetyBarrier.analyzeUrl(payload.url)
                     val fallback = evaluateLinkSafety(payload.url)
 
                     val isHigh = astra.risk == Risk.HIGH || fallback.status == RiskStatus.High
@@ -767,6 +823,9 @@ class LinkCheckActivity : ComponentActivity() {
                     if (astra.evidence.any { it.id == Signal.PAYMENT } || fallback.title.contains("UPI", ignoreCase = true)) {
                         signals.add("Direct UPI Payment Scheme")
                     }
+                    if (astra.evidence.any { it.id == Signal.HTTP } || payload.url.startsWith("http://", ignoreCase = true)) {
+                        signals.add("Unencrypted HTTP Connection (Cleartext)")
+                    }
                     astra.evidence.forEach { signals.add("[${it.id.name}] ${it.id.explanation}") }
                     fallback.supportingEvidence.forEach { if (!signals.contains(it)) signals.add(it) }
 
@@ -787,15 +846,19 @@ class LinkCheckActivity : ComponentActivity() {
                         destinationHost = host
                     )
 
+                    val astraHindiList = astra.hindiGuidance()
+                    val astraHindi = astraHindiList.joinToString(" ")
+                    val explanationHi = when {
+                        astraHindi.isNotBlank() && !astraHindi.contains("कोई चेतावनी संकेत नहीं मिला") -> astraHindi
+                        status == RiskStatus.High -> "यह गंतव्य दुर्भावनापूर्ण सर्वर या अनधिकृत भुगतान से जुड़ा है जो आपकी सुरक्षा या बैंक विवरण को खतरे में डाल सकता है।"
+                        status == RiskStatus.Suspicious -> "इस लिंक में अपुष्ट डोमेन, शॉर्टनर या असुरक्षित HTTP का उपयोग किया गया है। सावधानी बरतें।"
+                        else -> "इस गंतव्य के लिए कोई ज्ञात स्थानीय सुरक्षा खतरा या दुर्भावनापूर्ण पैटर्न नहीं मिला।"
+                    }
+
                     val explanationEn = when (status) {
                         RiskStatus.High -> "This destination exhibits characteristics of malicious infrastructure designed to compromise your device, harvest credentials, or extract unverified payments."
-                        RiskStatus.Suspicious -> "This link uses unverified domains, masked shorteners, or direct payment handlers. Proceed with caution."
-                        RiskStatus.Low -> "No known malicious patterns or homoglyph spoofs were detected for this destination."
-                    }
-                    val explanationHi = when (status) {
-                        RiskStatus.High -> "यह गंतव्य दुर्भावनापूर्ण सर्वर या अनधिकृत भुगतान से जुड़ा है जो आपकी सुरक्षा या बैंक विवरण को खतरे में डाल सकता है।"
-                        RiskStatus.Suspicious -> "इस लिंक में अपुष्ट डोमेन या शॉर्टनर का उपयोग किया गया है। सावधानी बरतें।"
-                        RiskStatus.Low -> "इस गंतव्य के लिए कोई ज्ञात सुरक्षा खतरा या दुर्भावनापूर्ण पैटर्न नहीं मिला।"
+                        RiskStatus.Suspicious -> "This link uses unverified domains, masked shorteners, unencrypted HTTP, or direct payment handlers. Proceed with caution."
+                        RiskStatus.Low -> "No known local threat indicators detected. Offline inspection cannot verify destination reputation after navigation."
                     }
 
                     UnifiedSecurityAssessment(
@@ -815,7 +878,7 @@ class LinkCheckActivity : ComponentActivity() {
                 }
                 is SharedPayload.SharedContent -> {
                     val text = payload.rawText
-                    val astra = runBlocking { SafetyBarrier.analyze(null, text) }
+                    val astra = SafetyBarrier.analyze(null, text)
 
                     // Multi-destination evaluation: Each distinct URL is mapped to its own independent assessment
                     val evaluatedUrls = if (astra.destinations.isNotEmpty()) {

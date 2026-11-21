@@ -9,6 +9,9 @@ import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
+import com.susagi.safety.Risk
+import com.susagi.safety.SafetyBarrier
+import kotlinx.coroutines.runBlocking
 
 class NotificationScannerService : NotificationListenerService() {
 
@@ -34,7 +37,12 @@ class NotificationScannerService : NotificationListenerService() {
 
         if (fullContent.isBlank()) return
 
-        if (SuspiciousMessageDetector.isSuspicious(fullContent)) {
+        // Use Astra SafetyBarrier to accurately discriminate real threat from legitimate warnings (e.g. "Never share OTP")
+        val assessment = runBlocking { SafetyBarrier.analyze(null, fullContent) }
+        val isHighRisk = assessment.risk == Risk.HIGH
+        val isReview = assessment.risk == Risk.REVIEW
+
+        if (isHighRisk || isReview) {
             val originalPendingIntent: PendingIntent? = sbn.notification.contentIntent
 
             // 1. Cancel malicious original notification to prevent direct user tap
@@ -42,11 +50,14 @@ class NotificationScannerService : NotificationListenerService() {
                 cancelNotification(sbn.key)
             } catch (_: Exception) {}
 
-            // 2. Post safe Guardian interception notification
+            // 2. Post safe Guardian interception notification with genuine detected evidence
+            val threatDesc = assessment.explanation.ifBlank { "Suspicious payment, extortion or unverified link patterns detected." }
             postGuardianInterceptNotification(
                 packageName = sbn.packageName,
                 title = title.ifBlank { "Suspicious Alert" },
                 body = fullContent,
+                explanation = threatDesc,
+                isHighRisk = isHighRisk,
                 originalPendingIntent = originalPendingIntent
             )
         }
@@ -56,6 +67,8 @@ class NotificationScannerService : NotificationListenerService() {
         packageName: String,
         title: String,
         body: String,
+        explanation: String,
+        isHighRisk: Boolean,
         originalPendingIntent: PendingIntent?
     ) {
         val warningIntent = Intent(this, ScamWarningActivity::class.java).apply {
@@ -63,8 +76,8 @@ class NotificationScannerService : NotificationListenerService() {
             putExtra("source", packageName)
             putExtra("title", title)
             putExtra("body", body)
-            putExtra("score", 85)
-            putExtra("explanation", "Guardian detected high-risk scam patterns (credential/OTP theft, impersonation, or malicious link) and blocked direct opening.")
+            putExtra("score", if (isHighRisk) 85 else 50)
+            putExtra("explanation", explanation)
             if (originalPendingIntent != null) {
                 putExtra("original_pending_intent", originalPendingIntent)
             }
@@ -81,7 +94,7 @@ class NotificationScannerService : NotificationListenerService() {
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("⚠️ Scam Alert Intercepted: $title")
             .setContentText("Guardian intercepted a suspicious notification. Tap to inspect.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Guardian intercepted a high-risk message targeting sensitive credentials. Tap to inspect safely."))
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Guardian intercepted a message: $explanation Tap to inspect safely."))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)

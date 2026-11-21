@@ -19,8 +19,16 @@ class ModelManagerTest {
 
     @Before
     fun setUp() {
-        modelsDir = tempFolder.newFolder("models")
+        val baseDir = File("D:/SuSagi_Guardian_V2/app/build/tmp/test_models").apply { mkdirs() }
+        modelsDir = File(baseDir, "run_${System.nanoTime()}").apply { mkdirs() }
         modelManager = ModelManager(context = null, overrideModelsDir = modelsDir)
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        try {
+            modelsDir.deleteRecursively()
+        } catch (_: Exception) {}
     }
 
     /**

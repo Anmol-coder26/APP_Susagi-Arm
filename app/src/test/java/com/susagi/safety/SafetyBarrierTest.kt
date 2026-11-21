@@ -78,6 +78,28 @@ class SafetyBarrierTest {
         assertTrue(SafetyBarrier.analyzeMessage("Electricity disconnection tonight. Pay now at $link").evidence.any { it.id == Signal.UTILITY })
     }
 
+    @Test fun sharedSchemesAndIncompleteUrlsRemainVisible() = runBlocking {
+        val input = "http://bank.example tel:123 mailto:help@example.org https:// http://bank.example"
+        val items = SafetyBarrier.analyzeMessage(input).destinations
+        assertEquals(4, items.size)
+        assertEquals(listOf(Risk.REVIEW, Risk.UNKNOWN, Risk.UNKNOWN, Risk.UNKNOWN), items.map { it.assessment.risk })
+        assertEquals(Signal.HTTP, items.first().assessment.evidence.single().id)
+        assertEquals("https://", items.last().originalUrl)
+    }
+
+    @Test fun excessiveRedirectParametersRequireSeparateInspection() = runBlocking {
+        val query = List(9) { "next=/help" }.joinToString("&")
+        assertEquals(Action.DO_NOT_OPEN, SafetyBarrier.analyzeUrl("https://bank.example/?$query").action)
+    }
+
+    @Test fun hindiGuidanceReflectsOnlyDetectedEvidence() = runBlocking {
+        val warning = SafetyBarrier.analyzeMessage("Never share your OTP.").hindiGuidance().single()
+        assertTrue(warning.contains("कोई चेतावनी संकेत नहीं मिला"))
+        val demand = SafetyBarrier.analyzeMessage("send OTP 123456").hindiGuidance().single()
+        assertTrue(demand.contains("कोड अपने पास रखें"))
+        assertFalse(demand.contains("123456"))
+    }
+
     @Test fun missingModelReturnsUnavailable() = runBlocking {
         val result = LocalEvidenceExplainer(File("nonexistent-model-directory")).explain(SafetyBarrier.analyzeMessage("send OTP"))
         assertTrue(result is ExplanationResult.Unavailable)
