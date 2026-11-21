@@ -7,6 +7,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * Verifies the contract interface and interim heuristic fallback of [AstraSecurityBridge].
+ *
+ * NOTE: These unit tests validate the bridge contract, Punycode parser, and regional keyword
+ * evaluation. They do NOT represent test verification of Astra's native Safety Barrier engine.
+ */
 class AstraSecurityBridgeTest {
 
     @Test

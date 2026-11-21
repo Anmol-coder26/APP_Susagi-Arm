@@ -8,8 +8,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Concrete implementation of [SecurityAssessmentContract] bridging the Android UI layer
- * to Astra's underlying scam and phishing intelligence engines.
+ * INTERIM FALLBACK IMPLEMENTATION of [SecurityAssessmentContract].
+ *
+ * Bridges the Android UI layer to available heuristic link analysis and keyword evaluation
+ * while awaiting the delivery of Astra's native `com.susagi.safety.SafetyBarrier` engine.
+ *
+ * NOTE: Tests against this bridge (such as AstraSecurityBridgeTest) verify only this interim
+ * heuristic fallback and do NOT represent verification of Astra's genuine native Safety Barrier.
+ * Once Astra's SafetyBarrier API lands, this object will delegate directly to it without
+ * altering UI consumers.
  */
 object AstraSecurityBridge : SecurityAssessmentContract {
 
