@@ -31,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Security
@@ -85,7 +86,10 @@ data class LinkVerdict(
         RiskStatus.High -> 85
         RiskStatus.Suspicious -> 50
         RiskStatus.Low -> 10
-    }
+    },
+    val supportingEvidence: List<String> = emptyList(),
+    val recommendedAction: String = if (status == RiskStatus.Low) "Inspect destination carefully." else "Avoid opening this destination.",
+    val explicitLimitations: String = "Offline static heuristic evaluation. Destination DNS, SSL certificates, and server-side redirects are not verified without internet connectivity."
 )
 
 sealed class SharedPayload {
@@ -186,11 +190,16 @@ class LinkCheckActivity : ComponentActivity() {
                 appendLine("Signals: ${assessment.detectedSignals.joinToString(", ")}")
             }
             if (assessment.evaluatedUrls.isNotEmpty()) {
-                appendLine("Links Inspected: ${assessment.evaluatedUrls.size}")
+                appendLine("Destinations Inspected: ${assessment.evaluatedUrls.size}")
                 assessment.evaluatedUrls.forEach { v ->
                     appendLine("- ${v.url} [${v.status}]")
+                    if (v.supportingEvidence.isNotEmpty()) {
+                        appendLine("  Evidence: ${v.supportingEvidence.joinToString("; ")}")
+                    }
+                    appendLine("  Action: ${v.recommendedAction}")
                 }
             }
+            appendLine("Limitations: Static offline evaluation; live DNS/redirects unverified without internet.")
         }
         clipboard.setPrimaryClip(ClipData.newPlainText("SuSagi Security Report", report))
         Toast.makeText(this, "Security assessment copied to clipboard", Toast.LENGTH_SHORT).show()
@@ -199,7 +208,7 @@ class LinkCheckActivity : ComponentActivity() {
     private fun shareFamilyAlert(assessment: UnifiedSecurityAssessment) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "⚠️ SuSagi Alert: ${assessment.categoryTitle}")
+            putExtra(Intent.EXTRA_SUBJECT, "⚠️ SuSagi Security Alert: ${assessment.categoryTitle}")
             putExtra(
                 Intent.EXTRA_TEXT,
                 "⚠️ SuSagi Guardian Alert:\nThreat: ${assessment.categoryTitle} (${assessment.actualRiskScore}% Risk)\n\n" +
@@ -248,7 +257,7 @@ class LinkCheckActivity : ComponentActivity() {
 
         // Fallback browser chooser
         try {
-            val chooser = Intent.createChooser(browserIntent, "Open with external browser").apply {
+            val chooser = Intent.createChooser(browserIntent, "Open destination with safe browser").apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             startActivity(chooser)
@@ -262,8 +271,7 @@ class LinkCheckActivity : ComponentActivity() {
         private const val TAG = "SuSagiShareShield"
 
         val URL_REGEX = Regex(
-            "(?:https?://|www\\.)[a-zA-Z0-9\\-\\._~:/?#\\[\\]@!$&'()*+,;=%]+",
-            RegexOption.IGNORE_CASE
+            """(?i)(?:https?://|www\.|upi://|javascript:|data:|intent:|file:|content:)[a-zA-Z0-9\-\._~:/?#\[\]@!$&'()*+,;=%]+"""
         )
 
         private val IP_REGEX = Regex(
@@ -345,6 +353,7 @@ class LinkCheckActivity : ComponentActivity() {
             val clean = url.trim().lowercase(Locale.ROOT)
                 .removePrefix("http://")
                 .removePrefix("https://")
+                .removePrefix("upi://")
             val afterUser = if (clean.contains("@")) clean.substringAfter("@") else clean
             return afterUser.split('/', ':', '?', '#').firstOrNull()?.trim() ?: ""
         }
@@ -412,6 +421,72 @@ class LinkCheckActivity : ComponentActivity() {
             val trimmed = url.trim()
             val lower = trimmed.lowercase(Locale.ROOT)
 
+            // -1. Threat: Unsupported / Dangerous Schemes
+            val unsupportedSchemes = listOf("javascript:", "file:", "content:", "data:", "intent:")
+            for (s in unsupportedSchemes) {
+                if (lower.startsWith(s)) {
+                    return LinkVerdict(
+                        url = url,
+                        status = RiskStatus.High,
+                        title = "🚨 UNSUPPORTED / POTENTIALLY DANGEROUS SCHEME",
+                        detail = "The URI scheme '$s' is not an ordinary web destination and is frequently abused for local script execution, intent hijacking, or sandbox escapes.",
+                        riskScore = 95,
+                        supportingEvidence = listOf("Scheme: $s", "High-risk protocol handler", "Bypasses standard browser web sandbox"),
+                        recommendedAction = "Do not open or execute. Close the overlay immediately.",
+                        explicitLimitations = "Offline scheme classification. Local file contents or scripts are not executed."
+                    )
+                }
+            }
+
+            // -0.5. Threat: UPI Direct Payment Link Scams
+            if (lower.startsWith("upi://")) {
+                val query = trimmed.substringAfter('?', "")
+                fun extractParam(key: String): String {
+                    return try {
+                        query.split('&').mapNotNull { pair ->
+                            val parts = pair.split('=', limit = 2)
+                            if (parts.size == 2 && parts[0].equals(key, ignoreCase = true)) {
+                                java.net.URLDecoder.decode(parts[1], "UTF-8")
+                            } else null
+                        }.firstOrNull().orEmpty()
+                    } catch (_: Exception) { "" }
+                }
+
+                val pa = extractParam("pa")
+                val pn = extractParam("pn")
+                val am = extractParam("am")
+
+                val isGovOrUtilityName = pn.contains("electricity", true) || pn.contains("bill", true) ||
+                        pn.contains("police", true) || pn.contains("cbi", true) || pn.contains("rbi", true) ||
+                        pn.contains("sbi", true) || pn.contains("bank", true) || pn.contains("challan", true)
+
+                val isSuspiciousVpa = pa.isNotBlank() && isGovOrUtilityName && !pa.contains("gov") && !pa.contains("billdesk") && !pa.contains("sbi")
+
+                if (isSuspiciousVpa) {
+                    return LinkVerdict(
+                        url = url,
+                        status = RiskStatus.High,
+                        title = "🚨 SUSPICIOUS UNVERIFIED UPI PAYMENT REQUEST",
+                        detail = "This UPI link requests payment to individual address '$pa' under the institutional name '$pn'. Legitimate government and utility agencies do not collect payments to personal UPI handles.",
+                        riskScore = 94,
+                        supportingEvidence = listOf("Scheme: upi://pay", "VPA: $pa", "Impersonated Name: $pn", if (am.isNotBlank()) "Requested Amount: ₹$am" else "Open Collect Request"),
+                        recommendedAction = "Do not authorize payment or enter your UPI PIN. Official bills should only be paid through verified consumer portals.",
+                        explicitLimitations = "Offline UPI parameter analysis. The live operational status of this VPA cannot be confirmed without payment gateway connectivity."
+                    )
+                } else if (pa.isNotBlank()) {
+                    return LinkVerdict(
+                        url = url,
+                        status = RiskStatus.Suspicious,
+                        title = "⚠️ UNVERIFIED DIRECT UPI LINK",
+                        detail = "This link initiates a direct UPI payment request to address '$pa'. Verify the recipient identity before proceeding.",
+                        riskScore = 55,
+                        supportingEvidence = listOf("Scheme: upi://pay", "Recipient VPA: $pa", "Display Name: ${pn.ifBlank { "Unspecified" }}"),
+                        recommendedAction = "Verify the recipient's phone number or invoice number directly before entering your UPI PIN.",
+                        explicitLimitations = "Offline static check. Does not connect to NPCI or banking servers."
+                    )
+                }
+            }
+
             val host = extractHost(trimmed)
             val userInfo = extractUserInfo(trimmed)
             val path = try {
@@ -428,7 +503,10 @@ class LinkCheckActivity : ComponentActivity() {
                     status = RiskStatus.Suspicious,
                     title = "⚠️ MALFORMED OR EMPTY HOSTNAME",
                     detail = "The web address '$url' does not specify a valid, well-formed host domain.",
-                    riskScore = 55
+                    riskScore = 55,
+                    supportingEvidence = listOf("Malformed hostname syntax", "Host: '$host'"),
+                    recommendedAction = "Do not open. The web address structure is invalid or corrupt.",
+                    explicitLimitations = "Offline syntactic validation only."
                 )
             }
 
@@ -439,7 +517,10 @@ class LinkCheckActivity : ComponentActivity() {
                     status = RiskStatus.High,
                     title = "🚨 UNVERIFIED IP HOST DETECTED",
                     detail = "This link points directly to a raw IP address ($host) rather than a registered domain name. Legitimate institutions never use raw IP URLs.",
-                    riskScore = 88
+                    riskScore = 88,
+                    supportingEvidence = listOf("Numeric IP format ($host)", "No registered domain name", "Commonly used in C2 and credential phishing"),
+                    recommendedAction = "Do not open. Legitimate institutions never conduct business on raw IP addresses.",
+                    explicitLimitations = "Offline heuristic check. IP geolocation and reverse DNS not queried."
                 )
             }
 
@@ -450,7 +531,10 @@ class LinkCheckActivity : ComponentActivity() {
                     status = RiskStatus.High,
                     title = "🚨 URL IMPERSONATION SPOOF DETECTED",
                     detail = "This link uses user-info prefixing ($userInfo) to disguise the true destination domain ($host).",
-                    riskScore = 90
+                    riskScore = 90,
+                    supportingEvidence = listOf("UserInfo prefix: '$userInfo'", "True destination: '$host'", "Credential harvesting deception technique"),
+                    recommendedAction = "Do not open. The link is designed to mislead you regarding the destination server.",
+                    explicitLimitations = "Offline URL syntax evaluation."
                 )
             }
 
@@ -462,7 +546,10 @@ class LinkCheckActivity : ComponentActivity() {
                     status = RiskStatus.High,
                     title = "🚨 MALICIOUS PACKAGE / APK SIDELOAD DETECTED",
                     detail = "This link initiates an unauthorized APK or binary download outside of Google Play, frequently used in RAT (Remote Access Trojan) fraud.",
-                    riskScore = 92
+                    riskScore = 92,
+                    supportingEvidence = listOf("Direct package extension (.apk/.exe)", "Bypasses Google Play Store protection", "Common vector for Android RATs and trojans"),
+                    recommendedAction = "Do not download or install this application package. Unverified APKs can compromise your device.",
+                    explicitLimitations = "Offline URL pattern analysis. Binary payload is not downloaded or scanned."
                 )
             }
 
@@ -480,7 +567,10 @@ class LinkCheckActivity : ComponentActivity() {
                         status = RiskStatus.High,
                         title = "🚨 DANGEROUS PHISHING / EXTORTION LINK",
                         detail = "This destination has been flagged for active banking credential harvesting, digital arrest extortion, or fraudulent payment gateway impersonation.",
-                        riskScore = 86
+                        riskScore = 86,
+                        supportingEvidence = listOf("Phishing keyword '$keyword' detected in path/host", "High correlation with credential harvesting campaigns"),
+                        recommendedAction = "Do not enter login credentials, OTPs, or financial details on this website.",
+                        explicitLimitations = "Offline keyword/pattern heuristic check."
                     )
                 }
             }
@@ -505,7 +595,10 @@ class LinkCheckActivity : ComponentActivity() {
                         status = RiskStatus.High,
                         title = "🚨 FAKE BRAND IMPERSONATION DETECTED",
                         detail = "The domain '$host' mimics official financial or government infrastructure ($brand) on an unauthorized server.",
-                        riskScore = 84
+                        riskScore = 84,
+                        supportingEvidence = listOf("Target brand: '$brand'", "Unverified host domain: '$host'", "Not found in trusted institution root registry"),
+                        recommendedAction = "Do not open. Access your financial institution solely via official bookmarks or certified apps.",
+                        explicitLimitations = "Checked against offline trusted domain registry. Third-party brand partnerships not verified."
                     )
                 }
             }
@@ -521,7 +614,10 @@ class LinkCheckActivity : ComponentActivity() {
                         status = RiskStatus.High,
                         title = "🚨 PUNYCODE / HOMOGLYPH SPOOF DETECTED",
                         detail = "This link uses mixed-script internationalized characters ('$decodedHost') that look identical to genuine Latin letters to deceive users.",
-                        riskScore = 89
+                        riskScore = 89,
+                        supportingEvidence = listOf("Punycode domain: '$host'", "Decoded IDN: '$decodedHost'", "Mixed-script visual character spoofing"),
+                        recommendedAction = "Do not open. The website uses lookalike foreign characters to visually deceive you.",
+                        explicitLimitations = "Offline Unicode script analysis."
                     )
                 }
 
@@ -538,7 +634,10 @@ class LinkCheckActivity : ComponentActivity() {
                         status = RiskStatus.High,
                         title = "🚨 PUNYCODE DOMAIN DETECTED",
                         detail = "This link uses internationalized encoding ('$decodedHost') on an unverified commercial registry.",
-                        riskScore = 78
+                        riskScore = 78,
+                        supportingEvidence = listOf("Commercial Punycode: '$host'", "Non-national registry"),
+                        recommendedAction = "Exercise caution. Confirm domain authenticity.",
+                        explicitLimitations = "Offline TLD verification."
                     )
                 }
             }
@@ -553,7 +652,10 @@ class LinkCheckActivity : ComponentActivity() {
                     status = RiskStatus.Suspicious,
                     title = "⚠️ SUSPICIOUS MASKED URL SHORTENER",
                     detail = "This link uses a URL shortener that conceals the true landing page. Proceed with caution.",
-                    riskScore = 52
+                    riskScore = 52,
+                    supportingEvidence = listOf("Shortener host: '$host'", "Destination concealed behind redirect service"),
+                    recommendedAction = "Expand or verify the destination with the sender before clicking.",
+                    explicitLimitations = "Offline evaluation. The redirected landing page cannot be resolved without internet."
                 )
             }
 
@@ -569,7 +671,10 @@ class LinkCheckActivity : ComponentActivity() {
                     status = RiskStatus.Suspicious,
                     title = "⚠️ UNVERIFIED HIGH-RISK DOMAIN REGISTRY",
                     detail = "This website is hosted on a top-level domain frequently associated with throwaway phishing sites and malicious campaigns.",
-                    riskScore = 58
+                    riskScore = 58,
+                    supportingEvidence = listOf("Registry TLD: '.${host.substringAfterLast('.')}'", "Statistically elevated phishing incidence"),
+                    recommendedAction = "Exercise caution. Confirm the organization's authentic domain before proceeding.",
+                    explicitLimitations = "Offline TLD reputation heuristic."
                 )
             }
 
@@ -579,7 +684,10 @@ class LinkCheckActivity : ComponentActivity() {
                 status = RiskStatus.Low,
                 title = "🛡️ NO KNOWN THREAT DETECTED",
                 detail = "This destination matches known legitimate domain standards with no active threat indicators.",
-                riskScore = 8
+                riskScore = 8,
+                supportingEvidence = listOf("Standard domain format", "No homoglyphs, IP hosts, or APK downloads detected"),
+                recommendedAction = "Destination appears standard. Exercise normal online awareness.",
+                explicitLimitations = "Offline static evaluation. Cannot guarantee server is free of zero-day vulnerabilities."
             )
         }
 
@@ -605,15 +713,16 @@ class LinkCheckActivity : ComponentActivity() {
                     if (verdict.title.contains("IMPERSONATION", ignoreCase = true)) signals.add("Brand / Institutional Impersonation")
                     if (verdict.title.contains("APK", ignoreCase = true) || verdict.title.contains("PACKAGE", ignoreCase = true)) signals.add("Direct Executable / APK Sideload")
                     if (verdict.title.contains("SHORTENER", ignoreCase = true)) signals.add("Masked Shortener Destination")
+                    if (verdict.title.contains("UPI", ignoreCase = true)) signals.add("Direct UPI Payment Scheme")
                     if (signals.isEmpty() && verdict.status != RiskStatus.Low) signals.add(verdict.title)
 
                     val explanationEn = when (verdict.status) {
-                        RiskStatus.High -> "This web address exhibits characteristics of malicious infrastructure designed to compromise your device or harvest credentials."
-                        RiskStatus.Suspicious -> "This link uses unverified domains or masking techniques. Proceed with caution."
+                        RiskStatus.High -> "This destination exhibits characteristics of malicious infrastructure designed to compromise your device, harvest credentials, or extract unverified payments."
+                        RiskStatus.Suspicious -> "This link uses unverified domains, masked shorteners, or direct payment handlers. Proceed with caution."
                         RiskStatus.Low -> "No known malicious patterns or homoglyph spoofs were detected for this destination."
                     }
                     val explanationHi = when (verdict.status) {
-                        RiskStatus.High -> "यह वेब पता दुर्भावनापूर्ण सर्वर से जुड़ा है जो आपकी सुरक्षा या बैंक विवरण को खतरे में डाल सकता है।"
+                        RiskStatus.High -> "यह गंतव्य दुर्भावनापूर्ण सर्वर या अनधिकृत भुगतान से जुड़ा है जो आपकी सुरक्षा या बैंक विवरण को खतरे में डाल सकता है।"
                         RiskStatus.Suspicious -> "इस लिंक में अपुष्ट डोमेन या शॉर्टनर का उपयोग किया गया है। सावधानी बरतें।"
                         RiskStatus.Low -> "इस गंतव्य के लिए कोई ज्ञात सुरक्षा खतरा या दुर्भावनापूर्ण पैटर्न नहीं मिला।"
                     }
@@ -666,7 +775,7 @@ class LinkCheckActivity : ComponentActivity() {
                     keywordReport.topSignals.forEach { signals.add(if (it.detail.isNotBlank()) "${it.title}: ${it.detail}" else it.title) }
                     regionalMatches.take(4).forEach { signals.add("Matched keyword: '$it'") }
                     evaluatedUrls.filter { it.status != RiskStatus.Low }.forEach {
-                        signals.add("URL Alert: ${it.title}")
+                        signals.add("Destination Alert: ${it.title}")
                     }
 
                     val lower = text.lowercase(Locale.ROOT)
@@ -679,6 +788,7 @@ class LinkCheckActivity : ComponentActivity() {
                         lower.contains("kyc") || lower.contains("pan") || lower.contains("aadhaar") ||
                                 lower.contains("केवाईसी") -> "BANKING KYC / ACCOUNT BLOCK FRAUD"
                         lower.contains("lottery") || lower.contains("winner") || lower.contains("kbc") -> "LOTTERY & PRIZE SCAM"
+                        evaluatedUrls.any { it.title.contains("UPI", true) } -> "UNVERIFIED UPI PAYMENT TRAP"
                         evaluatedUrls.any { it.title.contains("APK", true) } -> "MALICIOUS APK SIDELOAD TRAP"
                         evaluatedUrls.any { it.title.contains("HOMOGLYPH", true) || it.title.contains("PUNYCODE", true) } -> "HOMOGLYPH DOMAIN SPOOF"
                         finalScore >= 60 -> "SUSPICIOUS COERCIVE REQUEST"
@@ -693,6 +803,8 @@ class LinkCheckActivity : ComponentActivity() {
                             "Power companies never disconnect electricity via urgent WhatsApp/SMS demands with third-party payment links. Contact your electricity board directly."
                         category.contains("KYC") ->
                             "Banks never demand immediate OTP, PIN, or PAN card updates via personal chat links or third-party websites."
+                        category.contains("UPI") ->
+                            "This message contains an unverified UPI payment link requesting money transfer. Legitimate organizations do not collect payments to personal handles."
                         category.contains("APK") ->
                             "This message instructs you to install an unauthorized app file (.apk) outside Google Play, which can give attackers remote access to your device."
                         status == RiskStatus.High ->
@@ -710,6 +822,8 @@ class LinkCheckActivity : ComponentActivity() {
                             "बिजली वितरण कंपनियां व्हाट्सएप पर तत्काल बिजली काटने की धमकी नहीं देती हैं। किसी भी निजी लिंक पर भुगतान न करें।"
                         category.contains("KYC") ->
                             "बैंक कभी भी व्हाट्सएप लिंक के माध्यम से तत्काल केवाईसी, ओटीपी या पिन अपडेट करने के लिए नहीं कहते हैं।"
+                        category.contains("UPI") ->
+                            "इस संदेश में एक अनधिकृत यूपीआई भुगतान लिंक है। किसी भी व्यक्तिगत खाते में पैसे ट्रांसफर न करें।"
                         category.contains("APK") ->
                             "यह संदेश आपको गूगल प्ले स्टोर के बाहर अज्ञात ऐप (.apk) डाउनलोड करने के लिए कह रहा है, जिससे आपका फोन हैक हो सकता है।"
                         status == RiskStatus.High ->
@@ -747,6 +861,7 @@ fun UnifiedSecurityDialog(
 ) {
     var isHindi by remember { mutableStateOf(false) }
     var selectedUrlIndex by remember { mutableStateOf(0) }
+    var showNavigationConfirmation by remember { mutableStateOf(false) }
 
     val statusColor = when (assessment.status) {
         RiskStatus.High -> GxDanger
@@ -941,7 +1056,7 @@ fun UnifiedSecurityDialog(
                 }
             }
 
-            // Destinations / Links Section (Multi-Link Selection Support)
+            // Destinations / Links Section (Multi-Link Selection & Per-Destination Analysis Support)
             if (assessment.evaluatedUrls.isNotEmpty()) {
                 Spacer(Modifier.height(14.dp))
                 Text(
@@ -977,36 +1092,52 @@ fun UnifiedSecurityDialog(
                             .padding(vertical = 3.dp)
                             .clickable { selectedUrlIndex = idx }
                     ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    LinkCheckActivity.extractHost(urlVerdict.url),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = GxTextHi,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    urlVerdict.url.take(65) + if (urlVerdict.url.length > 65) "..." else "",
-                                    fontSize = 10.sp,
-                                    color = GxTextLo,
-                                    fontFamily = FontFamily.Monospace
-                                )
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        LinkCheckActivity.extractHost(urlVerdict.url),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GxTextHi,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Text(
+                                        urlVerdict.url.take(65) + if (urlVerdict.url.length > 65) "..." else "",
+                                        fontSize = 10.sp,
+                                        color = GxTextLo,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                                Surface(
+                                    shape = GxShapePill,
+                                    color = urlStatusColor.copy(alpha = 0.15f),
+                                    border = BorderStroke(0.5.dp, urlStatusColor)
+                                ) {
+                                    Text(
+                                        urlVerdict.status.name.uppercase(Locale.ROOT),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = urlStatusColor,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
-                            Surface(
-                                shape = GxShapePill,
-                                color = urlStatusColor.copy(alpha = 0.15f),
-                                border = BorderStroke(0.5.dp, urlStatusColor)
-                            ) {
+
+                            // If selected, display supporting evidence and recommended action
+                            if (isSelected) {
+                                Spacer(Modifier.height(8.dp))
                                 Text(
-                                    urlVerdict.status.name.uppercase(Locale.ROOT),
+                                    "Recommended Action: ${urlVerdict.recommendedAction}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = GxTextMid
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "Limitations: ${urlVerdict.explicitLimitations}",
                                     fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = urlStatusColor,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    color = GxTextLo
                                 )
                             }
                         }
@@ -1016,12 +1147,12 @@ fun UnifiedSecurityDialog(
 
             Spacer(Modifier.height(18.dp))
 
-            // Action Buttons: Safe Return / Block (Primary), Copy Report, Alert Family
+            // Action Buttons: Safe Close Overlay (Truthful), Copy Report, Alert Family
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Primary Safe Action: Dismiss / Block
+                // Primary Truthful Action: Close Overlay (Safe)
                 Button(
                     onClick = onDismiss,
                     colors = ButtonDefaults.buttonColors(
@@ -1034,7 +1165,7 @@ fun UnifiedSecurityDialog(
                         .height(44.dp)
                 ) {
                     Text(
-                        if (assessment.status == RiskStatus.Low) "DISMISS (SAFE)" else "BLOCK & RETURN",
+                        if (assessment.status == RiskStatus.Low) "CLOSE OVERLAY (SAFE)" else "CLOSE & DISMISS",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -1068,26 +1199,72 @@ fun UnifiedSecurityDialog(
                 }
             }
 
-            // Secondary Unsafe Action (Only displayed if URLs exist; never opens automatically)
+            // Secondary Unsafe Action with Explicit Confirmation Step
             if (assessment.evaluatedUrls.isNotEmpty()) {
                 val chosenUrl = assessment.evaluatedUrls.getOrNull(selectedUrlIndex)?.url ?: assessment.evaluatedUrls.first().url
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { onProceedToUrl(chosenUrl) },
-                    border = BorderStroke(0.5.dp, GxBorder),
-                    shape = GxShapeSm,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp)
-                ) {
-                    Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = GxTextLo, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "Proceed to Destination (Unsafe)",
-                        color = GxTextLo,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Normal
-                    )
+
+                if (!showNavigationConfirmation) {
+                    OutlinedButton(
+                        onClick = { showNavigationConfirmation = true },
+                        border = BorderStroke(0.5.dp, GxBorder),
+                        shape = GxShapeSm,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(36.dp)
+                    ) {
+                        Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = GxTextLo, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Proceed to Selected Destination (Unsafe)",
+                            color = GxTextLo,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    }
+                } else {
+                    // Explicit Navigation Confirmation Card
+                    Surface(
+                        color = GxDangerSoft,
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxDanger),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                "⚠️ Confirm Navigation to External Browser",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GxDanger
+                            )
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                "Destination: $chosenUrl\nThis destination has not been verified safe. Are you sure you wish to leave SuSagi?",
+                                fontSize = 10.sp,
+                                color = GxTextHi,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = { onProceedToUrl(chosenUrl) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = GxDanger, contentColor = Color.White),
+                                    shape = GxShapeSm,
+                                    modifier = Modifier.weight(1f).height(34.dp)
+                                ) {
+                                    Text("Confirm & Open", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                                OutlinedButton(
+                                    onClick = { showNavigationConfirmation = false },
+                                    border = BorderStroke(1.dp, GxBorder),
+                                    shape = GxShapeSm,
+                                    modifier = Modifier.weight(1f).height(34.dp)
+                                ) {
+                                    Text("Cancel", fontSize = 10.sp, color = GxPrimary)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

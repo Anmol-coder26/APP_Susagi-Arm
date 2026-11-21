@@ -255,4 +255,55 @@ class LinkCheckSecurityTest {
         assertEquals(1, assessment.evaluatedUrls.size)
         assertTrue(assessment.detectedSignals.any { it.contains("Impersonation") })
     }
+
+    @Test
+    fun testEvaluateLinkSafety_upiPaymentLink_impersonationFlagsHighRisk() {
+        val upiScam = "upi://pay?pa=scammer99@okhdfcbank&pn=Electricity%20Bill%20Office&am=1850"
+        val verdict = LinkCheckActivity.evaluateLinkSafety(upiScam)
+
+        assertEquals(RiskStatus.High, verdict.status)
+        assertTrue(verdict.riskScore >= 90)
+        assertTrue(verdict.title.contains("UPI PAYMENT REQUEST"))
+        assertTrue(verdict.supportingEvidence.any { it.contains("VPA: scammer99@okhdfcbank") })
+        assertTrue(verdict.supportingEvidence.any { it.contains("Electricity Bill Office") })
+        assertTrue(verdict.recommendedAction.contains("Do not authorize payment"))
+        assertTrue(verdict.explicitLimitations.contains("Offline UPI parameter analysis"))
+    }
+
+    @Test
+    fun testEvaluateLinkSafety_upiPaymentLink_genericFlagsSuspicious() {
+        val upiGeneric = "upi://pay?pa=friend123@okhdfcbank&pn=Rohan%20Verma"
+        val verdict = LinkCheckActivity.evaluateLinkSafety(upiGeneric)
+
+        assertEquals(RiskStatus.Suspicious, verdict.status)
+        assertTrue(verdict.riskScore >= 50)
+        assertTrue(verdict.title.contains("UNVERIFIED DIRECT UPI LINK"))
+        assertTrue(verdict.supportingEvidence.any { it.contains("friend123@okhdfcbank") })
+    }
+
+    @Test
+    fun testEvaluateLinkSafety_dangerousSchemes_flagsHighRisk() {
+        val jsVerdict = LinkCheckActivity.evaluateLinkSafety("javascript:alert(document.cookie)")
+        assertEquals(RiskStatus.High, jsVerdict.status)
+        assertTrue(jsVerdict.title.contains("DANGEROUS SCHEME"))
+        assertTrue(jsVerdict.supportingEvidence.any { it.contains("javascript:") })
+
+        val fileVerdict = LinkCheckActivity.evaluateLinkSafety("file:///sdcard/Download/malware.apk")
+        assertEquals(RiskStatus.High, fileVerdict.status)
+        assertTrue(fileVerdict.title.contains("DANGEROUS SCHEME"))
+
+        val intentVerdict = LinkCheckActivity.evaluateLinkSafety("intent://action/#Intent;package=com.evil.app;end")
+        assertEquals(RiskStatus.High, intentVerdict.status)
+        assertTrue(intentVerdict.title.contains("DANGEROUS SCHEME"))
+    }
+
+    @Test
+    fun testExtractAllUrls_extractsUpiAndDangerousSchemes() {
+        val text = "Please settle via upi://pay?pa=scam@okhdfcbank&pn=Fine or view file:///storage/emulated/0/warrant.pdf"
+        val urls = LinkCheckActivity.extractAllUrls(text)
+
+        assertEquals(2, urls.size)
+        assertTrue(urls.any { it.startsWith("upi://pay") })
+        assertTrue(urls.any { it.startsWith("file://") })
+    }
 }
