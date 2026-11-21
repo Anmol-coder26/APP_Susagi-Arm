@@ -6,6 +6,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SafetyBarrierTest {
+    @Test fun authorizationDemandsNeedFinancialContext() = runBlocking {
+        assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage("To receive the newsletter, approve the request in settings.").risk)
+        assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage("UPI payment received. Scan QR for the product manual.").risk)
+        assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage("OTP kisi ko mat batana.").risk)
+        assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage("अपना ओटीपी किसी को न बताएं।").risk)
+        assertTrue(SafetyBarrier.analyzeMessage("OTP batana please").evidence.any { it.id == Signal.OTP })
+        assertTrue(SafetyBarrier.analyzeMessage("UPI refund के लिए approve this mandate").evidence.any { it.id == Signal.UPI })
+    }
+
     @Test fun destinationAndBoundaries() = runBlocking {
         for (host in listOf("axisbank.com","login.axisbank.com","bücher.de","xn--bcher-kva.de"))
             assertEquals(host, Risk.LOW, SafetyBarrier.analyzeUrl("https://$host").risk)

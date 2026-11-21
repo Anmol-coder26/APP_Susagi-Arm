@@ -1,4 +1,14 @@
 split	family	kind	label	input
+validation	v.mandate	message	1	To receive cashback, approve this mandate in your UPI app.
+validation	v.awareness	message	0	OTP kisi ko mat batana. Your branch appointment is tomorrow.
+test	t.isolation	message	1	You are in custody. Do not tell anyone.
+test	t.hindiisolation	message	1	आप डिजिटल अरेस्ट में हैं। किसी को मत बताना।
+test	t.digitbrand	url	1	https://login-ax1sbank.example/statement
+test	t.hinglishmandate	message	1	Refund paane ke liye UPI mandate accept karo.
+test	t.settled	message	0	Payment received. Scan the QR on your invoice for product information.
+test	t.familysecret	message	0	Surprise birthday dinner hai. Kisi ko mat batana.
+test	t.policebulletin	message	0	Police published a digital arrest awareness bulletin today.
+test	t.numericshop	url	0	https://store101.example/orders
 validation	v.bank	url	0	https://axisbank.com/login
 validation	v.otp	message	0	Never share your OTP with anyone.
 validation	v.disclose	message	1	Send your OTP to our executive.

@@ -26,7 +26,7 @@ enum class Signal(val risk: Risk, val category: String, val explanation: String,
     IP(Risk.REVIEW, "destination", "The address identifies an IP endpoint directly.", "Verify who operates the endpoint."),
     UPI(Risk.HIGH, "payment", "A promised credit is tied to a PIN, QR scan or collect approval.", "Decline the request and check incoming funds in your UPI app."),
     KYC(Risk.HIGH, "banking", "An account restriction is paired with a KYC or banking update request.", "Check KYC status in the official bank app."),
-    ARREST(Risk.HIGH, "extortion", "A law-enforcement claim accompanies a payment or call-control demand.", "End the interaction and contact the authority independently."),
+    ARREST(Risk.HIGH, "extortion", "A law-enforcement or custody claim accompanies a demand for payment, secrecy or control of the call.", "End the interaction and contact the authority independently."),
     UTILITY(Risk.HIGH, "utility_extortion", "A power cutoff threat is paired with a payment demand and a link.", "Check the outstanding bill directly with your electricity provider."),
     OTP(Risk.HIGH, "credentials", "The sender asks you to disclose a verification credential.", "Keep the code private and contact your bank independently.")
 }
@@ -49,14 +49,17 @@ object SafetyBarrier {
     private val links = Regex("""(?:[a-z][a-z0-9+.-]{0,31}://|(?:mailto|tel|javascript|data):|www\.)[^\s<>"\p{Cc}]*""", RegexOption.IGNORE_CASE)
     private val authority = Regex("""\b(?:police|cbi|fir|warrant|arrest)\b|पुलिस|गिरफ्तार|वारंट""")
     private val coercion = Regex("""\b(?:transfer|pay|skype)\b|video call|do not disconnect|stay on the line|पैसे भेज|पैसे ट्रांसफर""")
-    private val credit = Regex("""refund|receive|cashback|paane|paisa lene|रिफंड|पाने|प्राप्त""")
+    private val credit = Regex("""refund|\breceive\b|cashback|paane|paisa lene|रिफंड|पाने|प्राप्त""")
     private val approve = Regex("""\b(?:enter|approve|accept|scan|daalo|dalo|karo)\b|दर्ज|डालें|स्कैन""")
     private val payment = Regex("""\b(?:pin|qr|collect request)\b|पिन|क्यूआर""")
     private val credentials = Regex("""\b(?:otp|cvv|verification code|one.time password)\b|ओटीपी""")
-    private val disclose = Regex("""\b(?:share|send|tell|disclose|forward|batao|bhejo)\b|भेजें|बताएं|बताइए""")
+    private val disclose = Regex("""\b(?:share|send|tell|disclose|forward|batao|bhejo|batana|bataye)\b|भेजें|बताएं|बताइए""")
     private val warning = Regex("""\b(?:never|do not|don't|must not|will never)\s+(?:ask you to\s+)?(?:share|tell|disclose|enter|approve|scan|send|forward|transfer|pay)\b""")
-    private val negativeHindi = Regex("""(?:मत|नहीं)\s+(?:भेजें|बताएं|बताइए|करें|डालें)|(?:share|send|scan|bhejo|batao)\s+(?:mat|nahi)\s*(?:karo|karna)?|(?:mat|nahi)\s+(?:bhejo|batao|karo)""")
+    private val negativeHindi = Regex("""(?:मत|नहीं|न)\s+(?:भेजें|बताएं|बताइए|करें|डालें)|(?:share|send|scan|bhejo|batao)\s+(?:mat|nahi)\s*(?:karo|karna)?|(?:mat|nahi)\s+(?:bhejo|batao|batana|bataye|karo)""")
     private val splitClause = Regex("""[.!?;।\n]+""")
+    private val arrestIsolation = Regex("""\b(?:custody|digital arrest|giraftar)\b|हिरासत|डिजिटल अरेस्ट""")
+    private val secrecyDemand = Regex("""do not hang up|do not tell anyone|kisi ko mat batana|किसी को मत बताना""")
+    private val paymentApproval = Regex("""approve (?:the |this )?(?:mandate|request)|mandate accept|कलेक्ट अनुरोध स्वीकार""")
     private val banking = Regex("""\b(?:kyc|pan card|bank account)\b|केवाईसी""")
     private val blocked = Regex("""block|suspend|deactivat|unfreeze|expire|बंद|ब्लॉक""")
     private val update = Regex("""updat|submit|verify|click|अपडेट|जमा""")
@@ -86,8 +89,11 @@ object SafetyBarrier {
             .replace('’', '\'').replace("\u200b","").replace("\ufeff","")
         val request = negativeHindi.replace(warning.replace(normalized, ""), "")
         fun add(signal: Signal) { evidence.add(Evidence(signal)) }
-        if (authority.containsMatchIn(normalized) && coercion.containsMatchIn(request)) add(Signal.ARREST)
-        if (credit.containsMatchIn(normalized) && payment.containsMatchIn(normalized) && approve.containsMatchIn(request)) add(Signal.UPI)
+        if ((authority.containsMatchIn(normalized) && coercion.containsMatchIn(request)) ||
+            (arrestIsolation.containsMatchIn(normalized) && secrecyDemand.containsMatchIn(normalized))) add(Signal.ARREST)
+        val requestsPaymentApproval = payment.containsMatchIn(normalized) && approve.containsMatchIn(request)
+        val requestsUpiMandate = "upi" in normalized && paymentApproval.containsMatchIn(request)
+        if (credit.containsMatchIn(normalized) && (requestsPaymentApproval || requestsUpiMandate)) add(Signal.UPI)
         if (banking.containsMatchIn(normalized) && blocked.containsMatchIn(normalized) && update.containsMatchIn(request)) add(Signal.KYC)
         if (splitClause.split(request).any { credentials.containsMatchIn(it) && disclose.containsMatchIn(it) }) add(Signal.OTP)
         if (fee.containsMatchIn(request) && (direct != null || links.containsMatchIn(bounded))) {
@@ -139,7 +145,7 @@ object SafetyBarrier {
         val decoded = IDN.toUnicode(host)
         val skeleton = decoded.replace('а','a').replace('і','i').replace('х','x').replace('с','c').replace('о','o')
         if (banks.any { (brand, roots) ->
-                val labels = skeleton.split('.','-')
+                val labels = skeleton.replace('1', 'i').replace('0', 'o').split('.','-')
                 val looksLike = labels.any { it == brand || it.contains(brand + "bank") || it.endsWith(brand) } ||
                     roots.any { skeleton.contains(it) }
                 looksLike && roots.none(::below)

@@ -17,6 +17,15 @@ class UnifiedThreatEngineTest {
         engine = UnifiedThreatEngine()
     }
 
+    @Test fun sharedEngineCarriesLocalEvidenceAcrossBothEntryPoints() = runBlocking {
+        val link = engine.analyzeUrl("https://ax1sbank.example/login")
+        assertTrue(link.isDangerous)
+        assertTrue("brand" in link.detectedTactics)
+        val message = engine.analyzeMessage("Digital arrest: do not hang up.")
+        assertTrue(message.isDangerous)
+        assertTrue("arrest" in message.detectedTactics)
+    }
+
     @Test
     fun testUrlAnalysis_maliciousApk_highRisk() = runBlocking {
         val result = engine.analyzeUrl("https://download-center-sbi.top/update_kyc_app.apk")

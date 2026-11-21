@@ -1,6 +1,9 @@
 package com.susagi.intelligence
 
 import android.content.Context
+import com.susagi.safety.Assessment
+import com.susagi.safety.Risk
+import com.susagi.safety.SafetyBarrier
 import android.util.Log
 import com.guardian.app.LinkCheckActivity
 import com.guardian.app.RiskStatus
@@ -85,7 +88,7 @@ class UnifiedThreatEngine(
             riskScore = finalScore,
             severity = finalSeverity,
             evidence = evidenceList.ifEmpty { result.evidence }
-        )
+        ).withBarrier(SafetyBarrier.analyzeUrl(trimmed))
     }
 
     /**
@@ -107,31 +110,8 @@ class UnifiedThreatEngine(
             )
         }
 
-        // 1. Gather structured evidence
-        val evidenceList = mutableListOf<String>()
-        val lower = trimmed.lowercase()
-        if (lower.contains("police") || lower.contains("cbi") || lower.contains("arrest") || lower.contains("fir") || lower.contains("गिरफ्तार")) {
-            evidenceList.add("Authority & Law Enforcement Coercion Indicator")
-        }
-        if (lower.contains("kyc") || lower.contains("pan") || lower.contains("blocked") || lower.contains("suspended")) {
-            evidenceList.add("Account Disruption & Fake KYC Indicator")
-        }
-        if (lower.contains("electricity") || lower.contains("bijli") || lower.contains("power cut") || lower.contains("disconnection")) {
-            evidenceList.add("Utility Cutoff Fear Indicator")
-        }
-        if (lower.contains("otp") || lower.contains("cvv") || lower.contains("pin") || lower.contains("password") || lower.contains("ओटीपी")) {
-            evidenceList.add("Confidential Credential Request Indicator")
-        }
-
-        // Check if message contains an embedded URL
-        val embeddedUrl = LinkCheckActivity.extractUrlFromText(trimmed)
-        if (embeddedUrl.isNotBlank()) {
-            evidenceList.add("Embedded Link: $embeddedUrl")
-            val urlVerdict = LinkCheckActivity.evaluateLinkSafety(embeddedUrl)
-            if (urlVerdict.status != RiskStatus.Low) {
-                evidenceList.add("Suspicious Link Target: ${urlVerdict.title}")
-            }
-        }
+        val assessment = SafetyBarrier.analyzeMessage(trimmed)
+        val evidenceList = assessment.evidence.map { it.id.explanation }
 
         val input = ThreatInput(
             channel = ThreatChannel.MESSAGE,
@@ -141,7 +121,27 @@ class UnifiedThreatEngine(
         )
 
         // 2. On-Device Llama inference
-        return llamaEngine.analyzeThreat(input)
+        return llamaEngine.analyzeThreat(input).withBarrier(assessment)
+    }
+
+    private fun InferenceResult.withBarrier(assessment: Assessment): InferenceResult {
+        if (assessment.evidence.isEmpty()) return this
+        val floor = when (assessment.risk) {
+            Risk.HIGH -> 85
+            Risk.UNKNOWN, Risk.REVIEW -> 40
+            Risk.LOW -> 0
+        }
+        val score = maxOf(riskScore, floor)
+        val raised = score > riskScore
+        return copy(
+            threatType = if (raised && !isDangerous) assessment.evidence.first { it.id.risk == assessment.risk }.id.category else threatType,
+            riskScore = score,
+            severity = if (score >= 70) "HIGH" else if (score >= 40) "MEDIUM" else "LOW",
+            detectedTactics = (detectedTactics + assessment.evidence.map { it.id.name.lowercase() }).distinct(),
+            evidence = (evidence + assessment.evidence.map { it.id.explanation }).distinct(),
+            explanation = if (raised) assessment.explanation else explanation,
+            recommendedActions = (assessment.recommendations + recommendedActions).distinct()
+        )
     }
 
     /**
