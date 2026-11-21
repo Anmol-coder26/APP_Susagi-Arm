@@ -61,6 +61,7 @@
             android:name=".LinkCheckActivity"
             android:exported="true"
             android:theme="@style/Theme.Transparent"
+            android:launchMode="singleTop"
             android:noHistory="true"
             android:excludeFromRecents="true">
             <intent-filter>

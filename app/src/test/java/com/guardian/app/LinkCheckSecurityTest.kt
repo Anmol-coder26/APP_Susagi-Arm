@@ -144,4 +144,115 @@ class LinkCheckSecurityTest {
         val vDoubleDot = LinkCheckActivity.evaluateLinkSafety("https://axis..com/login")
         assertEquals(RiskStatus.Suspicious, vDoubleDot.status)
     }
+
+    @Test
+    fun testExtractAllUrls_zeroOneAndMultipleLinks() {
+        // Zero links
+        val zero = LinkCheckActivity.extractAllUrls("Call 9876543210 immediately for CBI digital arrest verification.")
+        assertTrue(zero.isEmpty())
+
+        // One link
+        val one = LinkCheckActivity.extractAllUrls("Pay electricity bill at https://power-bescom.top/pay right now.")
+        assertEquals(1, one.size)
+        assertEquals("https://power-bescom.top/pay", one[0])
+
+        // Multiple distinct links
+        val multi = LinkCheckActivity.extractAllUrls("Official portal is https://sbi.co.in but phishing clone is at http://sbi-login.xyz/auth. Also check www.google.com")
+        assertEquals(3, multi.size)
+        assertTrue(multi.contains("https://sbi.co.in"))
+        assertTrue(multi.contains("http://sbi-login.xyz/auth"))
+        assertTrue(multi.contains("https://www.google.com"))
+    }
+
+    @Test
+    fun testAssessPayload_caseA_digitalArrest_textOnly() {
+        val text = "URGENT: CBI Cyber Crime Branch has issued a digital arrest warrant against you for illegal money laundering. Do not disconnect or police will arrive. Call 9876543210 immediately."
+        val payload = SharedPayload.SharedContent(
+            rawText = text,
+            urls = LinkCheckActivity.extractAllUrls(text)
+        )
+        val assessment = LinkCheckActivity.assessPayload(payload)
+
+        assertEquals(RiskStatus.High, assessment.status)
+        assertTrue(assessment.actualRiskScore >= 70)
+        assertEquals("DIGITAL ARREST EXTORTION", assessment.categoryTitle)
+        assertTrue("Expected empty URLs for text-only message", assessment.evaluatedUrls.isEmpty())
+        assertTrue(assessment.isTextOnly)
+        assertTrue(assessment.plainExplanationEn.contains("NEVER conduct arrests"))
+        assertTrue(assessment.plainExplanationHi.contains("डिजिटल अरेस्ट"))
+        assertTrue("Engine label must attribute to offline rule engine", assessment.engineLabel.contains("Offline Heuristic Rule Engine"))
+    }
+
+    @Test
+    fun testAssessPayload_caseB_fakeElectricityBill_withPhishingLink() {
+        val text = "Dear customer, your electricity bill is overdue and power will be disconnected tonight. Pay immediately at http://power-update-bescom.top/pay"
+        val payload = SharedPayload.SharedContent(
+            rawText = text,
+            urls = LinkCheckActivity.extractAllUrls(text)
+        )
+        val assessment = LinkCheckActivity.assessPayload(payload)
+
+        assertEquals(RiskStatus.High, assessment.status)
+        assertTrue(assessment.actualRiskScore >= 70)
+        assertEquals("UTILITY / ELECTRICITY BILL SCAM", assessment.categoryTitle)
+        assertEquals(1, assessment.evaluatedUrls.size)
+        assertEquals(RiskStatus.Suspicious, assessment.evaluatedUrls[0].status)
+        assertTrue(assessment.plainExplanationEn.contains("Power companies never disconnect electricity"))
+        assertTrue(assessment.plainExplanationHi.contains("बिजली"))
+    }
+
+    @Test
+    fun testAssessPayload_caseC_legitimateFamilyMessage() {
+        val text = "Hi Papa, reached office safely. Traffic was heavy today. Will call you around 8 PM."
+        val payload = SharedPayload.SharedContent(
+            rawText = text,
+            urls = LinkCheckActivity.extractAllUrls(text)
+        )
+        val assessment = LinkCheckActivity.assessPayload(payload)
+
+        assertEquals(RiskStatus.Low, assessment.status)
+        assertTrue(assessment.actualRiskScore < 35)
+        assertEquals("VERIFIED LOW-RISK MESSAGE", assessment.categoryTitle)
+        assertTrue(assessment.evaluatedUrls.isEmpty())
+        assertTrue(assessment.plainExplanationEn.contains("No known extortion"))
+    }
+
+    @Test
+    fun testAssessPayload_caseD_multipleLinks_evaluatesEachIndependently() {
+        val text = "Please compare our genuine portal https://sbi.co.in with the fraudulent clone https://xn--pypal-4ve.com/signin"
+        val payload = SharedPayload.SharedContent(
+            rawText = text,
+            urls = LinkCheckActivity.extractAllUrls(text)
+        )
+        val assessment = LinkCheckActivity.assessPayload(payload)
+
+        assertEquals(2, assessment.evaluatedUrls.size)
+        val sbiVerdict = assessment.evaluatedUrls.first { it.url == "https://sbi.co.in" }
+        val homoglyphVerdict = assessment.evaluatedUrls.first { it.url.contains("xn--pypal-4ve") }
+
+        assertEquals(RiskStatus.Low, sbiVerdict.status)
+        assertEquals(RiskStatus.High, homoglyphVerdict.status)
+        assertEquals(RiskStatus.High, assessment.status)
+    }
+
+    @Test
+    fun testAssessPayload_caseE_emptyOrUnsupportedPayload() {
+        val assessment = LinkCheckActivity.assessPayload(SharedPayload.Empty)
+        assertEquals(RiskStatus.Low, assessment.status)
+        assertEquals(0, assessment.actualRiskScore)
+        assertEquals("NO ANALYZABLE CONTENT", assessment.categoryTitle)
+        assertTrue(assessment.evaluatedUrls.isEmpty())
+        assertTrue(assessment.isTextOnly)
+    }
+
+    @Test
+    fun testAssessPayload_caseF_actionViewUrl() {
+        val payload = SharedPayload.ViewUrl("https://sbi.co.in.fake-portal.com/login")
+        val assessment = LinkCheckActivity.assessPayload(payload)
+
+        assertEquals(RiskStatus.High, assessment.status)
+        assertTrue(assessment.actualRiskScore >= 70)
+        assertEquals(1, assessment.evaluatedUrls.size)
+        assertTrue(assessment.detectedSignals.any { it.contains("Impersonation") })
+    }
 }
