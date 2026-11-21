@@ -63,6 +63,9 @@ import com.guardian.app.ui.theme.GxBorder
 import com.guardian.app.ui.theme.GxDanger
 import com.guardian.app.ui.theme.GxDangerSoft
 import com.guardian.app.ui.theme.GxPrimary
+import com.guardian.app.ui.theme.GxPrimarySoft
+import com.guardian.app.ui.theme.GxAccentAI
+import com.guardian.app.ui.theme.GxAccentAISoft
 import com.guardian.app.ui.theme.GxSafe
 import com.guardian.app.ui.theme.GxSafeSoft
 import com.guardian.app.ui.theme.GxShapeMd
@@ -75,11 +78,16 @@ import com.guardian.app.ui.theme.GxTextLo
 import com.guardian.app.ui.theme.GxTextMid
 import com.guardian.app.ui.theme.GxWarning
 import com.guardian.app.ui.theme.GxWarningSoft
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.lifecycle.lifecycleScope
+import com.susagi.edgeai.ModelManifest
 import com.susagi.safety.Action
 import com.susagi.safety.Assessment
 import com.susagi.safety.Evidence
+import com.susagi.safety.ExplanationResult
+import com.susagi.safety.LlamaModelState
+import com.susagi.safety.LocalEvidenceExplainer
 import com.susagi.safety.Risk
 import com.susagi.safety.SafetyBarrier
 import com.susagi.safety.SharedDestination
@@ -91,6 +99,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
 data class LinkVerdict(
@@ -139,7 +148,8 @@ data class UnifiedSecurityAssessment(
         RiskStatus.Suspicious -> Risk.REVIEW
         RiskStatus.Low -> Risk.LOW
     },
-    val uncertaintyNote: String = "Offline inspection cannot establish ownership, reputation or the destination after navigation."
+    val uncertaintyNote: String = "Offline inspection cannot establish ownership, reputation or the destination after navigation.",
+    val rawAssessment: Assessment? = null
 )
 
 class LinkCheckActivity : ComponentActivity() {
@@ -148,6 +158,105 @@ class LinkCheckActivity : ComponentActivity() {
     private val isAnalyzing = mutableStateOf<Boolean>(true)
     private var analysisJob: Job? = null
     private var activeAnalysisId: Long = 0L
+
+    // On-Device Llama 3.2 1B SpinQuant Explainer State
+    private val llamaState = mutableStateOf(LlamaModelState.NOT_PROVISIONED)
+    private val llamaExplanation = mutableStateOf<String?>(null)
+    private val llamaNativeOutput = mutableStateOf<String?>(null)
+    private val llamaFailureReason = mutableStateOf<String?>(null)
+    private var llamaJob: Job? = null
+    private var explainer: LocalEvidenceExplainer? = null
+
+    override fun onDestroy() {
+        super.onDestroy()
+        analysisJob?.cancel()
+        llamaJob?.cancel()
+        val exp = explainer
+        explainer = null
+        if (exp != null) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                try { exp.release() } catch (_: Throwable) {}
+            }
+        }
+    }
+
+    private fun updateInitialLlamaState() {
+        val modelsDir = File(filesDir, "models")
+        val spec = ModelManifest.LLAMA_3_2_1B_SPINQUANT
+        val modelFile = File(modelsDir, spec.modelFileName)
+        val tokenizerFile = File(modelsDir, spec.tokenizerFileName)
+
+        llamaState.value = when {
+            !modelFile.exists() || !tokenizerFile.exists() -> LlamaModelState.NOT_PROVISIONED
+            modelFile.length() != spec.modelSizeBytes || tokenizerFile.length() != spec.tokenizerSizeBytes -> LlamaModelState.INVALID_ASSETS
+            else -> LlamaModelState.NOT_PROVISIONED
+        }
+    }
+
+    private fun triggerLlamaExplanation(assessment: UnifiedSecurityAssessment) {
+        val raw = assessment.rawAssessment
+        if (raw == null || raw.evidence.isEmpty()) {
+            llamaState.value = LlamaModelState.FAILED
+            llamaFailureReason.value = "No detector evidence triggers available to explain."
+            return
+        }
+
+        llamaJob?.cancel()
+        llamaJob = lifecycleScope.launch(Dispatchers.Default) {
+            val modelsDir = File(filesDir, "models")
+            val spec = ModelManifest.LLAMA_3_2_1B_SPINQUANT
+            val modelFile = File(modelsDir, spec.modelFileName)
+            val tokenizerFile = File(modelsDir, spec.tokenizerFileName)
+
+            if (!modelFile.exists() || !tokenizerFile.exists()) {
+                withContext(Dispatchers.Main) {
+                    llamaState.value = LlamaModelState.NOT_PROVISIONED
+                    llamaFailureReason.value = "Llama 3.2 1B SpinQuant model assets are not provisioned on this device storage."
+                }
+                return@launch
+            }
+
+            if (modelFile.length() != spec.modelSizeBytes || tokenizerFile.length() != spec.tokenizerSizeBytes) {
+                withContext(Dispatchers.Main) {
+                    llamaState.value = LlamaModelState.INVALID_ASSETS
+                    llamaFailureReason.value = "Model files failed size verification (${modelFile.length()} vs ${spec.modelSizeBytes} bytes)."
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.Main) {
+                llamaState.value = LlamaModelState.LOADING
+                llamaFailureReason.value = null
+            }
+
+            val localExplainer = explainer ?: LocalEvidenceExplainer(modelsDir).also { explainer = it }
+
+            withContext(Dispatchers.Main) {
+                llamaState.value = LlamaModelState.GENERATING
+            }
+
+            val result = localExplainer.explain(raw)
+
+            withContext(Dispatchers.Main) {
+                when (result) {
+                    is ExplanationResult.Generated -> {
+                        llamaState.value = LlamaModelState.GENERATED
+                        llamaExplanation.value = result.text
+                        llamaNativeOutput.value = result.nativeOutput
+                    }
+                    is ExplanationResult.Unavailable -> {
+                        val reason = result.reason
+                        llamaState.value = when {
+                            reason.startsWith("NOT_PROVISIONED") -> LlamaModelState.NOT_PROVISIONED
+                            reason.startsWith("INVALID_ASSETS") -> LlamaModelState.INVALID_ASSETS
+                            else -> LlamaModelState.FAILED
+                        }
+                        llamaFailureReason.value = reason
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -188,6 +297,7 @@ class LinkCheckActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     assessmentState.value = assessment
                     isAnalyzing.value = false
+                    updateInitialLlamaState()
                 }
             }
         }
@@ -228,6 +338,13 @@ class LinkCheckActivity : ComponentActivity() {
                     } else {
                         UnifiedSecurityDialog(
                             assessment = currentAssessment,
+                            llamaState = llamaState.value,
+                            llamaExplanation = llamaExplanation.value,
+                            llamaNativeOutput = llamaNativeOutput.value,
+                            llamaFailureReason = llamaFailureReason.value,
+                            onInvokeLlama = {
+                                triggerLlamaExplanation(currentAssessment)
+                            },
                             onProceedToUrl = { urlToOpen ->
                                 // Guard against stale callbacks: Verify destination belongs to active assessment
                                 if (currentAssessment.evaluatedUrls.any { it.url == urlToOpen }) {
@@ -781,7 +898,8 @@ class LinkCheckActivity : ComponentActivity() {
                         engineLabel = "Astra SafetyBarrier Offline Heuristic Rule Engine",
                         isTextOnly = true,
                         riskLevel = Risk.LOW,
-                        uncertaintyNote = "Offline inspection cannot establish ownership, reputation or the destination after navigation."
+                        uncertaintyNote = "Offline inspection cannot establish ownership, reputation or the destination after navigation.",
+                        rawAssessment = null
                     )
                 }
                 is SharedPayload.ViewUrl -> {
@@ -873,7 +991,8 @@ class LinkCheckActivity : ComponentActivity() {
                         isTextOnly = false,
                         rawTextSnippet = payload.url,
                         riskLevel = detectorRisk,
-                        uncertaintyNote = astra.uncertainty
+                        uncertaintyNote = astra.uncertainty,
+                        rawAssessment = astra
                     )
                 }
                 is SharedPayload.SharedContent -> {
@@ -1048,7 +1167,8 @@ class LinkCheckActivity : ComponentActivity() {
                         isTextOnly = evaluatedUrls.isEmpty(),
                         rawTextSnippet = text.take(150),
                         riskLevel = riskLevel,
-                        uncertaintyNote = astra.uncertainty
+                        uncertaintyNote = astra.uncertainty,
+                        rawAssessment = astra
                     )
                 }
             }
@@ -1059,6 +1179,11 @@ class LinkCheckActivity : ComponentActivity() {
 @Composable
 fun UnifiedSecurityDialog(
     assessment: UnifiedSecurityAssessment,
+    llamaState: LlamaModelState = LlamaModelState.NOT_PROVISIONED,
+    llamaExplanation: String? = null,
+    llamaNativeOutput: String? = null,
+    llamaFailureReason: String? = null,
+    onInvokeLlama: () -> Unit = {},
     onProceedToUrl: (String) -> Unit,
     onDismiss: () -> Unit,
     onCopyReport: () -> Unit,
@@ -1255,6 +1380,159 @@ fun UnifiedSecurityDialog(
                         lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium
                     )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // On-Device Llama 3.2 1B Evidence Explainer Card
+            Surface(
+                color = GxSurfaceAlt,
+                shape = GxShapeSm,
+                border = BorderStroke(1.dp, when (llamaState) {
+                    LlamaModelState.GENERATED -> GxSafe
+                    LlamaModelState.INVALID_ASSETS, LlamaModelState.FAILED -> GxDanger
+                    LlamaModelState.LOADING, LlamaModelState.GENERATING -> GxPrimary
+                    LlamaModelState.NOT_PROVISIONED -> GxBorder
+                }),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "ON-DEVICE AI (LLAMA 3.2 1B)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GxTextLo,
+                            letterSpacing = 1.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = when (llamaState) {
+                                LlamaModelState.GENERATED -> GxSafeSoft
+                                LlamaModelState.LOADING, LlamaModelState.GENERATING -> GxPrimarySoft
+                                LlamaModelState.INVALID_ASSETS, LlamaModelState.FAILED -> GxDangerSoft
+                                LlamaModelState.NOT_PROVISIONED -> GxSurface
+                            },
+                            border = BorderStroke(0.5.dp, when (llamaState) {
+                                LlamaModelState.GENERATED -> GxSafe
+                                LlamaModelState.LOADING, LlamaModelState.GENERATING -> GxPrimary
+                                LlamaModelState.INVALID_ASSETS, LlamaModelState.FAILED -> GxDanger
+                                LlamaModelState.NOT_PROVISIONED -> GxBorder
+                            })
+                        ) {
+                            Text(
+                                text = llamaState.name,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when (llamaState) {
+                                    LlamaModelState.GENERATED -> GxSafe
+                                    LlamaModelState.LOADING, LlamaModelState.GENERATING -> GxPrimary
+                                    LlamaModelState.INVALID_ASSETS, LlamaModelState.FAILED -> GxDanger
+                                    LlamaModelState.NOT_PROVISIONED -> GxTextLo
+                                },
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    when (llamaState) {
+                        LlamaModelState.NOT_PROVISIONED -> {
+                            Text(
+                                text = "Llama 3.2 1B SpinQuant model assets are not provisioned on this device storage. Deterministic Astra SafetyBarrier heuristic guidance is active.",
+                                fontSize = 11.sp,
+                                color = GxTextMid,
+                                lineHeight = 15.sp
+                            )
+                        }
+                        LlamaModelState.INVALID_ASSETS -> {
+                            Text(
+                                text = llamaFailureReason ?: "Model assets present but failed size or SHA-256 integrity verification. Falling back to deterministic heuristics.",
+                                fontSize = 11.sp,
+                                color = GxDanger,
+                                lineHeight = 15.sp
+                            )
+                        }
+                        LlamaModelState.LOADING -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(color = GxPrimary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Loading ExecuTorch Arm XNNPACK runtime...", fontSize = 11.sp, color = GxTextHi)
+                            }
+                        }
+                        LlamaModelState.GENERATING -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(color = GxPrimary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Generating native evidence prioritization...", fontSize = 11.sp, color = GxTextHi)
+                            }
+                        }
+                        LlamaModelState.GENERATED -> {
+                            Column {
+                                Text(
+                                    text = llamaExplanation ?: "",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = GxTextHi,
+                                    lineHeight = 16.sp
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Surface(
+                                    color = GxSurface,
+                                    shape = GxShapeSm,
+                                    border = BorderStroke(0.5.dp, GxBorder)
+                                ) {
+                                    Text(
+                                        text = "Native Tokens: ${llamaNativeOutput?.trim()}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GxPrimary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Generated 100% on-device via ExecuTorch Arm XNNPACK. SafetyBarrier verdict remains authoritative.",
+                                    fontSize = 9.sp,
+                                    color = GxTextLo
+                                )
+                            }
+                        }
+                        LlamaModelState.FAILED -> {
+                            Text(
+                                text = "Native inference unavailable: ${llamaFailureReason ?: "execution error"}. Operating with deterministic SafetyBarrier guidance.",
+                                fontSize = 11.sp,
+                                color = GxDanger,
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+
+                    if (llamaState != LlamaModelState.LOADING && llamaState != LlamaModelState.GENERATING && assessment.rawAssessment != null && assessment.rawAssessment.evidence.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onInvokeLlama,
+                            border = BorderStroke(1.dp, GxPrimary),
+                            shape = GxShapeSm,
+                            modifier = Modifier.fillMaxWidth().height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Default.Security, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (llamaState == LlamaModelState.GENERATED) "Re-run Llama Inference" else "Explain Evidence with On-Device Llama",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GxPrimary
+                            )
+                        }
+                    }
                 }
             }
 

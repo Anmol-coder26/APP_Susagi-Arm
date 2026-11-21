@@ -19,12 +19,16 @@ android {
     namespace = "com.guardian.app"
     compileSdk = 35
 
+    useLibrary("android.test.base")
+    useLibrary("android.test.runner")
+
     defaultConfig {
         applicationId = "com.susagi.guardian2"
         minSdk = 26
         targetSdk = 35
         versionCode = 3
         versionName = "3.0.0"
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
 
         val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
@@ -205,4 +209,5 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20231013")
+    androidTestImplementation("junit:junit:4.13.2")
 }

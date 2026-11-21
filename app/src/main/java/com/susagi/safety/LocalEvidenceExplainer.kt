@@ -15,6 +15,15 @@ sealed class ExplanationResult {
     data class Unavailable(val reason: String) : ExplanationResult()
 }
 
+enum class LlamaModelState {
+    NOT_PROVISIONED,
+    INVALID_ASSETS,
+    LOADING,
+    GENERATING,
+    GENERATED,
+    FAILED
+}
+
 /** Optional, bounded evidence selection. The signed-off detector owns the verdict and wording. */
 class LocalEvidenceExplainer(private val appPrivateModelDirectory: File) {
     private val gate = Mutex()
@@ -38,8 +47,19 @@ class LocalEvidenceExplainer(private val appPrivateModelDirectory: File) {
                 if (failed || signals == null)
                     ExplanationResult.Unavailable("Native output failed evidence validation")
                 else ExplanationResult.Generated(signals, signals.joinToString(" ") { it.explanation }, output.toString())
-            } catch (_: Exception) { ExplanationResult.Unavailable("Model verification or native execution failed") }
-              catch (_: LinkageError) { ExplanationResult.Unavailable("Native runtime unavailable") }
+            } catch (fnf: java.io.FileNotFoundException) {
+                ExplanationResult.Unavailable("NOT_PROVISIONED: ${fnf.message}")
+            } catch (sec: java.lang.SecurityException) {
+                ExplanationResult.Unavailable("INVALID_ASSETS: ${sec.message}")
+            } catch (ioe: java.io.IOException) {
+                ExplanationResult.Unavailable("INVALID_ASSETS: ${ioe.message}")
+            } catch (iae: IllegalArgumentException) {
+                ExplanationResult.Unavailable("INVALID_ASSETS: ${iae.message}")
+            } catch (e: Exception) {
+                ExplanationResult.Unavailable("FAILED: ${e.message ?: "Execution failed"}")
+            } catch (err: LinkageError) {
+                ExplanationResult.Unavailable("FAILED: Native runtime unavailable (${err.message})")
+            }
         }
     }
 
@@ -47,7 +67,10 @@ class LocalEvidenceExplainer(private val appPrivateModelDirectory: File) {
         val spec = ModelManifest.LLAMA_3_2_1B_SPINQUANT
         fun verified(name: String, size: Long, sha: String): String {
             val file = File(appPrivateModelDirectory, name).canonicalFile
-            require(file.parentFile == appPrivateModelDirectory.canonicalFile && file.isFile && file.length() == size)
+            if (!file.exists()) throw java.io.FileNotFoundException("Model asset not provisioned: $name")
+            if (file.parentFile != appPrivateModelDirectory.canonicalFile || !file.isFile || file.length() != size) {
+                throw java.io.IOException("Asset invalid for $name: expected file size $size bytes, found ${file.length()} bytes")
+            }
             val digest = MessageDigest.getInstance("SHA-256")
             file.inputStream().buffered().use { input ->
                 val buffer = ByteArray(262144)
@@ -57,7 +80,10 @@ class LocalEvidenceExplainer(private val appPrivateModelDirectory: File) {
                     digest.update(buffer, 0, count)
                 }
             }
-            require(digest.digest().joinToString("") { "%02x".format(it) }.equals(sha, true))
+            val computed = digest.digest().joinToString("") { "%02x".format(it) }
+            if (!computed.equals(sha, true)) {
+                throw java.lang.SecurityException("Asset checksum mismatch for $name: expected $sha, got $computed")
+            }
             return file.path
         }
         val module = LlmModule(verified(spec.modelFileName, spec.modelSizeBytes, spec.modelSha256),
