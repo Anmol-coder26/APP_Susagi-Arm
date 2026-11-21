@@ -86,6 +86,8 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onMessageProtectionToggle = { enabled ->
+                        val prefs = getSharedPreferences("guardian_prefs", MODE_PRIVATE)
+                        prefs.edit().putBoolean("message_protection_enabled", enabled).apply()
                         if (enabled) {
                             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         } else {

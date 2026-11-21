@@ -44,6 +44,8 @@ class AgoraFrameBridge(
         renderTimeMs: Long,
         avSyncType: Int
     ): Boolean {
+        val safeRate = if (samplesPerSec in 8000..48000) samplesPerSec else 16000
+        val safeChannels = if (channels in 1..2) channels else 1
         buffer?.let { buf ->
             val remaining = buf.remaining()
             if (remaining > 0) {
@@ -51,14 +53,14 @@ class AgoraFrameBridge(
                 val dup = buf.duplicate()
                 dup.get(bytes)
 
-                // Non-blocking push to AudioFramePipeline
-                localPipeline?.onRawPcm(bytes, 0, bytes.size)
+                // Non-blocking push to AudioFramePipeline with validated sample rate and channels
+                localPipeline?.onRawPcm(bytes, 0, bytes.size, safeRate, safeChannels)
 
                 // Backwards-compatible callback path
                 if (onLocalPcm != null) {
-                    val shorts = byteBufferToShorts(buf, samplesPerChannel, channels)
+                    val shorts = byteBufferToShorts(buf, samplesPerChannel, safeChannels)
                     if (shorts.isNotEmpty()) {
-                        onLocalPcm.invoke(shorts, samplesPerSec)
+                        onLocalPcm.invoke(shorts, safeRate)
                     }
                 }
             }
@@ -79,6 +81,8 @@ class AgoraFrameBridge(
         avSyncType: Int,
         is_mute: Int
     ): Boolean {
+        val safeRate = if (samplesPerSec in 8000..48000) samplesPerSec else 16000
+        val safeChannels = if (channels in 1..2) channels else 1
         buffer?.let { buf ->
             val remaining = buf.remaining()
             if (remaining > 0) {
@@ -86,14 +90,14 @@ class AgoraFrameBridge(
                 val dup = buf.duplicate()
                 dup.get(bytes)
 
-                // Non-blocking push to AudioFramePipeline
-                remotePipeline?.onRawPcm(bytes, 0, bytes.size)
+                // Non-blocking push to AudioFramePipeline with validated sample rate and channels
+                remotePipeline?.onRawPcm(bytes, 0, bytes.size, safeRate, safeChannels)
 
                 // Backwards-compatible callback path
                 if (onRemotePcm != null) {
-                    val shorts = byteBufferToShorts(buf, samplesPerChannel, channels)
+                    val shorts = byteBufferToShorts(buf, samplesPerChannel, safeChannels)
                     if (shorts.isNotEmpty()) {
-                        onRemotePcm.invoke(uid, shorts, samplesPerSec)
+                        onRemotePcm.invoke(uid, shorts, safeRate)
                     }
                 }
             }

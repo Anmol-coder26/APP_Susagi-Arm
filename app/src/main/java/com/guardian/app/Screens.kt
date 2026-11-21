@@ -1487,6 +1487,16 @@ fun SettingsScreen(
 
     var showTrustedContact by remember { mutableStateOf(false) }
     var showProfiles by remember { mutableStateOf(false) }
+    var showLlamaModal by remember { mutableStateOf(false) }
+    var showWhisperModal by remember { mutableStateOf(false) }
+
+    if (showLlamaModal) {
+        LlamaModelProvisioningModal(onDismiss = { showLlamaModal = false })
+    }
+
+    if (showWhisperModal) {
+        WhisperModelProvisioningModal(onDismiss = { showWhisperModal = false })
+    }
 
     if (showTrustedContact) {
         com.guardian.app.protect.advanced.TrustedContactSettingsScreen(
@@ -1608,6 +1618,88 @@ fun SettingsScreen(
                         Column(Modifier.weight(1f)) {
                             Text("Identity Consistency Baselines", color = GxTextHi, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             Text("Behavioral profiles for family & bank imposter detection", color = GxTextLo, fontSize = 11.sp)
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = GxTextMid
+                        )
+                    }
+                }
+            }
+        }
+
+        // On-Device Edge AI Models (Arm ExecuTorch PS3)
+        item {
+            val llamaModelsDir = remember { java.io.File(context.filesDir, "models") }
+            val llamaModelFile = remember { java.io.File(llamaModelsDir, com.susagi.edgeai.ModelManifest.LLAMA_3_2_1B_SPINQUANT.modelFileName) }
+            val isLlamaReady = llamaModelFile.exists() && llamaModelFile.length() > 50_000_000L
+
+            val whisperDir = remember { java.io.File(context.filesDir, "whisper") }
+            val whisperModelFile = remember { java.io.File(whisperDir, com.susagi.edgeai.ModelManifest.WHISPER_SMALL_ARM.modelFileName) }
+            val isWhisperReady = whisperModelFile.exists() && whisperModelFile.length() > 30_000_000L
+
+            GxCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Psychology, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("On-Device AI Models", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = GxTextHi)
+                        }
+                        GxChip(text = "Arm ExecuTorch", variant = GxChipVariant.Brand)
+                    }
+                    Text(
+                        "100% on-device inference running locally in Airplane Mode on Arm Cortex/NPU hardware. Zero cloud tokens or speech data sent externally.",
+                        color = GxTextLo,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showLlamaModal = true }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Llama 3.2 1B Instruct", color = GxTextHi, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                if (isLlamaReady) "SpinQuant Int4 XNNPACK (Ready on device)"
+                                else "Not Provisioned (Tap to inspect or download)",
+                                color = if (isLlamaReady) GxSafe else GxTextLo,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = GxTextMid
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showWhisperModal = true }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Whisper Speech AI", color = GxTextHi, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            Text(
+                                if (isWhisperReady) "Arm Whisper Small Int8 (Ready on device)"
+                                else "Not Provisioned (Tap to inspect or download)",
+                                color = if (isWhisperReady) GxSafe else GxTextLo,
+                                fontSize = 11.sp
+                            )
                         }
                         Icon(
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,

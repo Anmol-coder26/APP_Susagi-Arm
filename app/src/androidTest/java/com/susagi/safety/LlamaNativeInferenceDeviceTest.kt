@@ -8,13 +8,12 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Strict Arm64 Android on-device acceptance test for real ExecuTorch Llama 3.2 1B native inference.
+ * Strict Arm64 Android on-device acceptance tests for real ExecuTorch Llama 3.2 1B native inference.
  * Verifies model file integrity and validates that the native runtime produces genuine output.
  */
 class LlamaNativeInferenceDeviceTest : InstrumentationTestCase() {
 
-    @Test
-    fun testLlamaNativeInference_realModel_generatesOtp() {
+    private fun verifyModelAssets(): File {
         val context = instrumentation.targetContext
         val modelsDir = File(context.filesDir, "models")
         val spec = ModelManifest.LLAMA_3_2_1B_SPINQUANT
@@ -69,6 +68,53 @@ class LlamaNativeInferenceDeviceTest : InstrumentationTestCase() {
             actualTokenizerSha256.equals(spec.tokenizerSha256, ignoreCase = true)
         )
 
+        return modelsDir
+    }
+
+    /**
+     * Genuine native smoke test asserting real model load and non-empty nativeOutput without mocks.
+     */
+    @Test
+    fun testLlamaNativeSmoke_realModel_producesNonEmptyOutput() {
+        val modelsDir = verifyModelAssets()
+        val explainer = LocalEvidenceExplainer(modelsDir)
+        try {
+            runBlocking {
+                val assessment = SafetyBarrier.analyzeMessage(
+                    "URGENT: Your electricity power supply will be disconnected tonight. Call electricity officer immediately."
+                )
+                assertTrue(
+                    "SafetyBarrier assessment must identify threat evidence",
+                    assessment.evidence.isNotEmpty()
+                )
+
+                val result = explainer.explain(assessment)
+                assertTrue(
+                    "ExplanationResult must be Generated, but was: $result",
+                    result is ExplanationResult.Generated
+                )
+                val generated = result as ExplanationResult.Generated
+                val rawOutput = generated.nativeOutput
+                android.util.Log.i("LlamaNativeInferenceDeviceTest", "Native smoke test raw output: '$rawOutput'")
+
+                assertTrue(
+                    "Raw native model output must not be empty or blank. Received: '$rawOutput'",
+                    rawOutput.isNotBlank()
+                )
+            }
+        } finally {
+            runBlocking {
+                explainer.release()
+            }
+        }
+    }
+
+    /**
+     * Strict OTP prompt-response test asserting nativeOutput.trim() == "OTP".
+     */
+    @Test
+    fun testLlamaNativeInference_strictOtpBehavior() {
+        val modelsDir = verifyModelAssets()
         val explainer = LocalEvidenceExplainer(modelsDir)
         try {
             runBlocking {
@@ -79,7 +125,7 @@ class LlamaNativeInferenceDeviceTest : InstrumentationTestCase() {
                     assessment.evidence.any { it.id == Signal.OTP }
                 )
 
-                // 4. Pass the resulting assessment to LocalEvidenceExplainer(File(context.filesDir, "models")).explain(...)
+                // 4. Pass the resulting assessment to LocalEvidenceExplainer
                 val result = explainer.explain(assessment)
 
                 // 5. Require the actual Generated result
@@ -91,7 +137,7 @@ class LlamaNativeInferenceDeviceTest : InstrumentationTestCase() {
 
                 // 6. Inspect the raw Generated.nativeOutput, not fallback guidance
                 val rawOutput = generated.nativeOutput
-                android.util.Log.i("LlamaNativeInferenceDeviceTest", "Raw native Llama output: '$rawOutput'")
+                android.util.Log.i("LlamaNativeInferenceDeviceTest", "Strict OTP raw output: '$rawOutput'")
 
                 // 7. Assert that nativeOutput.trim() equals OTP
                 assertEquals(

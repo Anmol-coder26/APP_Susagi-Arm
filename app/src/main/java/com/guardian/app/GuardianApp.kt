@@ -241,6 +241,10 @@ fun GuardianApp(
                         state = state,
                         contentPadding = contentPadding,
                         onToggle = { type, enabled ->
+                            val prefs = context.getSharedPreferences("guardian_prefs", android.content.Context.MODE_PRIVATE)
+                            if (type == SettingType.All || type == SettingType.Messages) {
+                                prefs.edit().putBoolean("message_protection_enabled", enabled).apply()
+                            }
                             state = when (type) {
                                 SettingType.All -> state.copy(
                                     protectionEnabled = enabled,

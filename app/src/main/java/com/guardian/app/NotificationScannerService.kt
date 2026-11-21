@@ -40,6 +40,9 @@ class NotificationScannerService : NotificationListenerService() {
         super.onNotificationPosted(sbn)
         if (sbn == null || sbn.packageName == packageName) return
 
+        val prefs = getSharedPreferences("guardian_prefs", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("message_protection_enabled", true)) return
+
         val extras = sbn.notification.extras ?: return
         val title = extras.getCharSequence("android.title")?.toString().orEmpty()
         val text = extras.getCharSequence("android.text")?.toString().orEmpty()
