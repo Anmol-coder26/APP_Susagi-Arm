@@ -82,6 +82,7 @@ android {
                 keyAlias = keystoreProperties.getProperty("KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS") ?: ""
                 keyPassword = keystoreProperties.getProperty("KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD") ?: ""
             } else {
+                logger.warn("NOTICE: Production release keystore unconfigured. Falling back to debug keystore. Artifact is classified as DEVELOPMENT-ONLY.")
                 val debugConfig = getByName("debug")
                 storeFile = debugConfig.storeFile
                 storePassword = debugConfig.storePassword
@@ -99,6 +100,13 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
             signingConfig = signingConfigs.getByName("release")
+
+            // Strict Client Hardening: Prohibit embedding unrestricted cloud API keys into release APKs.
+            // Secret-dependent requests (Gemini AI, Bhashini STT) are brokered through the secure backend proxy (BACKEND_URL).
+            buildConfigField("String", "GEMINI_API_KEY", "\"\"")
+            buildConfigField("String", "BHASHINI_ULCA_API_KEY", "\"\"")
+            buildConfigField("String", "BHASHINI_INFERENCE_API_KEY", "\"\"")
+            buildConfigField("String", "ABLY_API_KEY", "\"\"")
         }
     }
 
