@@ -147,7 +147,7 @@ fun ScamWarningCard(
 
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "Guardian Shield — $score% Risk",
+                        "Guardian Shield — ${if (score >= 70) "HIGH RISK" else "REVIEW NEEDED"}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = accentColor

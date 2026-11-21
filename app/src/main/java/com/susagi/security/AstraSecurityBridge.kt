@@ -84,7 +84,7 @@ object AstraSecurityBridge : SecurityAssessmentContract {
             url = url,
             status = status,
             riskScore = riskScore,
-            title = if (status == RiskStatus.Low) "🛡️ VERIFIED SAFE DESTINATION" else heuristic.title,
+            title = if (status == RiskStatus.Low) "🛡️ NO KNOWN LOCAL THREAT INDICATORS DETECTED" else heuristic.title,
             detail = astra.explanation.ifBlank { heuristic.detail },
             reasons = reasons,
             canonicalHost = host,

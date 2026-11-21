@@ -188,8 +188,8 @@ class QrScannerActivity : ComponentActivity() {
                     QrVerdict(
                         rawValue = text,
                         status = RiskStatus.Low,
-                        title = "✅ VERIFIED SAFE LINK",
-                        reason = "Clean domain format. No blacklisted phishing patterns or malicious parameters detected.",
+                        title = "🛡️ NO KNOWN LOCAL THREAT INDICATORS DETECTED",
+                        reason = "No known local threat indicators detected. Domain matches standard syntax.",
                         isUrl = true
                     )
                 }

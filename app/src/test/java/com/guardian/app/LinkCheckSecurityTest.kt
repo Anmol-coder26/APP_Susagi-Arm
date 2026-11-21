@@ -212,9 +212,9 @@ class LinkCheckSecurityTest {
 
         assertEquals(RiskStatus.Low, assessment.status)
         assertTrue(assessment.actualRiskScore < 35)
-        assertEquals("VERIFIED LOW-RISK MESSAGE", assessment.categoryTitle)
+        assertEquals("NO KNOWN LOCAL THREAT INDICATORS DETECTED", assessment.categoryTitle)
         assertTrue(assessment.evaluatedUrls.isEmpty())
-        assertTrue(assessment.plainExplanationEn.contains("No known extortion"))
+        assertTrue(assessment.plainExplanationEn.contains("No known local threat indicators detected"))
     }
 
     @Test

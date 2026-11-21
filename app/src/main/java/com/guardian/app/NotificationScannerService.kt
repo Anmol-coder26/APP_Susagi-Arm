@@ -11,7 +11,11 @@ import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
 import com.susagi.safety.Risk
 import com.susagi.safety.SafetyBarrier
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class NotificationScannerService : NotificationListenerService() {
 
@@ -20,9 +24,16 @@ class NotificationScannerService : NotificationListenerService() {
         private const val CHANNEL_NAME = "Guardian Scam Message Shield"
     }
 
+    private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+    }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -37,29 +48,28 @@ class NotificationScannerService : NotificationListenerService() {
 
         if (fullContent.isBlank()) return
 
-        // Use Astra SafetyBarrier to accurately discriminate real threat from legitimate warnings (e.g. "Never share OTP")
-        val assessment = runBlocking { SafetyBarrier.analyze(null, fullContent) }
-        val isHighRisk = assessment.risk == Risk.HIGH
-        val isReview = assessment.risk == Risk.REVIEW
+        serviceScope.launch {
+            // Use Astra SafetyBarrier to accurately discriminate real threat from legitimate warnings (e.g. "Never share OTP")
+            val assessment = SafetyBarrier.analyze(null, fullContent)
+            val isHighRisk = assessment.risk == Risk.HIGH
+            val isReview = assessment.risk == Risk.REVIEW
 
-        if (isHighRisk || isReview) {
-            val originalPendingIntent: PendingIntent? = sbn.notification.contentIntent
+            if (isHighRisk || isReview) {
+                val originalPendingIntent: PendingIntent? = sbn.notification.contentIntent
 
-            // 1. Cancel malicious original notification to prevent direct user tap
-            try {
-                cancelNotification(sbn.key)
-            } catch (_: Exception) {}
-
-            // 2. Post safe Guardian interception notification with genuine detected evidence
-            val threatDesc = assessment.explanation.ifBlank { "Suspicious payment, extortion or unverified link patterns detected." }
-            postGuardianInterceptNotification(
-                packageName = sbn.packageName,
-                title = title.ifBlank { "Suspicious Alert" },
-                body = fullContent,
-                explanation = threatDesc,
-                isHighRisk = isHighRisk,
-                originalPendingIntent = originalPendingIntent
-            )
+                // IMPORTANT (Directive 12): Stop default silent cancellation of user notifications.
+                // Do NOT suppress the original notification — preserve legitimate OTPs and messages.
+                // Post a separate companion warning alert alongside the original notification.
+                val threatDesc = assessment.explanation.ifBlank { "Suspicious payment, extortion or unverified link patterns detected." }
+                postGuardianInterceptNotification(
+                    packageName = sbn.packageName,
+                    title = title.ifBlank { "Suspicious Alert" },
+                    body = fullContent,
+                    explanation = threatDesc,
+                    isHighRisk = isHighRisk,
+                    originalPendingIntent = originalPendingIntent
+                )
+            }
         }
     }
 
@@ -92,9 +102,9 @@ class NotificationScannerService : NotificationListenerService() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("⚠️ Scam Alert Intercepted: $title")
-            .setContentText("Guardian intercepted a suspicious notification. Tap to inspect.")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Guardian intercepted a message: $explanation Tap to inspect safely."))
+            .setContentTitle("⚠️ Scam Threat Alert: $title")
+            .setContentText("Guardian detected potential threat indicators. Tap to inspect safely.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Guardian Companion Alert: $explanation Tap to inspect safely."))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)

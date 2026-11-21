@@ -255,7 +255,7 @@ class LinkCheckActivity : ComponentActivity() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val report = buildString {
             appendLine("🛡️ SuSagi Guardian Security Report")
-            appendLine("Verdict: ${assessment.categoryTitle} (${assessment.actualRiskScore}% Risk)")
+            appendLine("Verdict: ${assessment.categoryTitle} [${assessment.riskLevel.name} RISK]")
             appendLine("Engine: ${assessment.engineLabel}")
             appendLine("Guidance: ${assessment.plainExplanationEn}")
             if (assessment.detectedSignals.isNotEmpty()) {
@@ -283,7 +283,7 @@ class LinkCheckActivity : ComponentActivity() {
             putExtra(Intent.EXTRA_SUBJECT, "⚠️ SuSagi Security Alert: ${assessment.categoryTitle}")
             putExtra(
                 Intent.EXTRA_TEXT,
-                "⚠️ SuSagi Guardian Alert:\nThreat: ${assessment.categoryTitle} (${assessment.actualRiskScore}% Risk)\n\n" +
+                "⚠️ SuSagi Guardian Alert:\nThreat: ${assessment.categoryTitle} [${assessment.riskLevel.name} RISK]\n\n" +
                         "Advice: ${assessment.plainExplanationEn}\n\n" +
                         "हिंदी: ${assessment.plainExplanationHi}\n\n" +
                         "Stay safe! Do not send money, share OTPs, or click unverified links."
@@ -995,7 +995,7 @@ class LinkCheckActivity : ComponentActivity() {
                         lower.contains("lottery") || lower.contains("winner") || lower.contains("kbc") -> "LOTTERY & PRIZE SCAM"
                         finalScore >= 60 -> "SUSPICIOUS COERCIVE REQUEST"
                         finalScore >= 35 -> "UNVERIFIED URGENT MESSAGE"
-                        else -> "VERIFIED LOW-RISK MESSAGE"
+                        else -> "NO KNOWN LOCAL THREAT INDICATORS DETECTED"
                     }
 
                     val explanationEn = when {
@@ -1014,7 +1014,7 @@ class LinkCheckActivity : ComponentActivity() {
                         status == RiskStatus.Suspicious ->
                             "This message contains unverified urgency or obscured links. Exercise caution before responding or sharing any information."
                         else ->
-                            "No known extortion, digital arrest, phishing, or malware patterns were identified in this message."
+                            "No known local threat indicators detected in this message."
                     }
 
                     val explanationHi = when {
@@ -1033,7 +1033,7 @@ class LinkCheckActivity : ComponentActivity() {
                         status == RiskStatus.Suspicious ->
                             "इस संदेश में अपुष्ट दबाव या संदिग्ध लिंक हैं। कोई भी जानकारी साझा करने से पहले सतर्क रहें।"
                         else ->
-                            "इस संदेश में कोई ज्ञात धोखाधड़ी, डिजिटल अरेस्ट, फ़िशिंग या दुर्भावनापूर्ण पैटर्न नहीं मिला है।"
+                            "इस संदेश में कोई ज्ञात स्थानीय सुरक्षा खतरा या दुर्भावनापूर्ण पैटर्न नहीं मिला।"
                     }
 
                     UnifiedSecurityAssessment(
