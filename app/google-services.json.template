@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:52105001230:android:example",
         "android_client_info": {
-          "package_name": "com.guardian.app"
+          "package_name": "com.susagi.guardian2"
         }
       },
       "oauth_client": [],
