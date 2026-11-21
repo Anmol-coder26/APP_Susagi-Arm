@@ -82,6 +82,8 @@ class VoipCallActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
                 VoipCallScreen(
                     uiState = uiState,
+                    onToggleMute = { viewModel.toggleMute() },
+                    onToggleSpeaker = { viewModel.toggleSpeakerphone() },
                     onEndCall = {
                         endVoipCall()
                         finish()

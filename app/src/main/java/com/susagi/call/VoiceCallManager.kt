@@ -73,26 +73,69 @@ data class LiveRiskState(
 class VoiceCallManager(
     private val context: Context,
     private val agoraAppId: String,
-    geminiApiKey: String,
-    private val bhashiniEndpointUrl: String,
+    geminiApiKey: String = "",
+    private val bhashiniEndpointUrl: String = "",
     private val bhashiniAuthToken: String? = null,
-    private var sttLanguage: String = "hi"
+    private var sttLanguage: String = "hi",
+    val enableAiPipeline: Boolean = false
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val pipelineCoordinator = GuardianPipelineCoordinator(
-        geminiApiKey = geminiApiKey,
-        bhashiniEndpoint = bhashiniEndpointUrl,
-        bhashiniToken = bhashiniAuthToken,
-        initialLanguage = sttLanguage,
-        context = context
-    )
+    private val pipelineCoordinator by lazy {
+        GuardianPipelineCoordinator(
+            geminiApiKey = geminiApiKey,
+            bhashiniEndpoint = bhashiniEndpointUrl,
+            bhashiniToken = bhashiniAuthToken,
+            initialLanguage = sttLanguage,
+            context = context
+        )
+    }
 
-    val sttEngineMode: StateFlow<SttEngineMode> = pipelineCoordinator.sttEngineMode
-    val sttEngineLabel: StateFlow<String> = pipelineCoordinator.sttEngineLabel
+    private val _isMuted = MutableStateFlow(false)
+    val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+
+    private val _isSpeakerphone = MutableStateFlow(true)
+    val isSpeakerphone: StateFlow<Boolean> = _isSpeakerphone.asStateFlow()
+
+    fun setMuted(muted: Boolean) {
+        _isMuted.value = muted
+        if (::rtcEngine.isInitialized) {
+            try {
+                rtcEngine.muteLocalAudioStream(muted)
+                CallDiagnostics.log("RTC", "Local microphone mute state changed to: $muted")
+            } catch (e: Exception) {
+                CallDiagnostics.log("RTC", "Failed to mute audio stream: ${e.message}", LogLevel.WARN)
+            }
+        }
+        updatePills()
+    }
+
+    fun toggleMute() = setMuted(!_isMuted.value)
+
+    fun setSpeakerphone(speaker: Boolean) {
+        _isSpeakerphone.value = speaker
+        if (::rtcEngine.isInitialized) {
+            try {
+                rtcEngine.setEnableSpeakerphone(speaker)
+                CallDiagnostics.log("RTC", "Speakerphone routing set to: $speaker")
+            } catch (e: Exception) {
+                CallDiagnostics.log("RTC", "Failed to set speakerphone: ${e.message}", LogLevel.WARN)
+            }
+        }
+    }
+
+    fun toggleSpeakerphone() = setSpeakerphone(!_isSpeakerphone.value)
+
+    private val fallbackSttEngineMode: StateFlow<SttEngineMode> = MutableStateFlow(SttEngineMode.WHISPER_OFFLINE)
+    val sttEngineMode: StateFlow<SttEngineMode> get() = if (enableAiPipeline) pipelineCoordinator.sttEngineMode else fallbackSttEngineMode
+
+    private val fallbackSttEngineLabel: StateFlow<String> = MutableStateFlow("Direct Two-Way Audio (Pure VoIP)")
+    val sttEngineLabel: StateFlow<String> get() = if (enableAiPipeline) pipelineCoordinator.sttEngineLabel else fallbackSttEngineLabel
 
     fun setSttEngineMode(mode: SttEngineMode) {
-        pipelineCoordinator.setSttEngineMode(mode)
+        if (enableAiPipeline) {
+            pipelineCoordinator.setSttEngineMode(mode)
+        }
     }
 
     private val _currentSttLanguage = MutableStateFlow(sttLanguage)
@@ -103,7 +146,9 @@ class VoiceCallManager(
         sttLanguage = newLanguage
         _currentSttLanguage.value = newLanguage
         CallDiagnostics.log("STT", "Call language changed to $newLanguage")
-        pipelineCoordinator.setLanguage(newLanguage)
+        if (enableAiPipeline) {
+            pipelineCoordinator.setLanguage(newLanguage)
+        }
     }
 
     private lateinit var rtcEngine: RtcEngine
@@ -198,58 +243,60 @@ class VoiceCallManager(
     }
 
     init {
-        // Forward transcripts from the pipeline merger to the UI flow
-        scope.launch {
-            pipelineCoordinator.transcriptsFlow.collect { line ->
-                val speaker = if (line.source == AudioSource.LOCAL) Speaker.LOCAL else Speaker.REMOTE
-                _transcripts.tryEmit(
-                    TranscriptLine(
-                        speaker = speaker,
-                        text = line.text,
-                        isFinal = line.isFinal,
-                        timestampMs = line.timestampMs
+        if (enableAiPipeline) {
+            // Forward transcripts from the pipeline merger to the UI flow
+            scope.launch {
+                pipelineCoordinator.transcriptsFlow.collect { line ->
+                    val speaker = if (line.source == AudioSource.LOCAL) Speaker.LOCAL else Speaker.REMOTE
+                    _transcripts.tryEmit(
+                        TranscriptLine(
+                            speaker = speaker,
+                            text = line.text,
+                            isFinal = line.isFinal,
+                            timestampMs = line.timestampMs
+                        )
                     )
-                )
+                }
             }
-        }
 
-        // Forward risk updates from the pipeline risk engine to the UI flow
-        scope.launch {
-            pipelineCoordinator.riskFlow.collect { risk ->
-                val victim = when (risk.victimRole) {
-                    "local" -> Speaker.LOCAL
-                    "remote" -> Speaker.REMOTE
-                    else -> null
-                }
-                val scammer = when (risk.scammerRole) {
-                    "local" -> Speaker.LOCAL
-                    "remote" -> Speaker.REMOTE
-                    else -> null
-                }
-                val pressure = risk.tactics.firstOrNull { t ->
-                    t.contains("pressure", ignoreCase = true) ||
-                    t.contains("urgency", ignoreCase = true) ||
-                    t.contains("arrest", ignoreCase = true) ||
-                    t.contains("coercion", ignoreCase = true)
-                }
+            // Forward risk updates from the pipeline risk engine to the UI flow
+            scope.launch {
+                pipelineCoordinator.riskFlow.collect { risk ->
+                    val victim = when (risk.victimRole) {
+                        "local" -> Speaker.LOCAL
+                        "remote" -> Speaker.REMOTE
+                        else -> null
+                    }
+                    val scammer = when (risk.scammerRole) {
+                        "local" -> Speaker.LOCAL
+                        "remote" -> Speaker.REMOTE
+                        else -> null
+                    }
+                    val pressure = risk.tactics.firstOrNull { t ->
+                        t.contains("pressure", ignoreCase = true) ||
+                        t.contains("urgency", ignoreCase = true) ||
+                        t.contains("arrest", ignoreCase = true) ||
+                        t.contains("coercion", ignoreCase = true)
+                    }
 
-                _riskState.value = LiveRiskState(
-                    riskScore = risk.riskScore,
-                    victimRole = victim,
-                    scammerRole = scammer,
-                    roleConfidence = risk.roleConfidence,
-                    topSignals = risk.tactics,
-                    psychologicalPressure = pressure
-                )
+                    _riskState.value = LiveRiskState(
+                        riskScore = risk.riskScore,
+                        victimRole = victim,
+                        scammerRole = scammer,
+                        roleConfidence = risk.roleConfidence,
+                        topSignals = risk.tactics,
+                        psychologicalPressure = pressure
+                    )
+                }
             }
-        }
 
-        // React to STT connection status
-        scope.launch {
-            pipelineCoordinator.isLocalSttConnected.collect { updatePills() }
-        }
-        scope.launch {
-            pipelineCoordinator.isRemoteSttConnected.collect { updatePills() }
+            // React to STT connection status
+            scope.launch {
+                pipelineCoordinator.isLocalSttConnected.collect { updatePills() }
+            }
+            scope.launch {
+                pipelineCoordinator.isRemoteSttConnected.collect { updatePills() }
+            }
         }
     }
 
@@ -285,7 +332,11 @@ class VoiceCallManager(
             setupAudioRouting()
 
             // 2. Attach Guardian Pipeline Coordinator (registers AudioFrameBridge and starts pipelines)
-            pipelineCoordinator.attachToAgora(rtcEngine)
+            if (enableAiPipeline) {
+                pipelineCoordinator.attachToAgora(rtcEngine)
+            } else {
+                CallDiagnostics.log("RTC", "Pure minimal VoIP mode active: AI/STT pipeline detached for zero-latency direct two-way audio.")
+            }
 
             // 3. Start diagnostic pill monitoring loop
             startPillMonitor()
@@ -376,8 +427,10 @@ class VoiceCallManager(
         CallDiagnostics.log("RTC", "Ending call")
         pillMonitorJob?.cancel()
 
-        // Decouple pipeline
-        pipelineCoordinator.stop()
+        // Decouple pipeline if active
+        if (enableAiPipeline) {
+            pipelineCoordinator.stop()
+        }
 
         if (this::rtcEngine.isInitialized) {
             try {
@@ -412,6 +465,22 @@ class VoiceCallManager(
     }
 
     private fun updatePills() {
+        if (!enableAiPipeline) {
+            _pillsState.value = DiagnosticsPillsState(
+                rtcJoined = if (rtcJoinedFlag) PillStatus.GREEN else PillStatus.RED,
+                peerPresent = if (peerPresentFlag) PillStatus.GREEN else PillStatus.AMBER,
+                localPcmFlowing = if (rtcJoinedFlag && !_isMuted.value) PillStatus.GREEN else PillStatus.RED,
+                remotePcmFlowing = if (peerPresentFlag) PillStatus.GREEN else PillStatus.AMBER,
+                sttLocalStatus = PillStatus.AMBER, // Marked standby in pure VoIP mode
+                sttRemoteStatus = PillStatus.AMBER,
+                localPcmCount = if (rtcJoinedFlag) 1 else 0,
+                remotePcmCount = if (peerPresentFlag) 1 else 0,
+                localNoAudioWarning = false,
+                remoteNoAudioWarning = false
+            )
+            return
+        }
+
         val locCount = pipelineCoordinator.localPipeline.receivedFramesCount
         val remCount = pipelineCoordinator.remotePipeline.receivedFramesCount
         val locRms = pipelineCoordinator.localPipeline.latestRms

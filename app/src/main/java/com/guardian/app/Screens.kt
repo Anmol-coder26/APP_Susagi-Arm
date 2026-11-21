@@ -626,11 +626,40 @@ fun HomeScreen(
     var showIncidentDialog by remember { mutableStateOf(false) }
     var showLinkCheckDialog by remember { mutableStateOf(false) }
     var showMsgCheckDialog by remember { mutableStateOf(false) }
+    var showLinkBarrierScreen by remember { mutableStateOf(false) }
+    var showMessageScanScreen by remember { mutableStateOf(false) }
     var showQrScannerDialog by remember { mutableStateOf(false) }
     var showLlamaModal by remember { mutableStateOf(false) }
     var showWhisperModal by remember { mutableStateOf(false) }
     var showTrustedContactScreen by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
+
+    if (showLinkBarrierScreen) {
+        com.susagi.ui.LinkSafetyBarrierScreen(
+            onBack = { showLinkBarrierScreen = false },
+            onOpenUrl = { url ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    ctx.startActivity(intent)
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(ctx, "No compatible browser found to open link", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+        return
+    }
+
+    if (showMessageScanScreen) {
+        com.susagi.ui.MessageScanScreen(
+            onBack = { showMessageScanScreen = false },
+            onInspectLink = { url ->
+                showLinkBarrierScreen = true
+            }
+        )
+        return
+    }
 
     if (showTrustedContactScreen) {
         com.guardian.app.protect.advanced.TrustedContactSettingsScreen(
@@ -687,19 +716,39 @@ fun HomeScreen(
                     }
                 }
 
-                Surface(
-                    color = GxSafeSoft,
-                    shape = GxShapePill,
-                    border = BorderStroke(1.dp, GxSafe.copy(alpha = 0.4f)),
-                    modifier = Modifier.clickable { showTrustedContactScreen = true }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        color = GxSurfaceAlt,
+                        shape = GxShapePill,
+                        border = BorderStroke(1.dp, GxBorder),
+                        modifier = Modifier.clickable { com.susagi.ui.localization.AppLanguageState.toggleLanguage() }
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = GxSafe, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Mom Linked", color = GxSafe, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = com.susagi.ui.localization.AppLanguageState.currentLanguage.displayName,
+                            color = GxPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    Surface(
+                        color = GxSafeSoft,
+                        shape = GxShapePill,
+                        border = BorderStroke(1.dp, GxSafe.copy(alpha = 0.4f)),
+                        modifier = Modifier.clickable { showTrustedContactScreen = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = GxSafe, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Mom Linked", color = GxSafe, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -945,23 +994,23 @@ fun HomeScreen(
 
         item {
             FeatureCardItem(
-                title = "Link Shield Interceptor",
-                subtitle = "Default browser protection routing clicked URLs through AI verification",
+                title = "Link Safety Barrier",
+                subtitle = "Zero-trust browser protection intercepting URLs to prevent phishing & malware APKs",
                 icon = Icons.Default.Link,
-                accentColor = GxWarning,
-                statusBadge = "ACTIVE",
-                onClick = { showLinkCheckDialog = true }
+                accentColor = GxSafe,
+                statusBadge = "READY",
+                onClick = { showLinkBarrierScreen = true }
             )
         }
 
         item {
             FeatureCardItem(
-                title = "Message & SMS Scam Shield",
-                subtitle = "On-device Llama analysis of SMS, WhatsApp & fake arrest extortion notices",
-                icon = Icons.Default.NotificationsActive,
-                accentColor = GxDanger,
-                statusBadge = "LLAMA EDGE",
-                onClick = { showMsgCheckDialog = true }
+                title = "Regional Message Scanner",
+                subtitle = "Screen SMS and chat messages for digital arrest, electricity bill scams & lottery traps",
+                icon = Icons.Default.Security,
+                accentColor = GxPrimary,
+                statusBadge = "READY",
+                onClick = { showMessageScanScreen = true }
             )
         }
 
@@ -1554,6 +1603,24 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        item {
+            GxCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Security, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Android Platform Boundaries & Privacy", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = GxTextHi)
+                    }
+                    Text(
+                        "• SMS & Notifications: SuSagi evaluates accessible notification content only when granted explicit permission by the user in Android Settings. It does not access private chat databases of WhatsApp or other apps.\n• Link Shield: Intercepts tapped links and verifies domain legitimacy, Punycode spoofing, and APK traps before handing off to your browser.\n• Zero Cloud Dependency: Core threat evaluation runs directly on-device using Arm Cortex/NPU hardware acceleration.",
+                        color = GxTextLo,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
                 }
             }
         }

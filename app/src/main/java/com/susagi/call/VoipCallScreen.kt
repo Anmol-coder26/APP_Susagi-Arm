@@ -110,10 +110,16 @@ import com.guardian.app.voip.LogLevel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeMute
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VoipCallScreen(
     uiState: VoipUiState,
+    onToggleMute: () -> Unit = {},
+    onToggleSpeaker: () -> Unit = {},
     onEndCall: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -522,43 +528,64 @@ fun VoipCallScreen(
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Mute Indicator
+                // Interactive Mute Toggle Pod
                 Surface(
-                    color = GxSurfaceAlt,
+                    color = if (uiState.isMuted) GxDangerSoft else GxSurfaceAlt,
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, GxBorder),
-                    modifier = Modifier.size(50.dp)
+                    border = BorderStroke(1.dp, if (uiState.isMuted) GxDanger else GxBorder),
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clickable { onToggleMute() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Mic, contentDescription = "Mute", tint = GxTextMid, modifier = Modifier.size(22.dp))
+                        Icon(
+                            imageVector = if (uiState.isMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                            contentDescription = if (uiState.isMuted) "Unmute Microphone" else "Mute Microphone",
+                            tint = if (uiState.isMuted) GxDanger else GxTextHi,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 
-                // Speakerphone Indicator
+                // Interactive Speakerphone Toggle Pod
                 Surface(
-                    color = GxSurfaceAlt,
+                    color = if (uiState.isSpeakerphone) GxPrimarySoft else GxSurfaceAlt,
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, GxBorder),
-                    modifier = Modifier.size(50.dp)
+                    border = BorderStroke(1.dp, if (uiState.isSpeakerphone) GxPrimary else GxBorder),
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clickable { onToggleSpeaker() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.PhoneInTalk, contentDescription = "Speaker", tint = GxTextMid, modifier = Modifier.size(22.dp))
+                        Icon(
+                            imageVector = if (uiState.isSpeakerphone) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
+                            contentDescription = if (uiState.isSpeakerphone) "Switch to Earpiece" else "Switch to Speakerphone",
+                            tint = if (uiState.isSpeakerphone) GxPrimary else GxTextMid,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 
-                // AI Shield Status Indicator
+                // AI Shield / Threat Status Pod
                 Surface(
-                    color = GxSafeSoft,
+                    color = if (uiState.riskScore >= 70) GxDangerSoft else GxSafeSoft,
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, GxSafe.copy(alpha = 0.5f)),
-                    modifier = Modifier.size(50.dp)
+                    border = BorderStroke(1.dp, if (uiState.riskScore >= 70) GxDanger.copy(alpha = 0.5f) else GxSafe.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clickable { showDebugOverlay = !showDebugOverlay }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Shield, contentDescription = "AI Shield Active", tint = GxSafe, modifier = Modifier.size(22.dp))
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Threat Monitor",
+                            tint = if (uiState.riskScore >= 70) GxDanger else GxSafe,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 
-                // End Call Big Red Circle
+                // End Call Big Red Circular Pod
                 Surface(
                     color = GxDanger,
                     shape = CircleShape,
@@ -567,7 +594,12 @@ fun VoipCallScreen(
                         .clickable { onEndCall() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.CallEnd, contentDescription = "End Call", tint = Color.White, modifier = Modifier.size(26.dp))
+                        Icon(
+                            imageVector = Icons.Default.CallEnd,
+                            contentDescription = "End Call",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
             }

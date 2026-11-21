@@ -30,7 +30,7 @@ object AgoraEngineManager {
      */
     fun get(
         context: Context,
-        appId: String = BuildConfig.AGORA_APP_ID.ifBlank { "d575bd8b35004ad896366419f3a8a8f1" },
+        appId: String = BuildConfig.AGORA_APP_ID,
         eventHandler: IRtcEngineEventHandler? = null
     ): RtcEngine {
         val current = engine

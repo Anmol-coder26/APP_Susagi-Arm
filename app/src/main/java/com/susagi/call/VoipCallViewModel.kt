@@ -37,9 +37,11 @@ data class VoipUiState(
     val psychologicalPressure: String? = null,
     val isConnected: Boolean = false,
     val isCallActive: Boolean = false,
+    val isMuted: Boolean = false,
+    val isSpeakerphone: Boolean = true,
     val channelName: String = "",
     val connectionBanner: String? = null,
-    val activeSttEngine: String = "Auto (Whisper/Bhashini)",
+    val activeSttEngine: String = "Direct Two-Way VoIP",
     val pills: DiagnosticsPillsState = DiagnosticsPillsState(),
     val logs: List<DiagnosticEntry> = emptyList()
 )
@@ -176,7 +178,20 @@ class VoipCallViewModel @JvmOverloads constructor(
                 _uiState.value = _uiState.value.copy(activeSttEngine = label)
             }
         }
+        viewModelScope.launch {
+            manager.isMuted.collect { muted ->
+                _uiState.value = _uiState.value.copy(isMuted = muted)
+            }
+        }
+        viewModelScope.launch {
+            manager.isSpeakerphone.collect { speaker ->
+                _uiState.value = _uiState.value.copy(isSpeakerphone = speaker)
+            }
+        }
     }
+
+    fun toggleMute() = manager.toggleMute()
+    fun toggleSpeakerphone() = manager.toggleSpeakerphone()
 
     val sttEngineMode: StateFlow<SttEngineMode> = manager.sttEngineMode
 

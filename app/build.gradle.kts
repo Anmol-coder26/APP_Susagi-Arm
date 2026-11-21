@@ -35,7 +35,7 @@ android {
         val bhashiniStreamingUrl = localProperties.getProperty("BHASHINI_STREAMING_URL") ?: ""
         buildConfigField("String", "BHASHINI_STREAMING_URL", "\"$bhashiniStreamingUrl\"")
 
-        val agoraAppId = localProperties.getProperty("AGORA_APP_ID")?.ifBlank { "d575bd8b35004ad896366419f3a8a8f1" } ?: "d575bd8b35004ad896366419f3a8a8f1"
+        val agoraAppId = localProperties.getProperty("AGORA_APP_ID") ?: System.getenv("AGORA_APP_ID") ?: ""
         buildConfigField("String", "AGORA_APP_ID", "\"$agoraAppId\"")
 
         val agoraAppCert = localProperties.getProperty("AGORA_APP_CERTIFICATE") ?: ""
@@ -69,6 +69,31 @@ android {
         buildConfigField("String", "BACKEND_URL", "\"$backendUrl\"")
     }
 
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val keystoreProperties = Properties().apply {
+        if (keystorePropsFile.exists()) {
+            load(keystorePropsFile.inputStream())
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val keyStorePath = keystoreProperties.getProperty("KEYSTORE_PATH") ?: System.getenv("RELEASE_KEYSTORE_PATH")
+            if (keyStorePath != null && file(keyStorePath).exists()) {
+                storeFile = file(keyStorePath)
+                storePassword = keystoreProperties.getProperty("KEYSTORE_PASSWORD") ?: System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = keystoreProperties.getProperty("KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS") ?: ""
+                keyPassword = keystoreProperties.getProperty("KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD") ?: ""
+            } else {
+                val debugConfig = getByName("debug")
+                storeFile = debugConfig.storeFile
+                storePassword = debugConfig.storePassword
+                keyAlias = debugConfig.keyAlias
+                keyPassword = debugConfig.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -76,7 +101,7 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
