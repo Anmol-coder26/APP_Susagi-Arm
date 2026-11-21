@@ -1,0 +1,15 @@
+{
+  "pipelineTasks": [
+    {
+      "taskType": "asr",
+      "config": {
+        "language": {
+          "sourceLanguage": "hi"
+        }
+      }
+    }
+  ],
+  "pipelineRequestConfig": {
+    "pipelineId": "64392f96daac500b55c543cd"
+  }
+}

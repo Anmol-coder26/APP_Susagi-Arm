@@ -1,0 +1,12 @@
+{
+  "name": "bhashini-stt-probe",
+  "version": "1.0.0",
+  "description": "Standalone Bhashini STT Protocol Probe Tool",
+  "main": "probe.js",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "socket.io-client": "^4.8.1",
+    "ws": "^8.18.0"
+  }
+}

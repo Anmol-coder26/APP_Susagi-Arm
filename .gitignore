@@ -1,0 +1,57 @@
+# References
+references/
+
+# Credentials — NEVER commit these
+.env
+*/.env
+server/.env
+local.properties
+keystore.properties
+*.keystore
+*.jks
+google-services.json
+*service-account*.json
+firebase-service-account.json
+server/firebase-service-account.json
+*.pem
+*.pkcs12
+*.key
+
+# Node
+node_modules/
+*/node_modules/
+
+# Build artifacts
+build/
+*/build/
+.gradle/
+app/build/
+*.apk
+*.aab
+artifacts/
+captures/
+.externalNativeBuild/
+.cxx/
+*.log
+hs_err_pid*
+replay_pid*
+
+# Model weights â€” NEVER commit large AI weights
+*.pte
+*.pt
+*.bin
+*.onnx
+*.tflite
+models/
+files/models/
+files/whisper/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db

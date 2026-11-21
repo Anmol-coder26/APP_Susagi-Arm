@@ -1,0 +1,16 @@
+## SuSagi Guardian - Local Build Properties Template
+## Copy this file to 'local.properties' and fill in your local Android SDK path and optional API keys.
+## DO NOT commit 'local.properties' to version control.
+
+# Path to the Android SDK on your local machine
+sdk.dir=C\:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk
+
+# Optional: Cloud AI fallback API keys (SuSagi runs offline-first via on-device Llama/ExecuTorch)
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-1.5-flash
+
+# Optional: Bhashini STT WebSocket streaming URL
+BHASHINI_STREAMING_URL=
+
+# Optional: Agora RTC App ID (for live VOIP call protection assist)
+AGORA_APP_ID=d575bd8b35004ad896366419f3a8a8f1

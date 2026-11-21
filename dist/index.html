@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuSagi Guardian 3.1 — Arm Bharat AI-SoC Challenge PS3</title>
+    <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center min-h-screen p-6 antialiased">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center">
+        <!-- Live Status Badge -->
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-4">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Arm Bharat AI-SoC Challenge • PS3 Ready
+        </div>
+
+        <h1 class="text-2xl font-black tracking-tight text-white mb-1">SuSagi Guardian 3.1</h1>
+        <p class="text-xs text-zinc-400 mb-6">On-Device Whisper STT + Llama 3.2 ExecuTorch Cybersecurity Shield</p>
+
+        <!-- QR Code Stage -->
+        <div class="bg-white p-5 rounded-2xl inline-block mb-6 shadow-lg">
+            <img src="susagi_apk_qr.png" alt="Scan to Install SuSagi Guardian 3.1 APK" class="w-56 h-56 mx-auto rounded-lg">
+            <p class="text-[11px] text-zinc-600 font-semibold mt-3">Scan with phone camera or QR scanner on Wi-Fi</p>
+        </div>
+
+        <!-- Download Buttons -->
+        <div class="space-y-3">
+            <a href="/susagi-guardian-3.1.apk" download
+               class="block w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg transition-all">
+                📥 Download SuSagi Guardian 3.1 APK (136 MB)
+            </a>
+            <div class="text-[11px] text-zinc-400 break-all font-mono">
+                Direct URL: <span class="text-emerald-400">http://192.168.29.62:8080/susagi-guardian-3.1.apk</span>
+            </div>
+            <div class="text-[10px] text-zinc-500 break-all font-mono">
+                SHA-256: DC679F1C3E42C5BD7B5CEC2585AEBF5E8F6203C305570D64B41563A39D02FE72
+            </div>
+        </div>
+
+        <!-- Architecture Verification Badges -->
+        <div class="mt-6 pt-5 border-t border-zinc-800 text-left text-xs space-y-2 text-zinc-300">
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span><strong>NEW — On-Device Whisper STT:</strong> ExecuTorch AsrModule on Arm64 CPU (Zero network reliance)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span><strong>Standalone Mic Benchmark:</strong> 3s voice sample transcription in Airplane Mode</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span><strong>Dual STT Architecture:</strong> Dynamic switching between Whisper (Offline) & Bhashini (Online)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span><strong>On-Device Llama 3.2:</strong> ExecuTorch v1.5.1 runtime on Arm64 CPU (XNNPACK)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span><strong>Agora VoIP Capture:</strong> Non-blocking dual-stream native frame observer</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold">✓</span>
+                <span><strong>Link & Message Shield:</strong> Phishing interceptor & interactive scam scenario chips</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .screen-img {
+      max-width: 380px;
+      width: 100%;
+      border-radius: 24px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+      border: 1.5px solid #e4e4e7;
+    }
+  </style>
+</head>
+<body class="bg-[#fafafa] text-[#111111] antialiased p-4">
+  <div class="bg-white border border-[#e4e4e7] rounded-3xl p-6 shadow-sm max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold flex items-center gap-2 text-[#111111]">
+          <span class="text-emerald-600">🛡️</span> SuSagi Guardian — Consumer UI Overhaul
+        </h2>
+        <p class="text-zinc-500 text-sm">Human-first smartphone calling interface, dedicated E2EE calling hub, and zero developer-debug clutter.</p>
+      </div>
+      <span class="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+        Radical Redesign
+      </span>
+    </div>
+
+    <!-- Screen Tabs -->
+    <div class="flex flex-wrap gap-2 mb-6 border-b border-zinc-200 pb-3">
+      <button onclick="showTab('home')" id="tab-home" class="px-4 py-2 rounded-xl text-sm font-semibold bg-[#111111] text-white transition-all shadow-sm">
+        1. Protection Hub (Home)
+      </button>
+      <button onclick="showTab('voip')" id="tab-voip" class="px-4 py-2 rounded-xl text-sm font-semibold bg-zinc-100 text-zinc-600 hover:text-[#111111] transition-all">
+        2. Real Phone Calling Interface
+      </button>
+      <button onclick="showTab('room')" id="tab-room" class="px-4 py-2 rounded-xl text-sm font-semibold bg-zinc-100 text-zinc-600 hover:text-[#111111] transition-all">
+        3. Segmented Room PIN Hub
+      </button>
+      <button onclick="showTab('link')" id="tab-link" class="px-4 py-2 rounded-xl text-sm font-semibold bg-zinc-100 text-zinc-600 hover:text-[#111111] transition-all">
+        4. System Security Warning Sheet
+      </button>
+    </div>
+
+    <!-- Tab 1: HomeScreen -->
+    <div id="content-home" class="tab-content flex flex-col md:flex-row gap-6 items-center">
+      <div class="flex-shrink-0 flex justify-center w-full md:w-auto">
+        <img src="screen_home.png" alt="HomeScreen Dashboard" class="screen-img">
+      </div>
+      <div class="flex-1 space-y-4">
+        <h3 class="text-lg font-bold text-[#111111]">Personalized Protection Hub</h3>
+        <p class="text-sm text-zinc-600 leading-relaxed">
+          Replaced the amateur 2x2 grid with an executive, human-centric security dashboard featuring direct calling actions and active protection modules.
+        </p>
+        <div class="space-y-2 text-xs">
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-emerald-600">✦ Protection Aura Card:</span> Displays live device posture ("All Systems Secure & Monitored") with clean metrics pills (0 threats, 16kHz audio, Instant family alert).
+          </div>
+          <div class="p-3 rounded-xl bg-zinc-900 text-white">
+            <span class="font-bold text-emerald-400">✦ Featured Calling Hub Card:</span> A dedicated, prominent dark card to instantly <strong>Host a New Call</strong> or <strong>Enter a Room PIN</strong> in 1 tap.
+          </div>
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-zinc-800">✦ Information-Rich Defense Stack:</span> Real vertical cards for <em>Link Shield Interceptor</em>, <em>Notification Scam Guard</em>, and <em>Emergency Family SOS (Ably + FCM)</em>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: VoIP Call -->
+    <div id="content-voip" class="tab-content hidden flex flex-col md:flex-row gap-6 items-center">
+      <div class="flex-shrink-0 flex justify-center w-full md:w-auto">
+        <img src="screen_voip_call.png" alt="Live VoIP Call Screen" class="screen-img">
+      </div>
+      <div class="flex-1 space-y-4">
+        <h3 class="text-lg font-bold text-red-600">Authentic Smartphone Calling Experience</h3>
+        <p class="text-sm text-zinc-600 leading-relaxed">
+          Completely eliminated developer debug telemetry pills ("PCM L", "STT R") in favor of an intuitive, modern calling interface with an AI Co-Pilot Sentinel.
+        </p>
+        <div class="space-y-2 text-xs">
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-zinc-800">✦ Caller Stage & Audio Waveform:</span> Prominent caller identity avatar with acoustic ring and flagged scammer probability pill (91%).
+          </div>
+          <div class="p-3 rounded-xl bg-red-50 border border-red-200">
+            <span class="font-bold text-red-700">✦ Dynamic Threat Capsule:</span> Intelligent alert box warning of <em>Digital Arrest Extortion</em>, with one-tap <strong>"Alert Sent to Mom"</strong> verification.
+          </div>
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-zinc-800">✦ Natural Speech Captions:</span> Clean live transcript cards powered by Bhashini Dhruva streaming STT.
+          </div>
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-zinc-800">✦ Standard Phone Calling Dock:</span> Familiar circular buttons: Mute, Speaker, Captions, and a prominent Red End Call button.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Room Code Screen -->
+    <div id="content-room" class="tab-content hidden flex flex-col md:flex-row gap-6 items-center">
+      <div class="flex-shrink-0 flex justify-center w-full md:w-auto">
+        <img src="screen_room_code.png" alt="Encrypted Call Hub Screen" class="screen-img">
+      </div>
+      <div class="flex-1 space-y-4">
+        <h3 class="text-lg font-bold text-[#111111]">Modern Segmented Room Hub</h3>
+        <p class="text-sm text-zinc-600 leading-relaxed">
+          Replaced stacked clunky boxes with a native segmented control: [ Host a New Call ] | [ Join Call with PIN ].
+        </p>
+        <div class="space-y-2 text-xs">
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-zinc-800">✦ Segmented 6-Digit PIN Display:</span> Large, clean digit tiles (<code class="bg-white px-2 py-1 rounded-md border border-zinc-300 font-bold">831 · 492</code>) with 1-tap Copy & Share buttons.
+          </div>
+          <div class="p-3 rounded-xl bg-zinc-900 text-white">
+            <span class="font-bold text-white">✦ Dominant Action Button:</span> High-contrast, tactile <strong>"Start Protected Call Now"</strong> button.
+          </div>
+          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+            <span class="font-bold text-emerald-700">✦ Verified Security Guarantee:</span> Confirms Agora 16kHz PCM audio, Bhashini streaming STT, and on-device Gemini risk scoring.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Link Shield -->
+    <div id="content-link" class="tab-content hidden flex flex-col md:flex-row gap-6 items-center">
+      <div class="flex-shrink-0 flex justify-center w-full md:w-auto">
+        <img src="screen_link_shield.png" alt="Link Shield Interceptor" class="screen-img">
+      </div>
+      <div class="flex-1 space-y-4">
+        <h3 class="text-lg font-bold text-red-600">Native System Security Warning Sheet</h3>
+        <p class="text-sm text-zinc-600 leading-relaxed">
+          Designed as a native bottom security sheet that halts malicious URLs before any browser opens.
+        </p>
+        <div class="space-y-2 text-xs">
+          <div class="p-3 rounded-xl bg-red-50 border border-red-200">
+            <span class="font-bold text-red-700">✦ High-Impact Warning:</span> Prominent red alert shield with clear headline: <em>"Phishing Attack Blocked"</em>.
+          </div>
+          <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+            <span class="font-bold text-zinc-800">✦ Flagged Destination Host:</span> Clear isolation of the suspicious domain: <code class="text-red-600 font-bold">sbi-kyc-verification-update.xyz</code>.
+          </div>
+          <div class="p-3 rounded-xl bg-red-600 text-white">
+            <span class="font-bold text-white">✦ Safe Default Action:</span> Large, unmissable <strong>"Block & Keep Me Safe"</strong> primary button.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+        btn.classList.remove('bg-[#111111]', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-zinc-100', 'text-zinc-600');
+      });
+
+      document.getElementById('content-' + tab).classList.remove('hidden');
+      const activeBtn = document.getElementById('tab-' + tab);
+      activeBtn.classList.remove('bg-zinc-100', 'text-zinc-600');
+      activeBtn.classList.add('bg-[#111111]', 'text-white', 'shadow-sm');
+    }
+  </script>
+</body>
+</html>
