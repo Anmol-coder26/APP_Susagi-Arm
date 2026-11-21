@@ -38,9 +38,6 @@ android {
         val agoraAppId = localProperties.getProperty("AGORA_APP_ID") ?: System.getenv("AGORA_APP_ID") ?: ""
         buildConfigField("String", "AGORA_APP_ID", "\"$agoraAppId\"")
 
-        val agoraAppCert = localProperties.getProperty("AGORA_APP_CERTIFICATE") ?: ""
-        buildConfigField("String", "AGORA_APP_CERTIFICATE", "\"$agoraAppCert\"")
-
         val bhashiniUserId = localProperties.getProperty("BHASHINI_USER_ID") ?: ""
         buildConfigField("String", "BHASHINI_USER_ID", "\"$bhashiniUserId\"")
 
