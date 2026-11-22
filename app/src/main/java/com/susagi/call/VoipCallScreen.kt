@@ -110,9 +110,9 @@ import com.guardian.app.voip.LogLevel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.VolumeMute
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -558,7 +558,7 @@ fun VoipCallScreen(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = if (uiState.isSpeakerphone) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
+                            imageVector = if (uiState.isSpeakerphone) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
                             contentDescription = if (uiState.isSpeakerphone) "Switch to Earpiece" else "Switch to Speakerphone",
                             tint = if (uiState.isSpeakerphone) GxPrimary else GxTextMid,
                             modifier = Modifier.size(24.dp)
