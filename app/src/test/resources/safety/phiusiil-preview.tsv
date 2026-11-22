@@ -1,0 +1,19 @@
+# PhiUSIIL, Prasad and Chandra, UCI dataset 967, CC BY 4.0; original labels, historical URLs.
+# Source: https://huggingface.co/datasets/it4lia/PhiUSIIL_cleaned ; selected query-free preview records, 8 per label.
+sample_id	label	url
+34	phishing	https://hidok4f8zl.firebaseapp.com/
+37	phishing	http://www.ooguy.com
+39	phishing	http://www.fairytalesinc.com
+40	phishing	http://www.iuhjn.pplink.club
+41	phishing	https://mechinchem-5cb8a.web.app/
+49	phishing	http://www.komaru.today
+50	phishing	https://dev-634536.pantheonsite.io/
+52	phishing	https://sabadonoappmagazine.com/
+8	legitimate	https://www.hyderabadonline.in
+9	legitimate	https://www.aap.org
+10	legitimate	https://www.religionenlibertad.com
+12	legitimate	https://www.socialpolicy.org
+13	legitimate	https://www.aoh61.com
+14	legitimate	https://www.bulgariaski.com
+15	legitimate	https://www.brightika.com
+16	legitimate	https://www.motley.ie

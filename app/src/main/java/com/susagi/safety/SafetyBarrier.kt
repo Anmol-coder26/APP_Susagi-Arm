@@ -52,7 +52,7 @@ object SafetyBarrier {
         "hdfc" to listOf("hdfcbank.com","hdfcbank.bank.in"), "icici" to listOf("icicibank.com","icici.bank.in"),
         "rbi" to listOf("rbi.org.in"), "pnb" to listOf("pnbindia.in"))
     private val links = Regex("""(?:[a-z][a-z0-9+.-]{0,31}://|(?:mailto|tel|javascript|data):|www\.)[^\s<>"\p{Cc}]*""", RegexOption.IGNORE_CASE)
-    private val authority = Regex("""\b(?:police|cbi|fir|warrant|arrest)\b|पुलिस|गिरफ्तार|वारंट""")
+    private val authority = Regex("""\b(?:police|cbi|fir|warrant|arrest|ed officer|enforcement directorate)\b|पुलिस|गिरफ्तार|वारंट|प्रवर्तन निदेशालय""")
     private val coercion = Regex("""\b(?:transfer|pay|skype)\b|video call|do not disconnect|stay on the line|पैसे भेज|पैसे ट्रांसफर""")
     private val credit = Regex("""refund|\breceive\b|cashback|paane|paisa lene|रिफंड|पाने|प्राप्त""")
     private val approve = Regex("""\b(?:enter|approve|accept|scan|daalo|dalo|karo)\b|दर्ज|डालें|स्कैन""")
@@ -64,6 +64,7 @@ object SafetyBarrier {
     private val splitClause = Regex("""[.!?;।\n]+""")
     private val arrestIsolation = Regex("""\b(?:custody|digital arrest|giraftar)\b|हिरासत|डिजिटल अरेस्ट""")
     private val secrecyDemand = Regex("""do not hang up|do not tell anyone|kisi ko mat batana|किसी को मत बताना""")
+    private val detentionClaim = Regex("""you (?:are|will be) (?:under (?:digital )?arrest|in custody|detained)|warrant (?:against you|for your arrest)|आपको गिरफ्तार|आप (?:हिरासत|डिजिटल अरेस्ट) में|aap (?:giraftar|digital arrest)""")
     private val paymentApproval = Regex("""approve (?:the |this )?(?:mandate|request)|mandate accept|कलेक्ट अनुरोध स्वीकार""")
     private val banking = Regex("""\b(?:kyc|pan card|bank account)\b|केवाईसी""")
     private val blocked = Regex("""block|suspend|deactivat|unfreeze|expire|बंद|ब्लॉक""")
@@ -74,10 +75,13 @@ object SafetyBarrier {
     private val government = Regex("""government notice|challan|चालान|सरकारी नोटिस""")
     private val fee = Regex("""\b(?:pay|deposit|bharo)\b|भुगतान|चुकाएं""")
 
-    suspend fun analyzeUrl(url: String): Assessment = withContext(Dispatchers.Default) { inspect(url.trim()) }
+    private fun inspectInput(url: String): Assessment =
+        if (url.length > MAX) assess(listOf(Evidence(Signal.LIMIT))) else inspect(url.trim())
+
+    suspend fun analyzeUrl(url: String): Assessment = withContext(Dispatchers.Default) { inspectInput(url) }
     suspend fun analyzeMessage(text: String): Assessment = analyze(null, text)
     suspend fun analyze(url: String?, text: String?): Assessment = withContext(Dispatchers.Default) {
-        val direct = url?.let { inspect(it.trim()) }
+        val direct = url?.let(::inspectInput)
         val evidence = direct?.evidence.orEmpty().toMutableList()
         val raw = text.orEmpty()
         if (raw.length > MAX) evidence.add(Evidence(Signal.LIMIT))
@@ -92,13 +96,24 @@ object SafetyBarrier {
         }.toList()
         val normalized = Normalizer.normalize(links.replace(bounded, " "), Normalizer.Form.NFKC).lowercase(Locale.ROOT)
             .replace('’', '\'').replace("\u200b","").replace("\ufeff","")
+            .replace("\u2060", "").replace("\u00ad", "")
         val request = negativeHindi.replace(warning.replace(normalized, ""), "")
         fun add(signal: Signal) { evidence.add(Evidence(signal)) }
-        splitClause.split(normalized).forEach { clause ->
+        val clauses = splitClause.split(normalized).filter { it.isNotBlank() }
+        clauses.forEach { clause ->
             ContextualScamRules.inspect(clause, destinations.isNotEmpty() || direct != null).forEach(::add)
         }
-        if ((authority.containsMatchIn(normalized) && coercion.containsMatchIn(request)) ||
-            (arrestIsolation.containsMatchIn(normalized) && secrecyDemand.containsMatchIn(normalized))) add(Signal.ARREST)
+        // A routine mention of police must not lend authority to an unrelated payment instruction.
+        val arrestDemand = clauses.withIndex().any { (index, clause) ->
+            val actionable = negativeHindi.replace(warning.replace(clause, ""), "")
+            val sameClause = authority.containsMatchIn(clause) && coercion.containsMatchIn(actionable) ||
+                arrestIsolation.containsMatchIn(clause) && secrecyDemand.containsMatchIn(clause)
+            val next = clauses.getOrNull(index + 1).orEmpty()
+            val nextActionable = negativeHindi.replace(warning.replace(next, ""), "")
+            sameClause || ((detentionClaim.containsMatchIn(clause) || arrestIsolation.containsMatchIn(clause)) &&
+                (coercion.containsMatchIn(nextActionable) || secrecyDemand.containsMatchIn(next)))
+        }
+        if (arrestDemand) add(Signal.ARREST)
         val requestsPaymentApproval = payment.containsMatchIn(normalized) && approve.containsMatchIn(request)
         val requestsUpiMandate = "upi" in normalized && paymentApproval.containsMatchIn(request)
         if (credit.containsMatchIn(normalized) && (requestsPaymentApproval || requestsUpiMandate)) add(Signal.UPI)
