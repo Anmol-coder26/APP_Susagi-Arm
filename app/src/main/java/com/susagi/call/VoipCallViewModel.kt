@@ -82,7 +82,7 @@ class VoipCallViewModel @JvmOverloads constructor(
 
     init {
         if (agoraAppId.isBlank()) {
-            _uiState.value = _uiState.value.copy(connectionBanner = "Development mode: Agora App ID unconfigured")
+            _uiState.value = _uiState.value.copy(connectionBanner = "CALLING NOT CONFIGURED: Agora App ID unconfigured")
         }
 
         manager.onTokenRenewalNeeded = {
@@ -120,7 +120,7 @@ class VoipCallViewModel @JvmOverloads constructor(
         manager.onErrorOccurred = { err ->
             val message = when (err) {
                 109, 110 -> "Agora token invalid/expired (Code $err)"
-                101 -> "Invalid Agora App ID (Code $err)"
+                101 -> "CALLING NOT CONFIGURED: Agora App ID unconfigured (Code $err)"
                 17 -> "Join channel rejected by server (Code $err)"
                 -999 -> "Audio/Agora initialization failure (Code $err)"
                 else -> "Call connection error (Code $err)"

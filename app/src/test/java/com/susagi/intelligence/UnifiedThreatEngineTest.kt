@@ -156,6 +156,47 @@ class UnifiedThreatEngineTest {
     }
 
     @Test
+    fun testSafetyBarrierToThreatEngine_highVerdictNeverShowsBenignAdvice() = runBlocking {
+        val dangerousScenarios = listOf(
+            "FIR registered against you by police. You are under digital arrest. Transfer funds now.",
+            "Dear SBI customer, your net banking account is blocked. Update your PAN card immediately on this link: https://fake-sbi-portal.top/kyc",
+            "To receive your cashback of INR 5000, scan this QR code and enter UPI PIN.",
+            "Our bank agent needs you to download TeamViewer for KYC support.",
+            "Mum this is my new number please send money right now to emergency account."
+        )
+
+        for (scenario in dangerousScenarios) {
+            val result = engine.analyzeMessage(scenario)
+            assertEquals("HIGH", result.severity)
+            assertTrue("High threat verdict must mark isDangerous=true", result.isDangerous)
+            assertFalse("High threat verdict must NEVER mark isClean=true", result.isClean)
+            assertFalse("High threat explanation must not claim no threats found",
+                result.explanation.contains("No known threat") || result.explanation.contains("safe to open"))
+            assertTrue("Must include actionable protective recommendations", result.recommendedActions.isNotEmpty())
+            assertFalse("Must never provide benign navigation advice on HIGH risk",
+                result.recommendedActions.any { it.contains("Safe to proceed", ignoreCase = true) || it.contains("No threat detected", ignoreCase = true) })
+        }
+    }
+
+    @Test
+    fun testSafetyBarrierToThreatEngine_lowVerdictNeverClaimsVerifiedSafe() = runBlocking {
+        val benignScenarios = listOf(
+            "Hi Mom, I will reach home by 7 PM today.",
+            "Please find the meeting notes attached for tomorrow's discussion.",
+            "Never share your OTP with anyone calling from the bank."
+        )
+
+        for (scenario in benignScenarios) {
+            val result = engine.analyzeMessage(scenario)
+            assertEquals("LOW", result.severity)
+            assertTrue("Clean verdict must mark isClean=true", result.isClean)
+            assertFalse("Clean verdict must not claim absolute verified safety",
+                result.explanation.contains("verified safe", ignoreCase = true) ||
+                result.recommendedActions.any { it.contains("verified safe", ignoreCase = true) })
+        }
+    }
+
+    @Test
     fun testDiagnostics_returnsExecuTorchHardwareMetadata() {
         val diag = engine.getDiagnostics()
         assertEquals("ExecuTorch-Llama-Arm", diag.engineName)

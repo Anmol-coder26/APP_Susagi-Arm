@@ -422,25 +422,30 @@ class LinkCheckActivity : ComponentActivity() {
             Uri.parse(url)
         }
 
+        val isWeb = uri.scheme?.lowercase(Locale.ROOT) in listOf("http", "https")
         val browserIntent = Intent(Intent.ACTION_VIEW, uri).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
+            if (isWeb) {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+            }
             putExtra(EXTRA_PROCESSED_BY_GUARDIAN, true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
-        val resolveInfos = packageManager.queryIntentActivities(browserIntent, PackageManager.MATCH_ALL)
-        val targetApp = resolveInfos.firstOrNull {
-            val pkg = it.activityInfo.packageName
-            pkg != packageName && !pkg.contains("guardian") && !pkg.contains("susagi")
-        }
+        if (isWeb) {
+            val resolveInfos = packageManager.queryIntentActivities(browserIntent, PackageManager.MATCH_ALL)
+            val targetApp = resolveInfos.firstOrNull {
+                val pkg = it.activityInfo.packageName
+                pkg != packageName && !pkg.contains("guardian") && !pkg.contains("susagi")
+            }
 
-        if (targetApp != null) {
-            browserIntent.setClassName(targetApp.activityInfo.packageName, targetApp.activityInfo.name)
-            try {
-                startActivity(browserIntent)
-                return
-            } catch (e: Exception) {
-                Log.e(TAG, "Cannot launch targeted browser: ${e.message}")
+            if (targetApp != null) {
+                browserIntent.setClassName(targetApp.activityInfo.packageName, targetApp.activityInfo.name)
+                try {
+                    startActivity(browserIntent)
+                    return
+                } catch (e: Exception) {
+                    Log.e(TAG, "Cannot launch targeted browser: ${e.message}")
+                }
             }
         }
 
@@ -1099,6 +1104,11 @@ class LinkCheckActivity : ComponentActivity() {
                                 lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
                                 (lower.contains("cbi") && lower.contains("arrest")) ||
                                 (lower.contains("सीबीआई") && lower.contains("नोटिस")) -> "DIGITAL ARREST EXTORTION"
+                        astra.evidence.any { it.id == Signal.ADVANCE_FEE } -> "ADVANCE FEE & JOB OFFER FRAUD"
+                        astra.evidence.any { it.id == Signal.GUARANTEED_RETURN } -> "GUARANTEED INVESTMENT SCAM"
+                        astra.evidence.any { it.id == Signal.REMOTE_ACCESS } -> "REMOTE ACCESS SCREEN SHARING FRAUD"
+                        astra.evidence.any { it.id == Signal.FAMILY_PAYMENT } -> "FAMILY IMPERSONATION EMERGENCY SCAM"
+                        astra.evidence.any { it.id == Signal.FASTAG } -> "FASTAG EXPIRATION / SUSPENSION FRAUD"
                         astra.evidence.any { it.id == Signal.UTILITY } ||
                                 lower.contains("electricity") || lower.contains("power cut") || lower.contains("bijli") ||
                                 lower.contains("बिजली") -> "UTILITY / ELECTRICITY BILL SCAM"
@@ -1120,6 +1130,16 @@ class LinkCheckActivity : ComponentActivity() {
                     val explanationEn = when {
                         category.contains("DIGITAL ARREST") ->
                             "Law enforcement agencies (CBI, Police, ED) NEVER conduct arrests, trials, or interrogations via phone or video calls. This is a criminal extortion attempt."
+                        category.contains("ADVANCE FEE") ->
+                            "Legitimate recruiters and government programs never demand registration, processing, or security deposits before employment or releasing payouts."
+                        category.contains("INVESTMENT") ->
+                            "Guaranteed high daily or monthly trading profits are hallmark indicators of fraudulent schemes. Authorized institutions never promise guaranteed returns."
+                        category.contains("REMOTE ACCESS") ->
+                            "Fraudulent callers instruct victims to install remote screen-sharing tools (AnyDesk, TeamViewer) to access banking apps and steal funds."
+                        category.contains("FAMILY IMPERSONATION") ->
+                            "Attackers pose as family members using an unknown number claiming an urgent emergency. Always verify by calling their known saved number directly."
+                        category.contains("FASTAG") ->
+                            "Phishers threaten immediate FASTag deactivation with a fraudulent link to capture banking credentials. Check your tag balance only via your official banking app."
                         category.contains("ELECTRICITY") ->
                             "Power companies never disconnect electricity via urgent WhatsApp/SMS demands with third-party payment links. Contact your electricity board directly."
                         category.contains("KYC") ->
@@ -1139,6 +1159,16 @@ class LinkCheckActivity : ComponentActivity() {
                     val explanationHi = when {
                         category.contains("DIGITAL ARREST") ->
                             "कानून प्रवर्तन एजेंसियां (CBI, पुलिस) कभी भी फोन या व्हाट्सएप पर डिजिटल अरेस्ट या पूछताछ नहीं करती हैं। यह जबरन वसूली का प्रयास है।"
+                        category.contains("ADVANCE FEE") ->
+                            "कोई भी वैध कंपनी या सरकारी योजना नौकरी या भुगतान जारी करने से पहले पंजीकरण शुल्क या सुरक्षा जमा की मांग नहीं करती है।"
+                        category.contains("INVESTMENT") ->
+                            "गारंटीड दैनिक या मासिक मुनाफे के वादे धोखाधड़ी की पहचान हैं। कोई भी अधिकृत संस्था निश्चित रिटर्न की गारंटी नहीं देती।"
+                        category.contains("REMOTE ACCESS") ->
+                            "धोखेबाज बैंक खातों को नियंत्रित करने के लिए एनीडेस्क या टीमव्यूअर जैसे रिमोट एक्सेस ऐप डाउनलोड करने के लिए कहते हैं।"
+                        category.contains("FAMILY IMPERSONATION") ->
+                            "धोखेबाज नए नंबर से रिश्तेदार बनकर तत्काल पैसे ट्रांसफर करने की मांग करते हैं। हमेशा उनके पुराने नंबर पर बात करके पुष्टि करें।"
+                        category.contains("FASTAG") ->
+                            "फास्टैग बंद होने की धमकी देकर फर्जी लिंक से बैंक विवरण चुराने की कोशिश की जा रही है। केवल आधिकारिक ऐप से जांचें।"
                         category.contains("ELECTRICITY") ->
                             "बिजली वितरण कंपनियां व्हाट्सएप पर तत्काल बिजली काटने की धमकी नहीं देती हैं। किसी भी निजी लिंक पर भुगतान न करें।"
                         category.contains("KYC") ->
@@ -1628,7 +1658,7 @@ fun UnifiedSecurityDialog(
                                         when (urlVerdict.detectorRisk) {
                                             Risk.HIGH -> "HIGH"
                                             Risk.REVIEW -> "REVIEW"
-                                            Risk.LOW -> "SAFE"
+                                            Risk.LOW -> "LOW RISK"
                                             Risk.UNKNOWN -> "UNKNOWN"
                                         },
                                         fontSize = 9.sp,
@@ -1680,7 +1710,7 @@ fun UnifiedSecurityDialog(
                         .height(44.dp)
                 ) {
                     Text(
-                        if (assessment.status == RiskStatus.Low) "CLOSE OVERLAY (SAFE)" else "CLOSE & DISMISS",
+                        if (assessment.status == RiskStatus.Low) "CLOSE OVERLAY" else "CLOSE & DISMISS",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp

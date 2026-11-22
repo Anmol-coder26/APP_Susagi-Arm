@@ -101,13 +101,18 @@ class WhisperAudioProcessor(
 
     /**
      * Writes raw 16kHz 16-bit mono PCM bytes into a 44-byte RIFF WAV file.
+     * Enforces positive sample rate and channels to prevent arithmetic divide-by-zero or header corruption.
      */
     fun writeWavFile(pcmBytes: ByteArray, sampleRate: Int = 16000, channels: Int = 1): File {
         fileCounter++
+        val safeSampleRate = if (sampleRate > 0) sampleRate else 16000
+        val safeChannels = if (channels > 0) channels else 1
         val wavFile = File(tempDir, "whisper_${System.currentTimeMillis()}_${fileCounter}.wav")
-        val totalAudioLen = pcmBytes.size.toLong()
+        // Truncate odd trailing byte to ensure 16-bit alignment
+        val alignedLength = (pcmBytes.size / 2) * 2
+        val totalAudioLen = alignedLength.toLong()
         val totalDataLen = totalAudioLen + 36
-        val byteRate = (sampleRate * channels * 2).toLong()
+        val byteRate = (safeSampleRate * safeChannels * 2).toLong()
 
         FileOutputStream(wavFile).use { out ->
             val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
@@ -121,10 +126,10 @@ class WhisperAudioProcessor(
             header.put("fmt ".toByteArray())
             header.putInt(16) // Subchunk1Size for PCM
             header.putShort(1.toShort()) // AudioFormat 1 = PCM
-            header.putShort(channels.toShort()) // NumChannels
-            header.putInt(sampleRate) // SampleRate
+            header.putShort(safeChannels.toShort()) // NumChannels
+            header.putInt(safeSampleRate) // SampleRate
             header.putInt(byteRate.toInt()) // ByteRate
-            header.putShort((channels * 2).toShort()) // BlockAlign
+            header.putShort((safeChannels * 2).toShort()) // BlockAlign
             header.putShort(16.toShort()) // BitsPerSample
 
             // "data" sub-chunk
@@ -132,7 +137,7 @@ class WhisperAudioProcessor(
             header.putInt(totalAudioLen.toInt())
 
             out.write(header.array())
-            out.write(pcmBytes)
+            out.write(pcmBytes, 0, alignedLength)
             out.flush()
         }
 
@@ -141,12 +146,15 @@ class WhisperAudioProcessor(
 
     /**
      * Calculates Root Mean Square (RMS) energy for 16-bit PCM bytes.
+     * Guards against odd byte counts to prevent BufferUnderflowException.
      */
     fun calculateRms(pcmBytes: ByteArray): Double {
         if (pcmBytes.isEmpty()) return 0.0
+        val alignedBytes = (pcmBytes.size / 2) * 2
+        if (alignedBytes < 2) return 0.0
         var sumSquares = 0.0
-        val sampleCount = pcmBytes.size / 2
-        val bb = ByteBuffer.wrap(pcmBytes).order(ByteOrder.LITTLE_ENDIAN)
+        val sampleCount = alignedBytes / 2
+        val bb = ByteBuffer.wrap(pcmBytes, 0, alignedBytes).order(ByteOrder.LITTLE_ENDIAN)
         for (i in 0 until sampleCount) {
             val sample = bb.short.toDouble()
             sumSquares += sample * sample
