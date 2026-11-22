@@ -1459,6 +1459,9 @@ fun IncidentsScreen(
     onAddIncident: (GuardianIncident) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val store = remember { com.susagi.history.IncidentHistoryStore.getInstance(context) }
+    var storedRecords by remember { mutableStateOf(store.getAllRecords()) }
 
     LazyColumn(
         modifier = Modifier
@@ -1474,17 +1477,46 @@ fun IncidentsScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("Threat Log", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = GxTextHi)
-                    Text("Flagged scams, extortions, and blocked callers.", color = GxTextMid, fontSize = 13.sp)
+                    Text("Persistent cross-channel scam detection logs.", color = GxTextMid, fontSize = 13.sp)
                 }
-                GxButton.Primary(
-                    text = "Report",
-                    onClick = { showAddDialog = true },
-                    height = 38.dp
-                )
+                if (storedRecords.isNotEmpty()) {
+                    OutlinedButton(
+                        onClick = {
+                            val report = store.exportSanitizedReport()
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "SuSagi Cybercrime Threat Report (1930)")
+                                putExtra(Intent.EXTRA_TEXT, report)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Export Report (1930 / cybercrime.gov.in)"))
+                        },
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxBorder),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("Export", fontSize = 12.sp, color = GxPrimary)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            store.clearAll()
+                            storedRecords = emptyList()
+                        },
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.5f))
+                    ) {
+                        Text("Clear", fontSize = 12.sp, color = GxDanger)
+                    }
+                } else {
+                    GxButton.Primary(
+                        text = "Report",
+                        onClick = { showAddDialog = true },
+                        height = 38.dp
+                    )
+                }
             }
         }
 
-        if (incidents.isEmpty()) {
+        if (storedRecords.isEmpty() && incidents.isEmpty()) {
             item {
                 GxCard(
                     backgroundColor = GxSurface,
@@ -1502,6 +1534,118 @@ fun IncidentsScreen(
                 }
             }
         } else {
+            // 1. Persistent Records from IncidentHistoryStore
+            items(storedRecords) { record ->
+                val (cardBg, accentCol) = when (record.severity) {
+                    "HIGH" -> Pair(GxDangerSoft, GxDanger)
+                    "REVIEW" -> Pair(GxWarningSoft, GxWarning)
+                    else -> Pair(GxSurface, GxSafe)
+                }
+                GxCard(
+                    backgroundColor = cardBg,
+                    borderColor = accentCol.copy(alpha = 0.4f),
+                    contentPadding = 14.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Surface(
+                                    color = accentCol.copy(alpha = 0.15f),
+                                    shape = GxShapeSm,
+                                    border = BorderStroke(0.5.dp, accentCol.copy(alpha = 0.3f))
+                                ) {
+                                    Text(
+                                        record.channel,
+                                        color = accentCol,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    record.title,
+                                    color = GxTextHi,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            GxChip(
+                                text = record.severity,
+                                variant = if (record.severity == "HIGH") GxChipVariant.Danger else GxChipVariant.Neutral,
+                                height = 22.dp
+                            )
+                        }
+
+                        if (record.sanitizedSnippet.isNotBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                record.sanitizedSnippet,
+                                color = GxTextMid,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp
+                            )
+                        }
+
+                        if (record.explanation.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                record.explanation,
+                                color = GxTextLo,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                record.formattedDate(),
+                                color = GxTextLo,
+                                fontSize = 10.sp
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    "Share 1930",
+                                    color = GxPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable {
+                                        val singleReport = store.exportSanitizedReport(record.id)
+                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_SUBJECT, "SuSagi Incident Report: ${record.title}")
+                                            putExtra(Intent.EXTRA_TEXT, singleReport)
+                                        }
+                                        context.startActivity(Intent.createChooser(shareIntent, "Share Cybercrime Report"))
+                                    }
+                                )
+                                Text(
+                                    "Delete",
+                                    color = GxDanger,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable {
+                                        store.deleteRecord(record.id)
+                                        storedRecords = store.getAllRecords()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. State-level incidents (if any)
             items(incidents) { incident ->
                 GxCard(
                     backgroundColor = GxDangerSoft,

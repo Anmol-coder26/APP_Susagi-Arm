@@ -58,6 +58,15 @@ class NotificationScannerService : NotificationListenerService() {
             val isReview = assessment.risk == Risk.REVIEW
 
             if (isHighRisk || isReview) {
+                try {
+                    com.susagi.history.IncidentHistoryStore.getInstance(applicationContext).recordAssessment(
+                        channel = "NOTIFICATION",
+                        title = title.ifBlank { "Suspicious Alert" },
+                        assessment = assessment,
+                        rawSnippet = fullContent
+                    )
+                } catch (_: Exception) {}
+
                 val originalPendingIntent: PendingIntent? = sbn.notification.contentIntent
 
                 // IMPORTANT (Directive 12): Stop default silent cancellation of user notifications.

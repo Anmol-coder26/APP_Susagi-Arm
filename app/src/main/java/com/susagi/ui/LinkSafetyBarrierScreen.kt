@@ -98,8 +98,25 @@ fun LinkSafetyBarrierScreen(
         if (urlToAssess.isBlank()) return
         isAssessing = true
         scope.launch {
-            decision = AstraSecurityBridge.assessUrl(urlToAssess)
+            val res = AstraSecurityBridge.assessUrl(urlToAssess)
+            decision = res
             isAssessing = false
+            try {
+                com.susagi.history.IncidentHistoryStore.getInstance(context).recordIncident(
+                    channel = if (urlToAssess.startsWith("upi://", ignoreCase = true)) "UPI_QR" else "LINK",
+                    title = res.title,
+                    severity = when (res.status) {
+                        com.guardian.app.RiskStatus.High -> "HIGH"
+                        com.guardian.app.RiskStatus.Suspicious -> "REVIEW"
+                        else -> "LOW"
+                    },
+                    riskScore = res.riskScore,
+                    category = if (urlToAssess.startsWith("upi://", ignoreCase = true)) "UPI Target" else "Web Link",
+                    explanation = res.detail,
+                    rawSnippet = urlToAssess,
+                    detectedSignals = res.reasons
+                )
+            } catch (_: Exception) {}
         }
     }
 

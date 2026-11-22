@@ -121,13 +121,41 @@ class QrScannerActivity : ComponentActivity() {
                     onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
                     onBarcodeDetected = { raw ->
                         if (scanVerdict == null) {
-                            scanVerdict = evaluateQrContent(raw)
+                            val v = evaluateQrContent(raw)
+                            scanVerdict = v
+                            if (v.status != RiskStatus.Low) {
+                                try {
+                                    com.susagi.history.IncidentHistoryStore.getInstance(applicationContext).recordIncident(
+                                        channel = if (v.isUpi) "UPI_QR" else "LINK",
+                                        title = v.title,
+                                        severity = if (v.status == RiskStatus.High) "HIGH" else "REVIEW",
+                                        riskScore = if (v.status == RiskStatus.High) 85 else 50,
+                                        category = if (v.isUpi) "UPI Fraud" else "Phishing QR",
+                                        explanation = v.reason,
+                                        rawSnippet = raw
+                                    )
+                                } catch (_: Exception) {}
+                            }
                         }
                     },
                     onResetScan = { scanVerdict = null },
                     onClose = { finish() },
                     onSimulate = { raw ->
-                        scanVerdict = evaluateQrContent(raw)
+                        val v = evaluateQrContent(raw)
+                        scanVerdict = v
+                        if (v.status != RiskStatus.Low) {
+                            try {
+                                com.susagi.history.IncidentHistoryStore.getInstance(applicationContext).recordIncident(
+                                    channel = if (v.isUpi) "UPI_QR" else "LINK",
+                                    title = v.title,
+                                    severity = if (v.status == RiskStatus.High) "HIGH" else "REVIEW",
+                                    riskScore = if (v.status == RiskStatus.High) 85 else 50,
+                                    category = if (v.isUpi) "UPI Fraud" else "Phishing QR",
+                                    explanation = v.reason,
+                                    rawSnippet = raw
+                                )
+                            } catch (_: Exception) {}
+                        }
                     }
                 )
             }

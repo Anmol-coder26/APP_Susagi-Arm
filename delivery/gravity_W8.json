@@ -10,8 +10,8 @@
   "buildOutputs": {
     "appDebugApk": {
       "path": "app/build/outputs/apk/debug/app-debug.apk",
-      "sizeBytes": 137331929,
-      "sha256": "66A4AB6F012387B0719AA90482D01ACE2FEABCE82815BD875580F986E49B3F1C"
+      "sizeBytes": 137342799,
+      "sha256": "100BC1B85AC9810D5F338EFE62E06704E0F00C8145D0EFEF684A44AACC2DF378"
     },
     "appAndroidTestApk": {
       "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",

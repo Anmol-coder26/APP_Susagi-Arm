@@ -144,6 +144,39 @@ class IncidentHistoryStore(private val context: Context? = null) {
     }
 
     @Synchronized
+    fun recordIncident(
+        channel: String,
+        title: String,
+        severity: String,
+        riskScore: Int,
+        category: String,
+        explanation: String,
+        rawSnippet: String = "",
+        detectedSignals: List<String> = emptyList(),
+        recommendations: List<String> = emptyList(),
+        omitRawContent: Boolean = false
+    ): IncidentRecord {
+        val sanitized = if (omitRawContent) "[Content omitted by user privacy setting]"
+        else rawSnippet.take(160).replace(Regex("""\b\d{4,8}\b"""), "******")
+
+        val record = IncidentRecord(
+            channel = channel,
+            severity = severity,
+            riskScore = riskScore,
+            category = category,
+            title = title,
+            explanation = explanation,
+            detectedSignals = detectedSignals,
+            recommendations = recommendations,
+            sanitizedSnippet = sanitized,
+            rawContentOmitted = omitRawContent
+        )
+
+        addRecord(record)
+        return record
+    }
+
+    @Synchronized
     fun addRecord(record: IncidentRecord) {
         val current = getAllRecords().toMutableList()
         current.add(0, record) // Most recent first

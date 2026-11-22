@@ -92,8 +92,25 @@ fun MessageScanScreen(
         if (text.isBlank()) return
         isAnalyzing = true
         scope.launch {
-            decision = AstraSecurityBridge.assessMessage(text)
+            val res = AstraSecurityBridge.assessMessage(text)
+            decision = res
             isAnalyzing = false
+            try {
+                com.susagi.history.IncidentHistoryStore.getInstance(context).recordIncident(
+                    channel = "MESSAGE",
+                    title = res.threatCategory,
+                    severity = when (res.status) {
+                        com.guardian.app.RiskStatus.High -> "HIGH"
+                        com.guardian.app.RiskStatus.Suspicious -> "REVIEW"
+                        else -> "LOW"
+                    },
+                    riskScore = res.riskScore,
+                    category = res.threatCategory,
+                    explanation = res.guidance,
+                    rawSnippet = text,
+                    detectedSignals = res.matchedKeywords + res.detectedTactics
+                )
+            } catch (_: Exception) {}
         }
     }
 

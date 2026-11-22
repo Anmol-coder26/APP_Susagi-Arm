@@ -299,6 +299,27 @@ class LinkCheckActivity : ComponentActivity() {
                     isAnalyzing.value = false
                     updateInitialLlamaState()
                 }
+                try {
+                    val raw = assessment.rawAssessment
+                    if (raw != null) {
+                        val channel = when (payload) {
+                            is SharedPayload.ViewUrl -> if (payload.url.startsWith("upi://", ignoreCase = true)) "UPI_QR" else "LINK"
+                            is SharedPayload.SharedContent -> if (payload.urls.isNotEmpty()) "LINK" else "MESSAGE"
+                            else -> "MESSAGE"
+                        }
+                        val rawText = when (payload) {
+                            is SharedPayload.ViewUrl -> payload.url
+                            is SharedPayload.SharedContent -> payload.rawText
+                            else -> ""
+                        }
+                        com.susagi.history.IncidentHistoryStore.getInstance(applicationContext).recordAssessment(
+                            channel = channel,
+                            title = assessment.categoryTitle,
+                            assessment = raw,
+                            rawSnippet = rawText
+                        )
+                    }
+                } catch (_: Exception) {}
             }
         }
 
