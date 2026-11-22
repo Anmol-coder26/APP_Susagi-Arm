@@ -20,28 +20,22 @@ data class UpiInspection(
 object PaymentFields {
     private val payee = Regex("""[A-Za-z0-9][A-Za-z0-9._-]*@[A-Za-z0-9][A-Za-z0-9.-]*""")
     private val amount = Regex("""[0-9]{1,12}(?:\.[0-9]{1,2})?""")
-    private val known = setOf("pa", "am", "pn", "cu", "tn")
-    private val advanceRiskKeywords = Regex("""\b(?:refund|cashback|lottery|reward|kyc|fee|tax|unblock|release|bonus|prize)\b|रिफंड|कैशबैक|इनाम""", RegexOption.IGNORE_CASE)
+    private const val MAX_URI = 8192
+    private val creditInstruction = Regex(
+        """\b(?:claim|collect|receive|activate)\s+(?:(?:your|the|a)\s+)?(?:cashback|refund|reward|prize)\b|(?:refund|cashback)\s+(?:paane|lene) ke liye""",
+        RegexOption.IGNORE_CASE
+    )
+    private val informational = Regex("""\b(?:never|do not|already credited|scam example|scammer asked)\b""", RegexOption.IGNORE_CASE)
+    private val clauseBoundary = Regex("""[.;!?।\n]+|\b(?:instead|however|but|lekin)\b""", RegexOption.IGNORE_CASE)
 
-    // The caller has already validated percent escapes with java.net.URI.
-    fun supported(query: String): Boolean {
-        val seen = mutableSetOf<String>()
-        for (entry in query.splitToSequence('&')) {
-            val name = URLDecoder.decode(entry.substringBefore('='), "UTF-8").lowercase(Locale.ROOT)
-            if (name !in known) continue
-            if (!seen.add(name)) return false
-            val value = URLDecoder.decode(entry.substringAfter('=', ""), "UTF-8")
-            if (value.isBlank() || value.any { it.isISOControl() }) return false
-            when (name) {
-                "pa" -> if (!payee.matches(value)) return false
-                "am" -> if (!amount.matches(value)) return false
-                "cu" -> if (value != "INR") return false
-            }
-        }
-        return "pa" in seen
-    }
+    fun supported(query: String): Boolean =
+        query.length <= MAX_URI && inspectUri("upi://pay?" + query).isValid
 
-    fun inspectUri(rawUri: String): UpiInspection {
+    fun inspectUri(rawUri: String): UpiInspection = inspectUri(rawUri, "")
+
+    fun inspectUri(rawUri: String, accompanyingText: String): UpiInspection {
+        if (rawUri.length > MAX_URI || accompanyingText.length > 32768)
+            return UpiInspection(false, riskReason = "Payment input exceeds the offline inspection limit.")
         val trimmed = rawUri.trim()
         val uri = try { URI(trimmed) } catch (_: Exception) {
             return UpiInspection(isValid = false, riskReason = "Invalid URI syntax")
@@ -50,14 +44,19 @@ object PaymentFields {
             return UpiInspection(isValid = false, riskReason = "Not a standard upi://pay URI")
         }
 
+        if (!uri.rawPath.isNullOrEmpty() || uri.rawFragment != null)
+            return UpiInspection(false, riskReason = "Unexpected payment path or fragment.")
         val query = uri.rawQuery.orEmpty()
         val paramMap = mutableMapOf<String, MutableList<String>>()
         for (entry in query.splitToSequence('&')) {
             if (entry.isBlank()) continue
             val rawName = entry.substringBefore('=')
             val rawVal = entry.substringAfter('=', "")
-            val name = try { URLDecoder.decode(rawName, "UTF-8").lowercase(Locale.ROOT) } catch (_: Exception) { rawName.lowercase(Locale.ROOT) }
-            val value = try { URLDecoder.decode(rawVal, "UTF-8") } catch (_: Exception) { rawVal }
+            val name = URLDecoder.decode(rawName, "UTF-8").lowercase(Locale.ROOT)
+            val value = URLDecoder.decode(rawVal, "UTF-8")
+            if (name.isBlank() || (name in setOf("pa", "am", "pn", "cu", "tn") && value.isBlank()) ||
+                value.any { it.isISOControl() || Character.getType(it) == Character.FORMAT.toInt() || it == '\uFFFD' })
+                return UpiInspection(false, riskReason = "Invalid or hidden payment field.")
             paramMap.getOrPut(name) { mutableListOf() }.add(value)
         }
 
@@ -94,10 +93,13 @@ object PaymentFields {
         val pn = pnList.firstOrNull()
         val tn = tnList.firstOrNull()
 
-        val textToCheck = "${pa.orEmpty()} ${pn.orEmpty()} ${tn.orEmpty()}"
-        val isAdvanceRisk = advanceRiskKeywords.containsMatchIn(textToCheck)
+        val isAdvanceRisk = sequenceOf(tn.orEmpty(), accompanyingText).any { source ->
+            clauseBoundary.split(source).any { clause ->
+                creditInstruction.containsMatchIn(clause) && !informational.containsMatchIn(clause)
+            }
+        }
         val riskReason = if (isAdvanceRisk) {
-            "Reverse UPI debit trap detected. The request claims to be for a refund/cashback/reward, but in UPI you only SEND money to this payee. Entering your PIN will DEDUCT funds."
+            "Reverse UPI debit trap indicator: the wording invites you to claim a credit, while this URI initiates a payment. Verify the transaction direction before approval."
         } else null
 
         val unverifiedName = pn?.let { "Unverified Payee: $it ($pa)" } ?: "Unverified Payee: $pa"

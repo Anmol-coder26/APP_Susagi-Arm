@@ -26,9 +26,11 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -415,24 +417,49 @@ private fun CallDetailModal(
                 }
 
                 item {
-                    Row(
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        GxButton.Danger(
-                            text = "Report 1930",
-                            onClick = onReport,
-                            icon = Icons.AutoMirrored.Filled.OpenInNew,
-                            modifier = Modifier.weight(1f),
-                            height = 42.dp
-                        )
-                        GxButton.Ghost(
-                            text = "Block",
-                            onClick = onBlock,
-                            icon = Icons.Default.Block,
-                            modifier = Modifier.weight(1f),
-                            height = 42.dp
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            GxButton.Danger(
+                                text = "Call 1930",
+                                onClick = { ReportToCybercrime.dialHelpline(context) },
+                                icon = Icons.Default.Phone,
+                                modifier = Modifier.weight(1f),
+                                height = 40.dp
+                            )
+                            GxButton.Ghost(
+                                text = "cybercrime.gov.in",
+                                onClick = { ReportToCybercrime.openPortal(context, entry) },
+                                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                                modifier = Modifier.weight(1f),
+                                height = 40.dp
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            GxButton.Ghost(
+                                text = "Share Summary",
+                                onClick = { ReportToCybercrime.shareSummary(context, entry) },
+                                icon = Icons.Default.Share,
+                                modifier = Modifier.weight(1f),
+                                height = 40.dp
+                            )
+                            GxButton.Ghost(
+                                text = "Block Number",
+                                onClick = onBlock,
+                                icon = Icons.Default.Block,
+                                modifier = Modifier.weight(1f),
+                                height = 40.dp
+                            )
+                        }
                     }
                 }
 

@@ -32,7 +32,36 @@ object EvidenceSharer {
         val intent = Intent(
             Intent.ACTION_VIEW,
             android.net.Uri.parse("https://cybercrime.gov.in")
-        )
-        context.startActivity(intent)
+        ).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun dialCybercrimeHelpline(context: Context) {
+        val intent = Intent(
+            Intent.ACTION_DIAL,
+            android.net.Uri.parse("tel:1930")
+        ).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    fun shareSafetySummary(context: Context, subject: String, text: String) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        val chooser = Intent.createChooser(shareIntent, "Share Safety Summary")
+        chooser.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        try {
+            context.startActivity(chooser)
+        } catch (_: Exception) {}
     }
 }

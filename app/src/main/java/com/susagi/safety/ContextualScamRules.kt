@@ -40,11 +40,11 @@ internal object ContextualScamRules {
                 if (offer.containsMatchIn(part) && advance.containsMatchIn(part)) add(Signal.ADVANCE_FEE)
                 if ((investment.containsMatchIn(part) || guarantee.containsMatchIn(part)) && guarantee.containsMatchIn(part)) add(Signal.GUARANTEED_RETURN)
             } else if (nextClause != null) {
-                val nextActionable = warning.replace(nextClause, "")
+                val nextActionable = contrast.split(nextClause).filterNot(warning::containsMatchIn).joinToString(" ; ")
                 if (guarantee.containsMatchIn(part) && demand.containsMatchIn(nextActionable)) add(Signal.GUARANTEED_RETURN)
                 if ((unlock.containsMatchIn(part) || frozenBalance.containsMatchIn(part)) && (payFee.containsMatchIn(nextActionable) || demand.containsMatchIn(nextActionable))) add(Signal.ADVANCE_FEE)
             }
-            if (family.containsMatchIn(part) && number.containsMatchIn(part) && (urgent.containsMatchIn(part) || avoidsCall.containsMatchIn(part)))
+            if (family.containsMatchIn(part) && number.containsMatchIn(part) && demand.containsMatchIn(part) && (urgent.containsMatchIn(part) || avoidsCall.containsMatchIn(part)))
                 add(Signal.FAMILY_PAYMENT)
             if (hasLink && ("fastag" in part || "फास्टैग" in part) && restriction.containsMatchIn(part))
                 add(Signal.FASTAG)

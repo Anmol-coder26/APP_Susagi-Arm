@@ -7,3 +7,4 @@ round1-message	354b57e	MERGED_SHADOW_ONLY	2026-11-22	Astra Bernoulli NB message-
 directive21-batch1-6	gravity	MERGED_VERIFIED	2026-11-22	Close scam gaps: authority parcel/investigation, investment double/withdrawal fees, UPI inspection, QR shield, 207 tests passed (100% recall on harmful split, 0 FP)
 directive22	aa6a050	MERGED_SHADOW_ONLY	2026-11-22	Astra lexical-v2 logistic regression (message-v2.tsv + intent-v2.tsv) + LexicalMessageModel.kt + LexicalParityTest (0 error margin; 0% test FPR, shadow-isolated)
 directive26	gravity	MERGED_VERIFIED	2026-11-23	Unified inspectGenericInput pipeline, QR routing + tests (9 cases), Notification companion alert + deduplication (4 tests), 225 total JVM tests passing
+directive25	653260a	MERGED_VERIFIED	2026-11-23	Astra Directive 25: CredentialIntent (disclose/advice/attribution), PaymentFields bounded URI & creditInstruction, family payment demand requirement, Intelligence25Test + 108-case paired harness, 230 JVM tests passing

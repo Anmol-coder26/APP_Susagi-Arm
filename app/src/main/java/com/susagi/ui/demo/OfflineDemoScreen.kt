@@ -127,8 +127,8 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_e_qr_code",
-            title = "Demo E: QR Code Advance Fee Extortion",
-            description = "Simulates scanned QR containing an advance fee release trap for frozen portfolio withdrawals.",
+            title = "Demo E: QR Payload Advance Fee Extortion",
+            description = "Offline payload demonstration of QR content routing and scam analysis. (Live CameraX scanner is independently reachable in the QR tab).",
             inputSnippet = "Withdrawals are frozen until you pay our release fee of INR 1500",
             channel = "MESSAGE",
             expectedOutcome = "HIGH (Advance fee, Frozen withdrawal extortion)"
@@ -151,8 +151,8 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_h_network_c2",
-            title = "Demo H: Network Anomaly & C2 Beaconing",
-            description = "Evaluates imported NetFlow telemetry exhibiting periodic heartbeats to a remote C2 server.",
+            title = "Demo H: Offline NetFlow / C2 Beaconing Flow Analysis",
+            description = "Evaluates imported NetFlow telemetry exhibiting periodic heartbeats to a remote C2 server offline without synthetic live packet capture.",
             inputSnippet = "c2_beaconing_telemetry.csv (Periodic 10s SYN;ACK heartbeats with minimal jitter)",
             channel = "NETWORK",
             expectedOutcome = "HIGH (C2 Beaconing Anomaly)"

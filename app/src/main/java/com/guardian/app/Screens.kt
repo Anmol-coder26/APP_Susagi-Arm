@@ -1615,23 +1615,40 @@ fun IncidentsScreen(
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    "Share 1930",
+                                    "Call 1930",
+                                    color = GxDanger,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable {
+                                        com.guardian.app.evidence.EvidenceSharer.dialCybercrimeHelpline(context)
+                                    }
+                                )
+                                Text(
+                                    "cybercrime.gov.in",
+                                    color = GxPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable {
+                                        com.guardian.app.evidence.EvidenceSharer.openCybercrimePortal(context)
+                                    }
+                                )
+                                Text(
+                                    "Share Summary",
                                     color = GxPrimary,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.clickable {
                                         val singleReport = store.exportSanitizedReport(record.id)
-                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_SUBJECT, "SuSagi Incident Report: ${record.title}")
-                                            putExtra(Intent.EXTRA_TEXT, singleReport)
-                                        }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share Cybercrime Report"))
+                                        com.guardian.app.evidence.EvidenceSharer.shareSafetySummary(
+                                            context,
+                                            "SuSagi Incident Report: ${record.title}",
+                                            singleReport
+                                        )
                                     }
                                 )
                                 Text(
                                     "Delete",
-                                    color = GxDanger,
+                                    color = GxTextLo,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.clickable {

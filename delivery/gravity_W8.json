@@ -3,15 +3,15 @@
   "name": "Arm AI-SoC Bharat Challenge PS3 Submission Release Manifest",
   "status": "COMPLETED",
   "priority": "P0",
-  "timestamp": "2026-11-23T00:59:00+05:30",
+  "timestamp": "2026-11-23T01:26:00+05:30",
   "targetSubmissionDeadline": "2026-11-25T23:59:59+05:30",
   "applicationId": "com.susagi.guardian2",
   "gitBranch": "feature/gravity-product-calling",
   "buildOutputs": {
     "appDebugApk": {
       "path": "app/build/outputs/apk/debug/app-debug.apk",
-      "sizeBytes": 137347747,
-      "sha256": "221F9C6E74E79BAF4F151B905C1921C30AC6BD74135162864BB3C4BBD75353AE"
+      "sizeBytes": 137348270,
+      "sha256": "DEE5245FE9EB868C69C23DCC4940027D5C09663E29930B73FEA0E8A100A9BCA0"
     },
     "appAndroidTestApk": {
       "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
@@ -20,27 +20,44 @@
     }
   },
   "unitTestVerification": {
-    "totalTests": 225,
-    "passed": 225,
+    "totalTests": 230,
+    "passed": 230,
     "failed": 0,
     "ignored": 0,
-    "durationSeconds": 11.37,
-    "safetyBarrierLockedSplit": {
-      "truePositives": 12,
-      "falsePositives": 0,
-      "trueNegatives": 12,
-      "falseNegatives": 0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "falsePositiveRate": 0.0
+    "durationSeconds": 12.46,
+    "pairedDetectors108Harness": {
+      "totalCases": 108,
+      "ruleStats": {
+        "truePositives": 40,
+        "falsePositives": 0,
+        "trueNegatives": 54,
+        "falseNegatives": 14,
+        "precision": 1.0,
+        "recall": 0.7407,
+        "f1": 0.8511,
+        "falsePositiveRate": 0.0
+      },
+      "mlStats": {
+        "truePositives": 45,
+        "falsePositives": 1,
+        "trueNegatives": 53,
+        "falseNegatives": 9,
+        "precision": 0.9783,
+        "recall": 0.8333,
+        "f1": 0.9,
+        "falsePositiveRate": 0.0185
+      },
+      "agreements": {
+        "both": 33,
+        "neither": 55,
+        "ruleOnly": 7,
+        "modelOnly": 13
+      }
     },
     "astraV2LexicalModelShadow": {
       "status": "INTEGRATED_SHADOW_MODE",
       "parityTest": "PASSED (0 error tolerance)",
-      "testPrecision": 1.0,
-      "testFpr": 0.0,
-      "testRecall": 0.583
+      "pythonReleaseTests": "3/3 PASSED (test_round22_release.py)"
     }
   },
   "storageCompliance": {

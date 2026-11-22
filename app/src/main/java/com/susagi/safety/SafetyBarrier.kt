@@ -124,7 +124,8 @@ object SafetyBarrier {
         if (credit.containsMatchIn(normalized) && (requestsPaymentApproval || requestsUpiMandate)) add(Signal.UPI)
         if (banking.containsMatchIn(normalized) && blocked.containsMatchIn(normalized) && update.containsMatchIn(request)) add(Signal.KYC)
         val credentialRequest = reportedExample.replace(request, " ")
-        if (splitClause.split(credentialRequest).any { credentials.containsMatchIn(it) && disclose.containsMatchIn(it) }) add(Signal.OTP)
+        if (CredentialIntent.inspect(reportedExample.replace(normalized, " ")).any { it.context == CredentialIntent.Context.REQUEST } ||
+            splitClause.split(credentialRequest).any { credentials.containsMatchIn(it) && disclose.containsMatchIn(it) }) add(Signal.OTP)
         if (fee.containsMatchIn(request) && (direct != null || destinations.isNotEmpty())) {
             if (utility.containsMatchIn(normalized) && cutoff.containsMatchIn(normalized)) add(Signal.UTILITY)
             if (government.containsMatchIn(normalized)) add(Signal.NOTICE)
