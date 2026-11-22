@@ -1,0 +1,45 @@
+{
+  "workPackage": "W8",
+  "name": "Arm AI-SoC Bharat Challenge PS3 Submission Release Manifest",
+  "status": "COMPLETED",
+  "priority": "P0",
+  "timestamp": "2026-11-22T14:45:00+05:30",
+  "targetSubmissionDeadline": "2026-11-25T23:59:59+05:30",
+  "applicationId": "com.susagi.guardian2",
+  "gitBranch": "feature/gravity-product-calling",
+  "buildOutputs": {
+    "appDebugApk": {
+      "path": "app/build/outputs/apk/debug/app-debug.apk",
+      "sizeBytes": 137331929,
+      "sha256": "66A4AB6F012387B0719AA90482D01ACE2FEABCE82815BD875580F986E49B3F1C"
+    },
+    "appAndroidTestApk": {
+      "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+      "sizeBytes": 188605,
+      "sha256": "2609AB7E62F64202A55BA18D95474BF79F7064B1BF4D52B884C898EA786CC8D1"
+    }
+  },
+  "unitTestVerification": {
+    "totalTests": 201,
+    "passed": 201,
+    "failed": 0,
+    "ignored": 0,
+    "offlineEvaluationFixtureResults": {
+      "directive17_120Cases": {
+        "truePositives": 41,
+        "falsePositives": 0,
+        "trueNegatives": 60,
+        "falseNegatives": 19,
+        "precision": 1.0,
+        "recall": 0.683,
+        "f1": 0.812,
+        "falsePositiveRate": 0.0
+      }
+    }
+  },
+  "storageCompliance": {
+    "laptopModelDownloads": 0,
+    "prohibitedAdbExecutions": 0,
+    "physicalDeviceStatus": "BLOCKED pending explicit user authorization to connect USB/provision weights"
+  }
+}

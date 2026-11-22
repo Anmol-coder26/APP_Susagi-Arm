@@ -1,0 +1,20 @@
+{
+  "workPackage": "W6",
+  "name": "Standalone Offline Audio Threat Scanner",
+  "status": "COMPLETED",
+  "priority": "P1",
+  "sourceFiles": [
+    "app/src/main/java/com/susagi/ui/voice/VoiceClipScannerScreen.kt"
+  ],
+  "entryPoint": "com.susagi.ui.voice.VoiceClipScannerScreen",
+  "capabilities": {
+    "capture": "16kHz 16-bit mono PCM AudioRecord buffer with dynamic waveform metering",
+    "sttEngine": "Local Whisper runtime via WhisperModelManager",
+    "threatPipeline": "Automatic transcription inspection through UnifiedThreatEngine and SafetyBarrier",
+    "isolation": "Completely decoupled from Agora/VoIP infrastructure; operates fully standalone offline"
+  },
+  "runtimePrerequisites": {
+    "audioPermission": "RECORD_AUDIO",
+    "modelWeights": "ggml-tiny.bin (provisioned on physical target device; not downloaded to host laptop)"
+  }
+}

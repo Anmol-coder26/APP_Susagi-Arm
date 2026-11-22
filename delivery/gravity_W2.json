@@ -1,0 +1,24 @@
+{
+  "workPackage": "W2",
+  "name": "On-Device Dataset-Trained ML Threat Classifier",
+  "status": "COMPLETED",
+  "priority": "P0",
+  "sourceFiles": [
+    "app/src/main/java/com/susagi/intelligence/LocalThreatClassifier.kt",
+    "app/src/test/java/com/susagi/intelligence/LocalThreatClassifierTest.kt"
+  ],
+  "lifecycleStates": [
+    "NOT_PROVISIONED",
+    "INVALID_ASSET",
+    "READY",
+    "FAILED"
+  ],
+  "features": {
+    "featureExtractor": "Bounded character 3..4 n-gram hashing into 1024-dim vector",
+    "inferenceEngine": "Calibrated sigmoid scoring with decision threshold 0.50f",
+    "deterministicFallback": "Automatic transparent fallback to SafetyBarrier when NOT_PROVISIONED or INVALID_ASSET",
+    "integrityVerification": "Expected byte length and SHA-256 header validation prior to memory load"
+  },
+  "verificationSuite": "com.susagi.intelligence.LocalThreatClassifierTest",
+  "testsPassed": 5
+}

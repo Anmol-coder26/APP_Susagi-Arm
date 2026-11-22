@@ -1,0 +1,24 @@
+{
+  "workPackage": "W4",
+  "name": "Imported Network Anomaly Analysis & NetFlow Shield",
+  "status": "COMPLETED",
+  "priority": "P1",
+  "sourceFiles": [
+    "app/src/main/java/com/susagi/network/NetworkFlowImporter.kt",
+    "app/src/main/java/com/susagi/ui/network/NetworkShieldScreen.kt",
+    "app/src/test/java/com/susagi/network/NetworkFlowImporterTest.kt"
+  ],
+  "entryPoint": "com.susagi.ui.network.NetworkShieldScreen",
+  "capabilities": {
+    "fileSupport": "Offline CSV import supporting NetFlow v9 and CICIDS schema",
+    "anonymization": "Privacy-preserving IPv4/IPv6 client endpoint masking (*.*.*.xxx)",
+    "preCalibratedSamples": [
+      "c2_beacon (Periodic command-and-control beaconing)",
+      "port_scan (Horizontal port sweep anomaly)",
+      "clean (Standard browsing traffic)"
+    ],
+    "classifier": "com.susagi.network.NetworkAnomalyClassifier"
+  },
+  "verificationSuite": "com.susagi.network.NetworkFlowImporterTest",
+  "testsPassed": 4
+}

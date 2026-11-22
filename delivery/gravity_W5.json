@@ -1,0 +1,26 @@
+{
+  "workPackage": "W5",
+  "name": "User-Selected APK / Installation Risk Inspector",
+  "status": "COMPLETED",
+  "priority": "P1",
+  "sourceFiles": [
+    "app/src/main/java/com/susagi/security/apk/ApkRiskScanner.kt",
+    "app/src/main/java/com/susagi/ui/apk/ApkRiskScannerScreen.kt",
+    "app/src/test/java/com/susagi/security/apk/ApkRiskScannerTest.kt"
+  ],
+  "entryPoint": "com.susagi.ui.apk.ApkRiskScannerScreen",
+  "capabilities": {
+    "urlInspection": "Direct .apk download link flagging and domain reputation check",
+    "manifestAnalysis": "Static inspection via PackageManager.getPackageArchiveInfo()",
+    "highRiskPermissions": [
+      "BIND_ACCESSIBILITY_SERVICE",
+      "READ_SMS",
+      "RECEIVE_SMS",
+      "SYSTEM_ALERT_WINDOW",
+      "REQUEST_INSTALL_PACKAGES"
+    ],
+    "privacyGuarantees": "Offline analysis without sending binaries or packages off-device"
+  },
+  "verificationSuite": "com.susagi.security.apk.ApkRiskScannerTest",
+  "testsPassed": 4
+}

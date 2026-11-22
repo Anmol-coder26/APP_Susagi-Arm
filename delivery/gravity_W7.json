@@ -1,0 +1,26 @@
+{
+  "workPackage": "W7",
+  "name": "Local LLM Explanations, Live Scenario Demo & Service Hardening",
+  "status": "COMPLETED",
+  "priority": "P1",
+  "sourceFiles": [
+    "app/src/main/java/com/susagi/ui/demo/OfflineDemoScreen.kt",
+    "app/src/main/java/com/guardian/app/Screens.kt"
+  ],
+  "entryPoints": [
+    "com.susagi.ui.demo.OfflineDemoScreen",
+    "com.guardian.app.Screens.SecurityHomeScreen"
+  ],
+  "capabilities": {
+    "demoScenarios": [
+      "Digital Arrest Extortion (CBI/Police video demand)",
+      "Benign Transaction Control (Legitimate refund message)",
+      "Bank Login Phishing (Axis Bank brand spoof)",
+      "Advance Fee UPI Scam (Pay deposit for parcel)",
+      "Malicious APK Sideloading (Fake Bank APK)",
+      "C2 Beaconing Network Anomaly (Periodic exfiltration)"
+    ],
+    "modelSafeguards": "Llama 3.2 1B transparent fallback when unprovisioned on device; zero decorative fake AI badges",
+    "agoraVoipIsolation": "VoIP infrastructure gracefully alerts if Agora App ID is blank without crashing or blocking offline shields"
+  }
+}

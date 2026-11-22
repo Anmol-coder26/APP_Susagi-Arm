@@ -634,7 +634,39 @@ fun HomeScreen(
     var showLlamaModal by remember { mutableStateOf(false) }
     var showWhisperModal by remember { mutableStateOf(false) }
     var showTrustedContactScreen by remember { mutableStateOf(false) }
+    var showNetworkShieldScreen by remember { mutableStateOf(false) }
+    var showApkRiskScreen by remember { mutableStateOf(false) }
+    var showVoiceClipScreen by remember { mutableStateOf(false) }
+    var showOfflineDemoScreen by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
+
+    if (showOfflineDemoScreen) {
+        com.susagi.ui.demo.OfflineDemoScreen(
+            onBack = { showOfflineDemoScreen = false }
+        )
+        return
+    }
+
+    if (showNetworkShieldScreen) {
+        com.susagi.ui.network.NetworkShieldScreen(
+            onBack = { showNetworkShieldScreen = false }
+        )
+        return
+    }
+
+    if (showApkRiskScreen) {
+        com.susagi.ui.apk.ApkRiskScannerScreen(
+            onBack = { showApkRiskScreen = false }
+        )
+        return
+    }
+
+    if (showVoiceClipScreen) {
+        com.susagi.ui.voice.VoiceClipScannerScreen(
+            onBack = { showVoiceClipScreen = false }
+        )
+        return
+    }
 
     if (showLinkBarrierScreen) {
         com.susagi.ui.LinkSafetyBarrierScreen(
@@ -1122,6 +1154,50 @@ fun HomeScreen(
                 accentColor = GxPrimary,
                 statusBadge = "ENABLED",
                 onClick = onOpenCallHistory
+            )
+        }
+
+        item {
+            FeatureCardItem(
+                title = "Network Flow Anomaly Shield",
+                subtitle = "Import NetFlow / CICIDS CSV telemetry to inspect C2 beaconing and port scans",
+                icon = Icons.Default.Security,
+                accentColor = GxPrimary,
+                statusBadge = "READY",
+                onClick = { showNetworkShieldScreen = true }
+            )
+        }
+
+        item {
+            FeatureCardItem(
+                title = "APK & Sideload Risk Inspector",
+                subtitle = "Examine unverified app packages and dangerous SMS/Accessibility permissions",
+                icon = Icons.Default.Security,
+                accentColor = GxDanger,
+                statusBadge = "READY",
+                onClick = { showApkRiskScreen = true }
+            )
+        }
+
+        item {
+            FeatureCardItem(
+                title = "Voice Clip Threat Analyzer",
+                subtitle = "Standalone speech-to-text & acoustic extortion analyzer independent of calls",
+                icon = Icons.Default.Mic,
+                accentColor = GxSafe,
+                statusBadge = "READY",
+                onClick = { showVoiceClipScreen = true }
+            )
+        }
+
+        item {
+            FeatureCardItem(
+                title = "Offline Demonstration Panel",
+                subtitle = "Live test scenarios calling production SafetyBarrier & Network engines",
+                icon = Icons.Default.WarningAmber,
+                accentColor = GxPrimary,
+                statusBadge = "6 SCENARIOS",
+                onClick = { showOfflineDemoScreen = true }
             )
         }
 

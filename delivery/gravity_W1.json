@@ -1,0 +1,27 @@
+{
+  "workPackage": "W1",
+  "name": "Security Home and Unified Manual Protection Flows",
+  "status": "COMPLETED",
+  "priority": "P0",
+  "entryPoints": [
+    "com.guardian.app.Screens.UnifiedSafetyScreen",
+    "com.guardian.app.Screens.MessageTab",
+    "com.guardian.app.Screens.LinkTab",
+    "com.guardian.app.Screens.UpiTab"
+  ],
+  "underlyingComponents": [
+    "com.susagi.safety.SafetyBarrier",
+    "com.susagi.safety.UnifiedThreatEngine",
+    "com.susagi.safety.PaymentFields"
+  ],
+  "verificationSuite": "com.susagi.security.SecurityFlowIntegrationTest",
+  "testsPassed": 6,
+  "acceptanceCriteria": {
+    "ac1_digitalArrestWarning": "PASSED (ArrestExtortionWarning displayed with BLOCK/DISCONNECT advice)",
+    "ac2_benignControlNonBlocking": "PASSED (Legitimate message/dinner cashback permitted with LOW risk)",
+    "ac3_multiLinkPhishingScan": "PASSED (Subdomain/punycode spoof flagged with RECOMMEND_BLOCK)",
+    "ac4_upiMandateScam": "PASSED (Refund approval flagged as HIGH risk payment scam)",
+    "ac5_qrDecodedParity": "PASSED (QR content analyzed with identical SafetyBarrier depth)",
+    "ac6_boundedSafety": "PASSED (Safe truncation at 32KB without memory crash)"
+  }
+}
