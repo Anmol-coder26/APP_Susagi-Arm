@@ -14,7 +14,7 @@
 | 5: Network & APK Shields | P1 | READY | `NetworkShieldScreen`, `ApkRiskScannerScreen` | 8/8 tests, CICIDS + APK parser |
 | 6: Build & Test Artifacts | P0 | READY | `app-debug.apk`, `app-debug-androidTest.apk` | 207/207 tests passed, 0 failures |
 
-- **Current HEAD:** `pending_directive21` | **Branch:** `feature/gravity-product-calling`
+- **Current HEAD:** `7512d2c` | **Branch:** `feature/gravity-product-calling`
 - **Debug APK SHA-256:** `A6B7428AD0E082C7A706395E5C4A5BA107E6E7B747A7583DF36D5615E72CE985`
 - **AndroidTest APK SHA-256:** `2609AB7E62F64202A55BA18D95474BF79F7064B1BF4D52B884C898EA786CC8D1`
 - **Blockers:** USB debugging / ADB execution and model weights download to laptop strictly blocked per user safety policy.
