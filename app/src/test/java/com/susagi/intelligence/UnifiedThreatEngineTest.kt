@@ -204,4 +204,31 @@ class UnifiedThreatEngineTest {
         assertNotNull(diag.targetHardware)
         assertTrue(diag.targetHardware.contains("Arm") || diag.targetHardware.contains("CPU"))
     }
+
+    @Test
+    fun testUnifiedThreatEngine_screenCredentialAndRefundFeeIntegration() = runBlocking {
+        val screenResult = engine.analyzeMessage("Share your screen while entering your UPI PIN")
+        assertEquals("HIGH", screenResult.severity)
+        assertTrue(screenResult.isDangerous)
+        assertTrue(screenResult.detectedTactics.contains("credentials") || screenResult.detectedTactics.contains("screen_credential"))
+        assertTrue(screenResult.evidence.any { it.contains("share your screen while entering a financial credential", ignoreCase = true) })
+
+        val refundResult = engine.analyzeMessage("Pay a processing fee to receive your refund")
+        assertEquals("HIGH", refundResult.severity)
+        assertTrue(refundResult.isDangerous)
+        assertTrue(refundResult.detectedTactics.contains("advance_fee") || refundResult.detectedTactics.contains("refund_fee"))
+        assertTrue(refundResult.evidence.any { it.contains("upfront fee to obtain a refund", ignoreCase = true) })
+
+        val benignScreen = engine.analyzeMessage("Never share your screen while entering your PIN")
+        assertEquals("LOW", benignScreen.severity)
+        assertTrue(benignScreen.isClean)
+
+        val benignRefund = engine.analyzeMessage("Never pay a processing fee to receive your refund")
+        assertEquals("LOW", benignRefund.severity)
+        assertTrue(benignRefund.isClean)
+
+        val pastCredit = engine.analyzeMessage("Your processing fee refund was credited")
+        assertEquals("LOW", pastCredit.severity)
+        assertTrue(pastCredit.isClean)
+    }
 }

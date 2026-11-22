@@ -11,7 +11,9 @@ import kotlinx.coroutines.withContext
 enum class Risk { LOW, REVIEW, HIGH, UNKNOWN }
 enum class Action { OFFER_OPEN, ASK_CONFIRMATION, RECOMMEND_BLOCK, DO_NOT_OPEN }
 enum class Signal(val risk: Risk, val category: String, val explanation: String, val advice: String) {
-    ADVANCE_FEE(Risk.HIGH, "advance_fee", "A job, task or benefit is conditional on an advance payment.", "Verify the offer independently before sending money."),
+    SCREEN_CREDENTIAL(Risk.HIGH, "credentials", "The message asks you to share your screen while entering a financial credential.", "End screen sharing before entering any banking code."),
+    REFUND_FEE(Risk.HIGH, "advance_fee", "The message asks for an upfront fee to obtain a refund or cashback.", "Check the credit in the official app before taking any action."),
+    ADVANCE_FEE(Risk.HIGH, "advance_fee", "The message ties an opportunity, benefit or payout to an advance payment.", "Verify the offer independently before sending money."),
     GUARANTEED_RETURN(Risk.HIGH, "investment", "A deposit request accompanies a promise of guaranteed investment returns.", "Verify the investment and the person offering it independently."),
     REMOTE_ACCESS(Risk.HIGH, "remote_access", "A banking or refund instruction asks you to install remote-access software.", "Close the request and contact the institution through its official app."),
     FAMILY_PAYMENT(Risk.HIGH, "impersonation", "A claimed relative using a different number requests an urgent transfer.", "Call the relative on a previously saved number before paying."),

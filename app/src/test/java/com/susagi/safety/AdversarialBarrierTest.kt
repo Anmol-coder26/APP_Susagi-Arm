@@ -7,6 +7,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AdversarialBarrierTest {
+    @Test fun credentialAndRefundRequestsNeedBothActions() = runBlocking {
+        val screens = listOf("Share your screen while entering your UPI PIN", "Screen share karo aur daalo UPI PIN")
+        for (message in screens) assertTrue(SafetyBarrier.analyzeMessage(message).evidence.any { it.id == Signal.SCREEN_CREDENTIAL })
+        for (message in listOf("Never share your screen while entering your PIN", "Share your screen for the slideshow"))
+            assertFalse(SafetyBarrier.analyzeMessage(message).evidence.any { it.id == Signal.SCREEN_CREDENTIAL })
+        assertTrue(SafetyBarrier.analyzeMessage("Pay a processing fee to receive your refund").evidence.any { it.id == Signal.REFUND_FEE })
+        for (message in listOf("Never pay a processing fee to receive your refund", "Your processing fee refund was credited"))
+            assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage(message).risk)
+    }
+
     @Test fun directorateImpersonationNeedsCoercion() = runBlocking {
         for (message in listOf("ED officer here, transfer the funds immediately",
             "प्रवर्तन निदेशालय से बोल रहा हूँ, पैसे भेजो")) {

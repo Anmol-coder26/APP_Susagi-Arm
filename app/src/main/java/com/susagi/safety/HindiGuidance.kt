@@ -3,6 +3,8 @@ package com.susagi.safety
 /** Uses only the signals selected by the offline detector. No shared text is interpolated. */
 fun Assessment.hindiGuidance(): List<String> = evidence.map { it.id }.distinct().map { signal ->
     when (signal) {
+        Signal.SCREEN_CREDENTIAL -> "बैंकिंग कोड डालते समय स्क्रीन साझा करने को कहा गया है। कोड डालने से पहले स्क्रीन साझा करना बंद करें।"
+        Signal.REFUND_FEE -> "रिफंड या कैशबैक पाने के लिए पहले शुल्क माँगा गया है। आधिकारिक ऐप में लेनदेन जाँचें।"
         Signal.ADVANCE_FEE -> "नौकरी, काम या लाभ के लिए पहले पैसे माँगे गए हैं। भुगतान से पहले स्वतंत्र पुष्टि करें।"
         Signal.GUARANTEED_RETURN -> "निश्चित मुनाफे के वादे के साथ जमा राशि माँगी गई है। निवेश और संस्था की स्वतंत्र जाँच करें।"
         Signal.REMOTE_ACCESS -> "बैंकिंग या रिफंड के लिए रिमोट एक्सेस ऐप लगाने को कहा गया है। आधिकारिक ऐप से संपर्क करें।"

@@ -15,12 +15,19 @@ internal object ContextualScamRules {
     private val number = Regex("""new number|lost my phone|naya number|नया नंबर""")
     private val urgent = Regex("""urgent|right now|immediately|abhi|तुरंत""")
     private val restriction = Regex("""suspend|deactivat|block|बंद""")
+    private val shareScreen = Regex("""\bshare (?:your |the )?screen\b|screen share karo|स्क्रीन शेयर कर""")
+    private val enterCode = Regex("""(?:enter(?:ing)?|type|daalo|डालें)\s+(?:(?:your|the|upi|bank|card)\s+){0,3}(?:otp|pin|cvv|पिन|ओटीपी)\b""")
+    private val feeForCredit = Regex("""(?:to (?:claim|receive|get|release)|activate) (?:your |the )?(?:cashback|refund)|(?:refund|cashback) paane ke liye""")
+    private val payFee = Regex("""\bpay\s+(?:(?:a|the|an|small|activation|processing|release)\s+){0,4}fee\b|fee bharo""")
     private val unlock = Regex("""(?:release|unlock) (?:your |the )?(?:balance|earnings|payout)""")
     private val advancePayment = Regex("""(?:send|transfer|pay)\s+(?:rs\.?\s*|inr\s*|₹\s*)\d""")
 
     fun inspect(clause: String, hasLink: Boolean): List<Signal> = buildList {
         for (part in contrast.split(clause)) {
             if (warning.containsMatchIn(part)) continue
+            if (shareScreen.containsMatchIn(part) && enterCode.containsMatchIn(part) &&
+                !screenWarning.containsMatchIn(part)) add(Signal.SCREEN_CREDENTIAL)
+            if (feeForCredit.containsMatchIn(part) && payFee.containsMatchIn(part)) add(Signal.REFUND_FEE)
             if (unlock.containsMatchIn(part) && advancePayment.containsMatchIn(part)) add(Signal.ADVANCE_FEE)
             if (remote.containsMatchIn(part) && install.containsMatchIn(part) && financial.containsMatchIn(part))
                 add(Signal.REMOTE_ACCESS)
@@ -33,4 +40,6 @@ internal object ContextualScamRules {
                 add(Signal.FASTAG)
         }
     }
+
+    private val screenWarning = Regex("""(?:never|do not|don't)\s+share|screen share mat karo|स्क्रीन शेयर न कर""")
 }

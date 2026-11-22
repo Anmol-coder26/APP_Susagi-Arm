@@ -1100,6 +1100,8 @@ class LinkCheckActivity : ComponentActivity() {
 
                     val lower = text.lowercase(Locale.ROOT)
                     val category = when {
+                        astra.evidence.any { it.id == Signal.SCREEN_CREDENTIAL } -> "SCREEN SHARING CREDENTIAL HARVESTING"
+                        astra.evidence.any { it.id == Signal.REFUND_FEE } -> "REFUND & CASHBACK ADVANCE FEE FRAUD"
                         astra.evidence.any { it.id == Signal.ARREST } ||
                                 lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
                                 (lower.contains("cbi") && lower.contains("arrest")) ||
@@ -1128,6 +1130,10 @@ class LinkCheckActivity : ComponentActivity() {
                     }
 
                     val explanationEn = when {
+                        category.contains("SCREEN SHARING CREDENTIAL") ->
+                            "The message asks you to share your screen while entering financial credentials (PIN, OTP, CVV). Fraudsters use screen mirroring to harvest banking credentials."
+                        category.contains("REFUND & CASHBACK") ->
+                            "The message demands an upfront fee to release a refund or cashback. Legitimate organizations never charge processing fees to credit refunds."
                         category.contains("DIGITAL ARREST") ->
                             "Law enforcement agencies (CBI, Police, ED) NEVER conduct arrests, trials, or interrogations via phone or video calls. This is a criminal extortion attempt."
                         category.contains("ADVANCE FEE") ->
@@ -1157,6 +1163,10 @@ class LinkCheckActivity : ComponentActivity() {
                     }
 
                     val explanationHi = when {
+                        category.contains("SCREEN SHARING CREDENTIAL") ->
+                            "बैंकिंग कोड डालते समय स्क्रीन साझा करने को कहा गया है। कोड डालने से पहले स्क्रीन साझा करना बंद करें।"
+                        category.contains("REFUND & CASHBACK") ->
+                            "रिफंड या कैशबैक पाने के लिए पहले शुल्क माँगा गया है। आधिकारिक ऐप में लेनदेन जाँचें।"
                         category.contains("DIGITAL ARREST") ->
                             "कानून प्रवर्तन एजेंसियां (CBI, पुलिस) कभी भी फोन या व्हाट्सएप पर डिजिटल अरेस्ट या पूछताछ नहीं करती हैं। यह जबरन वसूली का प्रयास है।"
                         category.contains("ADVANCE FEE") ->
