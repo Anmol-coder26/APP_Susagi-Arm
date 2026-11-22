@@ -10,8 +10,8 @@
   "buildOutputs": {
     "appDebugApk": {
       "path": "app/build/outputs/apk/debug/app-debug.apk",
-      "sizeBytes": 137342799,
-      "sha256": "100BC1B85AC9810D5F338EFE62E06704E0F00C8145D0EFEF684A44AACC2DF378"
+      "sizeBytes": 137342873,
+      "sha256": "4B2F3B22BEF2D828D818ED8B9071E8136C7D395EB0D26829546B9ED92AB196A5"
     },
     "appAndroidTestApk": {
       "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
@@ -20,8 +20,8 @@
     }
   },
   "unitTestVerification": {
-    "totalTests": 201,
-    "passed": 201,
+    "totalTests": 202,
+    "passed": 202,
     "failed": 0,
     "ignored": 0,
     "offlineEvaluationFixtureResults": {

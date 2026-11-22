@@ -1,0 +1,66 @@
+{
+  "platform": "Windows-11-10.0.22631-SP0",
+  "python": "3.12.7",
+  "n": 24,
+  "calls": 480,
+  "median_ns": 18500.0,
+  "p95_ns": 30400,
+  "max_ns": 101600,
+  "groups": {
+    "all": {
+      "tp": 12,
+      "fp": 12,
+      "tn": 0,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0,
+      "fnr": 0.0
+    },
+    "category/authority": {
+      "tp": 6,
+      "fp": 6,
+      "tn": 0,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0,
+      "fnr": 0.0
+    },
+    "language/en": {
+      "tp": 11,
+      "fp": 11,
+      "tn": 0,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0,
+      "fnr": 0.0
+    },
+    "language/hi": {
+      "tp": 1,
+      "fp": 1,
+      "tn": 0,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0,
+      "fnr": 0.0
+    },
+    "category/investment": {
+      "tp": 6,
+      "fp": 6,
+      "tn": 0,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0,
+      "fnr": 0.0
+    }
+  }
+}

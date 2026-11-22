@@ -1,0 +1,58 @@
+{
+  "artifact_sha256": "33ef536e8f8bd0eb7abefafb5d3a3eb07e56654e45bb76a9bbde577ed7444188",
+  "source_sha256": "9e2dfee0cc3eb741636cc8d88a70ff0958708604220d58a1a49a7b4c5490c623",
+  "seed": 1703,
+  "labels": [
+    "benign",
+    "harmful"
+  ],
+  "counts": {
+    "train": 60,
+    "validation": 24,
+    "test": 24
+  },
+  "groups": {
+    "train": [
+      "banking",
+      "family",
+      "remote",
+      "service",
+      "upi"
+    ],
+    "validation": [
+      "credential",
+      "job"
+    ],
+    "test": [
+      "authority",
+      "investment"
+    ]
+  },
+  "validation": {
+    "tp": 12,
+    "fp": 11,
+    "tn": 1,
+    "fn": 0,
+    "precision": 0.5217391304347826,
+    "recall": 1.0,
+    "f1": 0.6857142857142857,
+    "fpr": 0.9166666666666666,
+    "fnr": 0.0
+  },
+  "test": {
+    "tp": 12,
+    "fp": 12,
+    "tn": 0,
+    "fn": 0,
+    "precision": 0.5,
+    "recall": 1.0,
+    "f1": 0.6666666666666666,
+    "fpr": 1.0,
+    "fnr": 0.0
+  },
+  "version": "susagi-byte3-bnb-v1",
+  "threshold": -11.744036731061328,
+  "bytes": 8110,
+  "features": "512 byte trigram bins, ASCII lowercase, 2048 code points",
+  "training_status": "Experimental authored data only; independent training BLOCKED_BY_DATA"
+}

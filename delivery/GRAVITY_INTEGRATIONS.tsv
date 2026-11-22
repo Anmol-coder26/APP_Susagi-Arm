@@ -3,3 +3,4 @@ astra-security-7204a76	d2997ee	MERGED_VERIFIED	2026-11-22	Reconciled with Gravit
 directive17-batch-1	a4c3aa0	MERGED_VERIFIED	2026-11-22	Contextual scam expansion (recruiter, subsidy, replacement SIM, avoidsCall) + ContextPairsTest
 directive17-batch-2	954c27f	MERGED_VERIFIED	2026-11-22	PaymentFields strict UPI query parameter validation + PaymentMutationTest (64 trials)
 directive17-batch-3	7a728fc	MERGED_VERIFIED	2026-11-22	Reported scam quotation exemption + OfflineEvaluationTest + 120-case directive17.tsv fixture
+round1-message	354b57e	MERGED_SHADOW_ONLY	2026-11-22	Astra Bernoulli NB message-v1.txt (512-dim byte 3-grams) + MessageModel.kt + RoundOneDetectorTest (22/22 parity passed; 100% test FPR isolated in shadow mode)

@@ -9,12 +9,12 @@
 | 2E: Incident History | P0 | READY | `IncidentHistoryStore`, `IncidentsScreen` | Masked OTP (`******`), 1930 Export |
 | 2F: Protection Dashboard | P0 | READY | `HomeScreen`, `GuardianApp` | Live toggles, honest status badges |
 | 2G: Family-Safe Share | P0 | READY | `LinkCheckActivity.shareFamilyAlert` | `ACTION_SEND` sanitized chooser |
-| 3: Local ML Classifier | P0 | READY | `LocalThreatClassifier` | 5/5 tests, bounded n-gram hashing |
+| 3: Local ML Classifier | P0 | READY | `LocalThreatClassifier`, `MessageModel` (Shadow) | 22/22 parity passed, shadow-isolated |
 | 4: Llama ExecuTorch | P0 | IMPLEMENTED_UNVERIFIED | `LocalEvidenceExplainer`, `ModelManifest` | Hardware blocked pending approval |
 | 5: Network & APK Shields | P1 | READY | `NetworkShieldScreen`, `ApkRiskScannerScreen` | 8/8 tests, CICIDS + APK parser |
-| 6: Build & Test Artifacts | P0 | READY | `app-debug.apk`, `app-debug-androidTest.apk` | 201/201 tests passed, 0 failures |
+| 6: Build & Test Artifacts | P0 | READY | `app-debug.apk`, `app-debug-androidTest.apk` | 202/202 tests passed, 0 failures |
 
-- **Current HEAD:** `0d4295a` | **Branch:** `feature/gravity-product-calling`
-- **Debug APK SHA-256:** `100BC1B85AC9810D5F338EFE62E06704E0F00C8145D0EFEF684A44AACC2DF378`
+- **Current HEAD:** `pending_commit` | **Branch:** `feature/gravity-product-calling`
+- **Debug APK SHA-256:** `4B2F3B22BEF2D828D818ED8B9071E8136C7D395EB0D26829546B9ED92AB196A5`
 - **AndroidTest APK SHA-256:** `2609AB7E62F64202A55BA18D95474BF79F7064B1BF4D52B884C898EA786CC8D1`
 - **Blockers:** USB debugging / ADB execution and model weights download to laptop strictly blocked per user safety policy.
