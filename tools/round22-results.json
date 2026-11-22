@@ -1,0 +1,187 @@
+{
+  "source": "9e2dfee0cc3eb741636cc8d88a70ff0958708604220d58a1a49a7b4c5490c623",
+  "groups": {
+    "train": [
+      "banking",
+      "family",
+      "remote",
+      "service",
+      "upi"
+    ],
+    "validation": [
+      "credential",
+      "job"
+    ],
+    "test": [
+      "authority",
+      "investment"
+    ]
+  },
+  "threshold": 0.49201684980681026,
+  "bytes": 23809,
+  "sha256": "f1c0f358126fd632671b7778159f7776f238c1e4cac3f6ab4e6eedbd23d62e78",
+  "spec_sha256": "55f4eaf0f2d23dd6d990d743ced1383fab0d80dc9fa313c1b8c0bef63fb23adb",
+  "validation": {
+    "original": {
+      "tp": 12,
+      "fp": 11,
+      "tn": 1,
+      "fn": 0,
+      "precision": 0.5217391304347826,
+      "recall": 1.0,
+      "f1": 0.6857142857142857,
+      "fpr": 0.9166666666666666,
+      "fnr": 0.0
+    },
+    "original_threshold": -11.744036731061328,
+    "original_zero": {
+      "tp": 1,
+      "fp": 2,
+      "tn": 10,
+      "fn": 11,
+      "precision": 0.3333333333333333,
+      "recall": 0.08333333333333333,
+      "f1": 0.13333333333333333,
+      "fpr": 0.16666666666666666,
+      "fnr": 0.9166666666666666
+    },
+    "candidate": {
+      "tp": 8,
+      "fp": 1,
+      "tn": 11,
+      "fn": 4,
+      "precision": 0.8888888888888888,
+      "recall": 0.6666666666666666,
+      "f1": 0.7619047619047619,
+      "fpr": 0.08333333333333333,
+      "fnr": 0.3333333333333333
+    },
+    "abstentions": 0,
+    "score_ranges": {
+      "False": [
+        -15.177873632193197,
+        1.956314393986144
+      ],
+      "True": [
+        -11.744036731061328,
+        2.6363515943736946
+      ]
+    },
+    "category": {
+      "credential": {
+        "tp": 5,
+        "fp": 1,
+        "tn": 5,
+        "fn": 1,
+        "precision": 0.8333333333333334,
+        "recall": 0.8333333333333334,
+        "f1": 0.8333333333333334,
+        "fpr": 0.16666666666666666,
+        "fnr": 0.16666666666666666
+      },
+      "job": {
+        "tp": 3,
+        "fp": 0,
+        "tn": 6,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6666666666666666,
+        "fpr": 0.0,
+        "fnr": 0.5
+      }
+    },
+    "errors": [
+      "credential-0-0",
+      "credential-1-3",
+      "job-0-1",
+      "job-0-2",
+      "job-0-4"
+    ]
+  },
+  "test": {
+    "original": {
+      "tp": 12,
+      "fp": 12,
+      "tn": 0,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0,
+      "fnr": 0.0
+    },
+    "original_threshold": -11.744036731061328,
+    "original_zero": {
+      "tp": 8,
+      "fp": 3,
+      "tn": 9,
+      "fn": 4,
+      "precision": 0.7272727272727273,
+      "recall": 0.6666666666666666,
+      "f1": 0.6956521739130435,
+      "fpr": 0.25,
+      "fnr": 0.3333333333333333
+    },
+    "candidate": {
+      "tp": 7,
+      "fp": 0,
+      "tn": 12,
+      "fn": 5,
+      "precision": 1.0,
+      "recall": 0.5833333333333334,
+      "f1": 0.7368421052631579,
+      "fpr": 0.0,
+      "fnr": 0.4166666666666667
+    },
+    "abstentions": 0,
+    "score_ranges": {
+      "False": [
+        -10.783884891139497,
+        4.5942475029397265
+      ],
+      "True": [
+        -11.49650781769355,
+        16.183246375576438
+      ]
+    },
+    "category": {
+      "authority": {
+        "tp": 2,
+        "fp": 0,
+        "tn": 6,
+        "fn": 4,
+        "precision": 1.0,
+        "recall": 0.3333333333333333,
+        "f1": 0.5,
+        "fpr": 0.0,
+        "fnr": 0.6666666666666666
+      },
+      "investment": {
+        "tp": 5,
+        "fp": 0,
+        "tn": 6,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.8333333333333334,
+        "f1": 0.9090909090909091,
+        "fpr": 0.0,
+        "fnr": 0.16666666666666666
+      }
+    },
+    "errors": [
+      "authority-0-0",
+      "authority-0-2",
+      "authority-0-4",
+      "authority-0-5",
+      "investment-0-0"
+    ]
+  },
+  "original_unique_trigrams": 1259,
+  "original_occupied_bins": 469,
+  "python_ns": [
+    71850.0,
+    557000,
+    8012800
+  ]
+}
