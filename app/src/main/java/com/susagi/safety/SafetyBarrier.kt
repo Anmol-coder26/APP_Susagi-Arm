@@ -54,28 +54,29 @@ object SafetyBarrier {
         "hdfc" to listOf("hdfcbank.com","hdfcbank.bank.in"), "icici" to listOf("icicibank.com","icici.bank.in"),
         "rbi" to listOf("rbi.org.in"), "pnb" to listOf("pnbindia.in"))
     private val links = Regex("""(?:[a-z][a-z0-9+.-]{0,31}://|(?:mailto|tel|javascript|data):|www\.)[^\s<>"\p{Cc}]*""", RegexOption.IGNORE_CASE)
-    private val authority = Regex("""\b(?:police|cbi|fir|warrant|arrest|ed officer|enforcement directorate)\b|पुलिस|गिरफ्तार|वारंट|प्रवर्तन निदेशालय""")
-    private val coercion = Regex("""\b(?:transfer|pay|skype)\b|video call|do not disconnect|stay on the line|पैसे भेज|पैसे ट्रांसफर""")
+    private val authority = Regex("""\b(?:police|cbi|fir|warrant|arrest|ed officer|enforcement directorate|customs|narcotics)\b|पुलिस|गिरफ्तार|वारंट|प्रवर्तन निदेशालय|कस्टम|सीबीआई""")
+    private val coercion = Regex("""\b(?:transfer|pay|skype|wire|fine)\b|video call|do not disconnect|stay on the line|avoid detention|avoid arrest|safe account|पैसे भेज|पैसे ट्रांसफर|जुर्माना|सुरक्षा खाते""")
     private val credit = Regex("""refund|\breceive\b|cashback|paane|paisa lene|रिफंड|पाने|प्राप्त""")
     private val approve = Regex("""\b(?:enter|approve|accept|scan|daalo|dalo|karo)\b|दर्ज|डालें|स्कैन""")
     private val payment = Regex("""\b(?:pin|qr|collect request)\b|पिन|क्यूआर""")
     private val credentials = Regex("""\b(?:otp|cvv|upi pin|atm pin|net[- ]banking password|authentication code|verification code|one[- ]time password)\b|ओटीपी""")
     private val disclose = Regex("""\b(?:share|send|tell|disclose|forward|batao|bhejo|batana|bataye)\b|भेजें|बताएं|बताइए""")
-    private val warning = Regex("""\b(?:never|do not|don't|must not|will never)\s+(?:ask you to\s+)?(?:share|tell|disclose|enter|approve|scan|send|forward|transfer|pay)\b""")
-    private val negativeHindi = Regex("""(?:मत|नहीं|न)\s+(?:भेजें|बताएं|बताइए|करें|डालें)|(?:share|send|scan|bhejo|batao)\s+(?:mat|nahi)\s*(?:karo|karna)?|(?:mat|nahi)\s+(?:bhejo|batao|batana|bataye|karo)""")
+    private val warning = Regex("""\b(?:never|do not|don't|must not|will never|alert from rbi)\s+(?:ask you to\s+)?(?:share|tell|disclose|enter|approve|scan|send|forward|transfer|pay|demand)\b|नहीं मांगता""")
+    private val negativeHindi = Regex("""(?:मत|नहीं|न)\s+(?:भेजें|बताएं|बताइए|करें|डालें|मांगता)|(?:share|send|scan|bhejo|batao)\s+(?:mat|nahi)\s*(?:karo|karna)?|(?:mat|nahi)\s+(?:bhejo|batao|batana|bataye|karo)""")
     private val splitClause = Regex("""[.!?;।\n]+""")
-    private val arrestIsolation = Regex("""\b(?:custody|digital arrest|giraftar)\b|हिरासत|डिजिटल अरेस्ट""")
-    private val secrecyDemand = Regex("""do not hang up|do not tell anyone|kisi ko mat batana|किसी को मत बताना""")
-    private val detentionClaim = Regex("""you (?:are|will be) (?:under (?:digital )?arrest|in custody|detained)|warrant (?:against you|for your arrest)|आपको गिरफ्तार|आप (?:हिरासत|डिजिटल अरेस्ट) में|aap (?:giraftar|digital arrest)""")
+    private val arrestIsolation = Regex("""\b(?:custody|digital arrest|giraftar)\b|हिरासत|डिजिटल अरेस्ट|गिरफ्तारी से बचने""")
+    private val secrecyDemand = Regex("""do not hang up|do not tell anyone|do not speak to|do not contact|kisi ko mat batana|किसी को मत बताना|गोपनीय रखें|संपर्क न करें""")
+    private val detentionClaim = Regex("""you (?:are|will be) (?:under (?:digital )?arrest|in custody|detained)|warrant (?:against you|for your arrest)|drugs (?:found|in your parcel)|contraband|under investigation|custody warrant|नशीले पदार्थ|आपको गिरफ्तार|आप (?:हिरासत|डिजिटल अरेस्ट) में|जांच के दायरे में|aap (?:giraftar|digital arrest)""")
+    private val investigationClaim = Regex("""\b(?:under investigation|investigation against you|account under investigation|bank is under investigation)\b|जांच चल रही|खाता जांच|जांच शुरू""")
     private val paymentApproval = Regex("""approve (?:the |this )?(?:mandate|request)|mandate accept|कलेक्ट अनुरोध स्वीकार""")
-    private val banking = Regex("""\b(?:kyc|pan card|bank account)\b|केवाईसी""")
-    private val blocked = Regex("""block|suspend|deactivat|unfreeze|expire|बंद|ब्लॉक""")
-    private val update = Regex("""updat|submit|verify|click|अपडेट|जमा""")
+    private val banking = Regex("""\b(?:kyc|pan card|bank account)\b|केवाईसी|खाता""")
+    private val blocked = Regex("""block|suspend|deactivat|unfreeze|expire|बंद|ब्लॉक|सस्पेंड""")
+    private val update = Regex("""updat|submit|verify|click|अपडेट|जमा|वेरिफाई""")
     private val delivery = Regex("""parcel|courier|customs|पार्सल""")
     private val utility = Regex("""electricity|bijli|बिजली""")
     private val cutoff = Regex("""disconnect|power cut|cut off|काट|कट जाएगी""")
     private val government = Regex("""government notice|challan|चालान|सरकारी नोटिस""")
-    private val fee = Regex("""\b(?:pay|deposit|bharo)\b|भुगतान|चुकाएं""")
+    private val fee = Regex("""\b(?:pay|deposit|bharo)\b|भुगतान|चुकाएं|भरें""")
 
     private fun inspectInput(url: String): Assessment =
         if (url.length > MAX) assess(listOf(Evidence(Signal.LIMIT))) else inspect(url.trim())
@@ -102,17 +103,19 @@ object SafetyBarrier {
         val request = negativeHindi.replace(warning.replace(normalized, ""), "")
         fun add(signal: Signal) { evidence.add(Evidence(signal)) }
         val clauses = splitClause.split(normalized).filter { it.isNotBlank() }
-        clauses.forEach { clause ->
-            ContextualScamRules.inspect(clause, destinations.isNotEmpty() || direct != null).forEach(::add)
+        clauses.forEachIndexed { index, clause ->
+            val nextClause = clauses.getOrNull(index + 1)
+            ContextualScamRules.inspect(clause, destinations.isNotEmpty() || direct != null, nextClause).forEach(::add)
         }
         // A routine mention of police must not lend authority to an unrelated payment instruction.
         val arrestDemand = clauses.withIndex().any { (index, clause) ->
             val actionable = negativeHindi.replace(warning.replace(clause, ""), "")
             val sameClause = authority.containsMatchIn(clause) && coercion.containsMatchIn(actionable) ||
-                arrestIsolation.containsMatchIn(clause) && secrecyDemand.containsMatchIn(clause)
+                arrestIsolation.containsMatchIn(clause) && secrecyDemand.containsMatchIn(clause) ||
+                detentionClaim.containsMatchIn(clause) && coercion.containsMatchIn(actionable)
             val next = clauses.getOrNull(index + 1).orEmpty()
             val nextActionable = negativeHindi.replace(warning.replace(next, ""), "")
-            sameClause || ((detentionClaim.containsMatchIn(clause) || arrestIsolation.containsMatchIn(clause)) &&
+            sameClause || ((detentionClaim.containsMatchIn(clause) || arrestIsolation.containsMatchIn(clause) || investigationClaim.containsMatchIn(clause)) &&
                 (coercion.containsMatchIn(nextActionable) || secrecyDemand.containsMatchIn(next)))
         }
         if (arrestDemand) add(Signal.ARREST)

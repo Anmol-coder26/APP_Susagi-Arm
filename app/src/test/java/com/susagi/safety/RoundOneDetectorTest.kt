@@ -42,6 +42,10 @@ class RoundOneDetectorTest {
                 }
             }
             assertEquals(24,counts.sum())
+            assertEquals(12, counts[0]) // TP = 12 / 12 (100% Recall)
+            assertEquals(0, counts[1])  // FP = 0 (0% FPR, 100% Precision)
+            assertEquals(12, counts[2]) // TN = 12 / 12
+            assertEquals(0, counts[3])  // FN = 0
             println("Rule and shadow-fused final TP/FP/TN/FN="+counts.joinToString("/")+" review_or_unknown="+undecided)
         }
     }

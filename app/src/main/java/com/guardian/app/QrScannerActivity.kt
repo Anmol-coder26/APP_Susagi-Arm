@@ -84,7 +84,10 @@ data class QrVerdict(
     val title: String,
     val reason: String,
     val isUrl: Boolean = false,
-    val isUpi: Boolean = false
+    val isUpi: Boolean = false,
+    val parsedPayee: String? = null,
+    val parsedAmount: String? = null,
+    val parsedNote: String? = null
 )
 
 class QrScannerActivity : ComponentActivity() {
@@ -175,72 +178,77 @@ class QrScannerActivity : ComponentActivity() {
             val isUpi = lower.startsWith("upi://")
             val isUrl = lower.startsWith("http://") || lower.startsWith("https://") || lower.contains(".xyz") || lower.contains(".apk")
 
-            return when {
-                // 1. UPI Reverse Debit / Fraud
-                isUpi && (lower.contains("am=") || lower.contains("pn=refund") || lower.contains("pa=cashback") || lower.contains("scam")) -> {
-                    QrVerdict(
+            if (isUpi) {
+                val upi = com.susagi.safety.PaymentFields.inspectUri(text)
+                if (!upi.isValid) {
+                    return QrVerdict(
+                        rawValue = text,
+                        status = RiskStatus.High,
+                        title = "🚨 INVALID OR TAMPERED UPI QR",
+                        reason = upi.riskReason ?: "Conflicting, duplicate or malformed UPI parameters.",
+                        isUpi = true,
+                        parsedPayee = upi.payeeVpa,
+                        parsedAmount = upi.amount?.let { "₹$it" }
+                    )
+                }
+                if (upi.isAdvanceFeeOrReverseDebit) {
+                    return QrVerdict(
                         rawValue = text,
                         status = RiskStatus.High,
                         title = "🚨 FRAUDULENT REVERSE UPI QR",
-                        reason = "This QR is crafted to DEBIT money from your bank account instead of sending money to you. Do NOT approve or enter your UPI PIN.",
-                        isUpi = true
+                        reason = upi.riskReason ?: "This QR requests you to pay money under the guise of a refund or reward.",
+                        isUpi = true,
+                        parsedPayee = upi.unverifiedDisplayName,
+                        parsedAmount = upi.amount?.let { "₹$it" },
+                        parsedNote = upi.note
                     )
                 }
+                // Valid standard UPI - Must never be described as authenticated
+                return QrVerdict(
+                    rawValue = text,
+                    status = RiskStatus.Suspicious,
+                    title = "⚠️ UNVERIFIED UPI PAYMENT QR",
+                    reason = "Valid UPI payment payload. Check recipient identity independently before opening. Never enter your UPI PIN to receive money.",
+                    isUpi = true,
+                    parsedPayee = upi.unverifiedDisplayName,
+                    parsedAmount = upi.amount?.let { "₹$it" },
+                    parsedNote = upi.note
+                )
+            }
 
-                // 2. Phishing / Malicious APK / Credential Harvesting
-                lower.contains(".apk") || lower.contains("login-kyc") || lower.contains("rbi-claim") ||
-                lower.contains("free-gift") || lower.contains("anydesk") || lower.contains("digital-arrest") ||
-                lower.contains("update-pan") || lower.contains("bank-verify") -> {
-                    QrVerdict(
+            if (isUrl) {
+                val linkVerdict = LinkCheckActivity.evaluateLinkSafety(text)
+                return when (linkVerdict.status) {
+                    RiskStatus.High -> QrVerdict(
                         rawValue = text,
                         status = RiskStatus.High,
-                        title = "🚨 HIGH RISK MALICIOUS QR",
-                        reason = "Contains known phishing signatures, rogue APK download, or banking credential harvesting patterns.",
-                        isUrl = isUrl
+                        title = "🚨 HIGH RISK PHISHING QR",
+                        reason = linkVerdict.detail.ifBlank { "Contains known phishing signatures, rogue APK download, or banking credential harvesting patterns." },
+                        isUrl = true
                     )
-                }
-
-                // 3. Suspicious unverified URL / shortener
-                isUrl && (lower.contains("bit.ly") || lower.contains("tinyurl.com") || lower.contains("is.gd") || lower.contains(".top") || lower.contains(".xyz")) -> {
-                    QrVerdict(
+                    RiskStatus.Suspicious -> QrVerdict(
                         rawValue = text,
                         status = RiskStatus.Suspicious,
                         title = "⚠️ SUSPICIOUS OBFUSCATED URL",
-                        reason = "Uses a shortened or untrusted top-level domain that masks the true destination website.",
+                        reason = linkVerdict.detail.ifBlank { "Uses an untrusted or shortened domain masking destination website." },
                         isUrl = true
                     )
-                }
-
-                // 4. Clean verified URL or standard text
-                isUrl -> {
-                    QrVerdict(
+                    RiskStatus.Low -> QrVerdict(
                         rawValue = text,
                         status = RiskStatus.Low,
                         title = "🛡️ NO KNOWN LOCAL THREAT INDICATORS DETECTED",
-                        reason = "No known local threat indicators detected. Domain matches standard syntax.",
+                        reason = "No known local threat indicators detected. Domain matches verified standard syntax.",
                         isUrl = true
                     )
                 }
-
-                isUpi -> {
-                    QrVerdict(
-                        rawValue = text,
-                        status = RiskStatus.Low,
-                        title = "✅ STANDARD UPI PAYMENT QR",
-                        reason = "Standard merchant or recipient VPA address format.",
-                        isUpi = true
-                    )
-                }
-
-                else -> {
-                    QrVerdict(
-                        rawValue = text,
-                        status = RiskStatus.Low,
-                        title = "✅ SCANNED TEXT / DATA",
-                        reason = "No harmful command scripts or exploit payloads found in text content."
-                    )
-                }
             }
+
+            return QrVerdict(
+                rawValue = text,
+                status = RiskStatus.Low,
+                title = "✅ SCANNED TEXT / DATA",
+                reason = "No harmful command scripts or exploit payloads found in text content."
+            )
         }
     }
 }
@@ -389,6 +397,25 @@ fun QrScannerScreen(
                             lineHeight = 18.sp
                         )
 
+                        if (verdict.parsedPayee != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Surface(
+                                color = DarkBackground.copy(alpha = 0.8f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(Modifier.padding(10.dp)) {
+                                    Text(verdict.parsedPayee, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    if (verdict.parsedAmount != null) {
+                                        Text("Requested Amount: ${verdict.parsedAmount}", color = AmberWarning, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    if (!verdict.parsedNote.isNullOrBlank()) {
+                                        Text("Note: ${verdict.parsedNote}", color = TextSecondary, fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(Modifier.height(10.dp))
                         Surface(
                             color = DarkBackground.copy(alpha = 0.6f),
@@ -468,28 +495,35 @@ fun QrScannerScreen(
                         Spacer(Modifier.height(6.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { onSimulate("upi://pay?pa=cyberfraud@fakebank&pn=RefundDesk&am=9800&cu=INR") },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                onClick = { onSimulate("upi://pay?pa=cyberfraud@fakebank&pn=RefundDesk&am=9800&cu=INR&tn=Cashback%20Refund") },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("🚨 Reverse UPI", fontSize = 10.sp, color = CoralRed)
+                                Text("🚨 Refund Trap", fontSize = 9.sp, color = CoralRed)
+                            }
+                            OutlinedButton(
+                                onClick = { onSimulate("upi://pay?pa=stall@okhdfcbank&pn=Local%20Vendor&am=42.50&cu=INR") },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("⚠️ Standard UPI", fontSize = 9.sp, color = AmberWarning)
                             }
                             OutlinedButton(
                                 onClick = { onSimulate("https://sbi-card-kyc-update.xyz/verify.apk") },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("⚠️ Fake APK", fontSize = 10.sp, color = AmberWarning)
+                                Text("🚨 Phish APK", fontSize = 9.sp, color = CoralRed)
                             }
                             OutlinedButton(
                                 onClick = { onSimulate("https://www.npci.org.in/what-we-do/upi/product-overview") },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("✅ Safe Link", fontSize = 10.sp, color = CyberEmerald)
+                                Text("✅ Safe Link", fontSize = 9.sp, color = CyberEmerald)
                             }
                         }
                     }

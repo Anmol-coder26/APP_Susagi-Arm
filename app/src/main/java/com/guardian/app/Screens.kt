@@ -1193,10 +1193,10 @@ fun HomeScreen(
         item {
             FeatureCardItem(
                 title = "Offline Demonstration Panel",
-                subtitle = "Live test scenarios calling production SafetyBarrier & Network engines",
+                subtitle = "Live test scenarios calling production SafetyBarrier, UPI & Network engines",
                 icon = Icons.Default.WarningAmber,
                 accentColor = GxPrimary,
-                statusBadge = "6 SCENARIOS",
+                statusBadge = "8 DEMO SCENARIOS",
                 onClick = { showOfflineDemoScreen = true }
             )
         }

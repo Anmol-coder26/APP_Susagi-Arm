@@ -153,6 +153,8 @@ object AstraSecurityBridge : SecurityAssessmentContract {
                     allCategories.any { it.contains("lottery", ignoreCase = true) } ||
                     lowerText.contains("lottery") ||
                     lowerText.contains("kyc") -> "KYC / Account Block Extortion"
+            astra.evidence.any { it.id == Signal.GUARANTEED_RETURN } -> "High-Yield Investment / Ponzi Scam"
+            astra.evidence.any { it.id == Signal.ADVANCE_FEE || it.id == Signal.REFUND_FEE } -> "Advance Fee / Payout Release Fraud"
             astra.evidence.any { it.id == Signal.UPI } -> "UPI PIN / Payment Collect Trap"
             astra.evidence.any { it.id == Signal.OTP } -> "OTP / Credential Harvesting Fraud"
             astra.evidence.any { it.id == Signal.APK } || extractedUrls.any { it.endsWith(".apk") } -> "Malicious APK Sideload Trap"
