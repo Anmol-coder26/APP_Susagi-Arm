@@ -173,10 +173,20 @@ class QrScannerActivity : ComponentActivity() {
     companion object {
         fun evaluateQrContent(raw: String): QrVerdict {
             val text = raw.trim()
+            if (text.isBlank()) {
+                return QrVerdict(
+                    rawValue = "",
+                    status = RiskStatus.Low,
+                    title = "ℹ️ EMPTY QR PAYLOAD",
+                    reason = "The scanned QR code contained no readable data.",
+                    isUrl = false,
+                    isUpi = false
+                )
+            }
             val lower = text.lowercase()
 
             val isUpi = lower.startsWith("upi://")
-            val isUrl = lower.startsWith("http://") || lower.startsWith("https://") || lower.contains(".xyz") || lower.contains(".apk")
+            val isUrl = lower.startsWith("http://") || lower.startsWith("https://") || lower.contains(".xyz") || lower.contains(".apk") || lower.contains("xn--")
 
             if (isUpi) {
                 val upi = com.susagi.safety.PaymentFields.inspectUri(text)
@@ -241,6 +251,19 @@ class QrScannerActivity : ComponentActivity() {
                         isUrl = true
                     )
                 }
+            }
+
+            val isCustomScheme = text.contains("://") && !isUpi && !lower.startsWith("http://") && !lower.startsWith("https://")
+            if (isCustomScheme) {
+                val scheme = text.substringBefore("://")
+                return QrVerdict(
+                    rawValue = text,
+                    status = RiskStatus.Suspicious,
+                    title = "⚠️ UNCONVENTIONAL SCHEME QR",
+                    reason = "The QR payload uses a non-standard protocol handler ($scheme://). Exercise caution before executing custom system actions.",
+                    isUrl = false,
+                    isUpi = false
+                )
             }
 
             return QrVerdict(

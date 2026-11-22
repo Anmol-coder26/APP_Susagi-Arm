@@ -231,4 +231,40 @@ class UnifiedThreatEngineTest {
         assertEquals("LOW", pastCredit.severity)
         assertTrue(pastCredit.isClean)
     }
+
+    @Test
+    fun testInspectGenericInput_upiReverseDebit() = runBlocking {
+        val upi = "upi://pay?pa=refund@desk&pn=Refund%20Desk&am=1000.00&cu=INR&tn=Approve%20to%20receive%20refund"
+        val assessment = engine.inspectGenericInput(upi)
+        assertEquals(DetectedInputType.UPI_URI, assessment.detectedType)
+        assertEquals("HIGH", assessment.severity)
+        assertTrue(assessment.riskScore >= 90)
+        assertNotNull(assessment.upiInspection)
+        assertTrue(assessment.upiInspection!!.isAdvanceFeeOrReverseDebit)
+    }
+
+    @Test
+    fun testInspectGenericInput_singleUrl() = runBlocking {
+        val url = "https://ax1sbank.example/login"
+        val assessment = engine.inspectGenericInput(url)
+        assertEquals(DetectedInputType.SINGLE_URL, assessment.detectedType)
+        assertEquals("HIGH", assessment.severity)
+        assertTrue(assessment.extractedUrls.contains(url))
+    }
+
+    @Test
+    fun testInspectGenericInput_multiUrlMessage() = runBlocking {
+        val text = "Check both portals: https://safe-axis.com and https://fake-axis.com"
+        val assessment = engine.inspectGenericInput(text)
+        assertEquals(DetectedInputType.MULTI_URL_MESSAGE, assessment.detectedType)
+        assertTrue(assessment.extractedUrls.size >= 2)
+    }
+
+    @Test
+    fun testInspectGenericInput_emptyInput() = runBlocking {
+        val assessment = engine.inspectGenericInput("   ")
+        assertEquals(DetectedInputType.PLAIN_MESSAGE, assessment.detectedType)
+        assertEquals("LOW", assessment.severity)
+        assertEquals(0, assessment.riskScore)
+    }
 }

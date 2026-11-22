@@ -241,7 +241,126 @@ class UnifiedThreatEngine(
     }
 
     /**
+     * Unified Inspection Pipeline:
+     * Input -> Type Detection -> Normalization -> Security Inspection -> Structured Evidence -> Authoritative Verdict -> Actionable Guidance
+     */
+    suspend fun inspectGenericInput(rawInput: String, sender: String = ""): GenericThreatAssessment {
+        val trimmed = rawInput.trim()
+        if (trimmed.isBlank()) {
+            return GenericThreatAssessment(
+                detectedType = DetectedInputType.PLAIN_MESSAGE,
+                normalizedInput = "",
+                riskScore = 0,
+                severity = "LOW",
+                threatCategory = "Empty Input",
+                explanation = "No input provided for inspection.",
+                evidence = emptyList(),
+                detectedTactics = emptyList(),
+                recommendedActions = listOf("Provide message text, URL, or UPI payload.")
+            )
+        }
+
+        val lower = trimmed.lowercase()
+
+        // 1. UPI Payload Detection
+        if (lower.startsWith("upi://")) {
+            val upi = com.susagi.safety.PaymentFields.inspectUri(trimmed)
+            val isHigh = !upi.isValid || upi.isAdvanceFeeOrReverseDebit
+            val score = if (!upi.isValid) 90 else if (upi.isAdvanceFeeOrReverseDebit) 95 else 40
+            val sev = if (isHigh) "HIGH" else "MEDIUM"
+            val cat = when {
+                !upi.isValid -> "Invalid / Tampered UPI URI"
+                upi.isAdvanceFeeOrReverseDebit -> "Reverse Debit / Refund Trap"
+                else -> "Unverified UPI Destination"
+            }
+            val explanation = upi.riskReason ?: if (isHigh) "Fraudulent payment collect or refund trap." else "Valid UPI format. Verify recipient independently."
+            val ev = mutableListOf<String>()
+            upi.payeeVpa?.let { ev.add("Payee VPA: $it") }
+            upi.amount?.let { ev.add("Amount: ₹$it") }
+            upi.riskReason?.let { ev.add(it) }
+
+            val actions = if (isHigh) listOf("Do NOT approve payment or enter UPI PIN.", "Never approve collect requests to receive refunds.")
+                          else listOf("Verify payee identity before confirming in your UPI app.", "Never enter UPI PIN to receive money.")
+
+            return GenericThreatAssessment(
+                detectedType = DetectedInputType.UPI_URI,
+                normalizedInput = trimmed,
+                riskScore = score,
+                severity = sev,
+                threatCategory = cat,
+                explanation = explanation,
+                evidence = ev,
+                detectedTactics = if (isHigh) listOf("upi_collect_trap", "reverse_debit") else listOf("unverified_upi"),
+                recommendedActions = actions,
+                upiInspection = upi
+            )
+        }
+
+        // 2. Single URL vs Multi-URL vs Message
+        val extracted = com.susagi.safety.SafetyBarrier.analyze(null, trimmed).destinations
+        val extractedUrls = extracted.map { it.originalUrl }
+        val isPureSingleUrl = (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("www.")) &&
+                !trimmed.contains(" ") && extractedUrls.size <= 1
+
+        if (isPureSingleUrl) {
+            val res = analyzeUrl(trimmed)
+            return GenericThreatAssessment(
+                detectedType = DetectedInputType.SINGLE_URL,
+                normalizedInput = trimmed,
+                riskScore = res.riskScore,
+                severity = res.severity,
+                threatCategory = res.threatType,
+                explanation = res.explanation,
+                evidence = res.evidence,
+                detectedTactics = res.detectedTactics,
+                recommendedActions = res.recommendedActions,
+                extractedUrls = listOf(trimmed)
+            )
+        }
+
+        // Multi-URL or Plain Message
+        val msgRes = analyzeMessage(trimmed, sender)
+        val inputType = if (extractedUrls.size > 1) DetectedInputType.MULTI_URL_MESSAGE else DetectedInputType.PLAIN_MESSAGE
+
+        return GenericThreatAssessment(
+            detectedType = inputType,
+            normalizedInput = trimmed,
+            riskScore = msgRes.riskScore,
+            severity = msgRes.severity,
+            threatCategory = msgRes.threatType,
+            explanation = msgRes.explanation,
+            evidence = msgRes.evidence,
+            detectedTactics = msgRes.detectedTactics,
+            recommendedActions = msgRes.recommendedActions,
+            extractedUrls = extractedUrls
+        )
+    }
+
+    /**
      * Returns live edge diagnostics for hackathon compliance reporting.
      */
     fun getDiagnostics(): InferenceDiagnostics = llamaEngine.getDiagnostics()
 }
+
+enum class DetectedInputType {
+    UPI_URI,
+    QR_PAYLOAD,
+    SINGLE_URL,
+    MULTI_URL_MESSAGE,
+    PLAIN_MESSAGE
+}
+
+data class GenericThreatAssessment(
+    val detectedType: DetectedInputType,
+    val normalizedInput: String,
+    val riskScore: Int,
+    val severity: String,
+    val threatCategory: String,
+    val explanation: String,
+    val evidence: List<String>,
+    val detectedTactics: List<String>,
+    val recommendedActions: List<String>,
+    val extractedUrls: List<String> = emptyList(),
+    val upiInspection: com.susagi.safety.UpiInspection? = null,
+    val qrVerdict: com.guardian.app.QrVerdict? = null
+)

@@ -22,6 +22,33 @@ class NotificationScannerService : NotificationListenerService() {
     companion object {
         private const val CHANNEL_ID = "guardian_sms_interception"
         private const val CHANNEL_NAME = "Guardian Scam Message Shield"
+        private val recentAlertTimestamps = mutableMapOf<Int, Long>()
+        private const val DEDUPLICATION_WINDOW_MS = 300_000L // 5 minutes
+
+        fun isNotificationAccessGranted(context: Context): Boolean {
+            return try {
+                val enabledListeners = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(context)
+                enabledListeners.contains(context.packageName)
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        @Synchronized
+        fun shouldAlert(contentHash: Int, nowMs: Long = System.currentTimeMillis()): Boolean {
+            recentAlertTimestamps.entries.removeAll { (nowMs - it.value) > DEDUPLICATION_WINDOW_MS }
+            val lastAlertTime = recentAlertTimestamps[contentHash]
+            if (lastAlertTime != null && (nowMs - lastAlertTime) < DEDUPLICATION_WINDOW_MS) {
+                return false
+            }
+            recentAlertTimestamps[contentHash] = nowMs
+            return true
+        }
+
+        @Synchronized
+        fun clearAlertHistory() {
+            recentAlertTimestamps.clear()
+        }
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -58,6 +85,9 @@ class NotificationScannerService : NotificationListenerService() {
             val isReview = assessment.risk == Risk.REVIEW
 
             if (isHighRisk || isReview) {
+                val contentHash = (title + fullContent).hashCode()
+                if (!shouldAlert(contentHash)) return@launch
+
                 try {
                     com.susagi.history.IncidentHistoryStore.getInstance(applicationContext).recordAssessment(
                         channel = "NOTIFICATION",
@@ -79,7 +109,8 @@ class NotificationScannerService : NotificationListenerService() {
                     body = fullContent,
                     explanation = threatDesc,
                     isHighRisk = isHighRisk,
-                    originalPendingIntent = originalPendingIntent
+                    originalPendingIntent = originalPendingIntent,
+                    contentHash = contentHash
                 )
             }
         }
@@ -91,7 +122,8 @@ class NotificationScannerService : NotificationListenerService() {
         body: String,
         explanation: String,
         isHighRisk: Boolean,
-        originalPendingIntent: PendingIntent?
+        originalPendingIntent: PendingIntent?,
+        contentHash: Int = (title + body).hashCode()
     ) {
         val warningIntent = Intent(this, ScamWarningActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -107,7 +139,7 @@ class NotificationScannerService : NotificationListenerService() {
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            (title + body).hashCode(),
+            contentHash,
             warningIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -123,7 +155,7 @@ class NotificationScannerService : NotificationListenerService() {
             .build()
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify((title + body).hashCode(), notification)
+        manager.notify(contentHash, notification)
     }
 
     private fun createNotificationChannel() {
