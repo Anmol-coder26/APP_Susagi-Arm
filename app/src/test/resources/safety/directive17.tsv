@@ -1,0 +1,121 @@
+id	category	language	label	input
+authority-0-0	authority	en	harmful	Stay on this video call until our CBI officer clears your account
+authority-0-1	authority	en	harmful	Transfer the verification bond or we execute your warrant
+authority-0-2	authority	en	harmful	Customs found drugs in your parcel; pay us to avoid detention
+authority-0-3	authority	hi	harmful	पुलिस अधिकारी बोल रहा हूँ पैसे भेजो वरना गिरफ्तार होंगे
+authority-0-4	authority	en	harmful	Your bank is under investigation. Do not speak to a lawyer and wire your balance.
+authority-0-5	authority	en	harmful	ED officer here, stay on the line and pay for account clearance
+authority-1-0	authority	en	benign	Police published the number for reporting missing property
+authority-1-1	authority	en	benign	Court hearings can be attended by video call on the official portal
+authority-1-2	authority	en	benign	Dad is reading a story about an arrest warrant
+authority-1-3	authority	en	benign	Officers will never demand a verification bond over chat
+authority-1-4	authority	hi	benign	सीबीआई की वार्षिक रिपोर्ट आज जारी हुई
+authority-1-5	authority	en	benign	Please collect your parcel at the police station reception
+credential-0-0	credential	en	harmful	Read the digits from the bank SMS aloud so I can cancel your card
+credential-0-1	credential	en	harmful	Forward the authentication code to release your pension
+credential-0-2	credential	hinglish	harmful	ATM PIN batao card unblock karna hai
+credential-0-3	credential	hi	harmful	अपना ओटीपी भेजें ताकि रिफंड मिल सके
+credential-0-4	credential	en	harmful	Send the CVV to confirm your delivery refund
+credential-0-5	credential	en	harmful	Tell me your net-banking password for our internal audit
+credential-1-0	credential	en	benign	Your verification code expires in five minutes
+credential-1-1	credential	en	benign	Our teller cannot see your ATM PIN
+credential-1-2	credential	hinglish	benign	OTP kisi ko mat batana even if they claim to be staff
+credential-1-3	credential	en	benign	Bank tip: scammers say “send your OTP”; end the call
+credential-1-4	credential	en	benign	Your CVV appears on the reverse of your card
+credential-1-5	credential	hi	benign	पासवर्ड बदलने की पुष्टि आपके ईमेल पर भेजी गई
+upi-0-0	upi	en	harmful	Approve my collect request and your prize will arrive
+upi-0-1	upi	hinglish	harmful	Cashback ke liye UPI mandate accept karo
+upi-0-2	upi	en	harmful	Scan this QR to receive the balance from your old wallet
+upi-0-3	upi	en	harmful	Enter UPI PIN for an incoming scholarship installment
+upi-0-4	upi	hinglish	harmful	Refund paane ke liye fee bharo
+upi-0-5	upi	en	harmful	The screenshot proves payment; approve this second debit to receive the first
+upi-1-0	upi	en	benign	INR 90 credited, no action required
+upi-1-1	upi	en	benign	Scan the table QR to view our menu
+upi-1-2	upi	en	benign	Your standing instruction for the newspaper was cancelled
+upi-1-3	upi	hi	benign	रिफंड जमा हो गया है, खाते का विवरण देखें
+upi-1-4	upi	en	benign	Check the payee before approving any UPI request
+upi-1-5	upi	en	benign	Payment reversed automatically after timeout
+job-0-0	job	en	harmful	Pay a registration fee for your confirmed airport job
+job-0-1	job	en	harmful	The task deposit must be paid before the next merchant rating
+job-0-2	job	en	harmful	Send INR 800 to unlock your earnings from today's reviews
+job-0-3	job	en	harmful	Recruiter here: transfer a salary release fee by noon
+job-0-4	job	hi	harmful	नौकरी के लिए पंजीकरण शुल्क जमा करें अभी
+job-0-5	job	mr	harmful	नोकरीसाठी नोंदणी शुल्क म्हणून पैसे पाठवा
+job-1-0	job	en	benign	Your application was shortlisted for a branch interview
+job-1-1	job	en	benign	Salary for March has been credited after tax
+job-1-2	job	en	benign	Recruiters must not charge candidates a joining fee
+job-1-3	job	en	benign	Please rate the new employee onboarding session
+job-1-4	job	en	benign	Interview rescheduled; no registration payment is needed
+job-1-5	job	en	benign	The job portal lets you withdraw an application
+investment-0-0	investment	en	harmful	Deposit INR 5000 for guaranteed daily returns on trading
+investment-0-1	investment	en	harmful	Pay the withdrawal tax to unlock your portfolio balance
+investment-0-2	investment	en	harmful	Transfer funds to our investment group for risk-free profit
+investment-0-3	investment	en	harmful	We will double your deposit overnight; send money now
+investment-0-4	investment	en	harmful	Withdrawals are frozen until you pay our release fee
+investment-0-5	investment	en	harmful	Guaranteed stock commission only after your security deposit, pay today
+investment-1-0	investment	en	benign	Market returns fluctuate and principal is at risk
+investment-1-1	investment	en	benign	Your scheduled SIP installment was collected
+investment-1-2	investment	en	benign	The fund published its monthly holdings
+investment-1-3	investment	en	benign	Risk-free profit is a warning sign in investment advertisements
+investment-1-4	investment	en	benign	The brokerage returned your unused margin
+investment-1-5	investment	en	benign	A bank deposit and an equity investment have different risks
+remote-0-0	remote	en	harmful	Install AnyDesk and let me verify your KYC
+remote-0-1	remote	en	harmful	Share your screen while entering your UPI PIN for our agent
+remote-0-2	remote	en	harmful	Refund approval requires a TeamViewer download
+remote-0-3	remote	en	harmful	Bank support: turn off app protection and install our recovery APK
+remote-0-4	remote	hi	harmful	स्क्रीन शेयर करें और डालें ओटीपी ताकि रिफंड हो सके
+remote-0-5	remote	hinglish	harmful	Screen share karo aur daalo ATM PIN to confirm
+remote-1-0	remote	en	benign	IT installed the printer driver during our support appointment
+remote-1-1	remote	en	benign	Never install remote desktop software for a bank refund
+remote-1-2	remote	en	benign	Share the slides on screen during tomorrow's lecture
+remote-1-3	remote	en	benign	Your KYC was verified at the branch
+remote-1-4	remote	en	benign	Press Escape to stop sharing your presentation
+remote-1-5	remote	en	benign	My bank app hides its login screen during calls
+family-0-0	family	hinglish	harmful	Mummy new number hai abhi paise bhejo
+family-0-1	family	en	harmful	Dad my replacement SIM cannot take calls, send money to the ward
+family-0-2	family	en	harmful	Your son is detained; transfer the fine and don't call him
+family-0-3	family	en	harmful	My phone broke, pay the surgeon now and don't ring my old number
+family-0-4	family	hinglish	harmful	Papa naya number hai turant transfer karo
+family-0-5	family	en	harmful	Mum this is my new number, send money immediately for bail
+family-1-0	family	en	benign	Mum my number changed, call the old one to confirm
+family-1-1	family	en	benign	Dad has a medical appointment at four
+family-1-2	family	en	benign	I paid the hospital bill yesterday and kept the receipt
+family-1-3	family	en	benign	We are collecting money for our agreed family trip
+family-1-4	family	hi	benign	बेटा घर पहुँचकर फोन करना
+family-1-5	family	en	benign	Please send me the name of the surgeon
+service-0-0	service	en	harmful	FASTag suspended, pay at https://toll.example/restore
+service-0-1	service	en	harmful	Electricity cutoff tonight: deposit the fee at https://bill.example/x
+service-0-2	service	en	harmful	Pay customs clearance for your parcel at https://fee.example/pay
+service-0-3	service	en	harmful	Government notice: pay the challan at https://notice.example/c
+service-0-4	service	en	harmful	Your SIM will disconnect unless you buy verification credit at https://sim.example/v
+service-0-5	service	en	harmful	Pay a processing fee to get your subsidy at https://benefit.example/j
+service-1-0	service	en	benign	Scheduled electricity outage for repairs tomorrow
+service-1-1	service	en	benign	Your FASTag statement is ready to download in the issuer app
+service-1-2	service	en	benign	Post office receipt: delivery charges paid
+service-1-3	service	en	benign	An official challan can be contested at the transport office
+service-1-4	service	en	benign	SIM replacement completed at your local shop
+service-1-5	service	mr	benign	वीजपुरवठा दुरुस्तीनंतर सुरू झाला आहे
+banking-0-0	banking	en	harmful	KYC expired; submit details to unfreeze your bank account
+banking-0-1	banking	en	harmful	Bank account blocked: update PAN at https://ax1sbank.example/verify
+banking-0-2	banking	hi	harmful	KYC बंद होने से पहले अपडेट करें अपना बैंक विवरण
+banking-0-3	banking	en	harmful	Click our verification link today or your KYC will expire
+banking-0-4	banking	en	harmful	Our executive needs your PIN to reverse an incorrect transfer, tell him now
+banking-0-5	banking	en	harmful	Your account is blocked: install this new bank app https://up.example/bank.apk
+banking-1-0	banking	en	benign	Our branch KYC camp runs on Saturday
+banking-1-1	banking	en	benign	Your account statement password is described in the welcome letter
+banking-1-2	banking	en	benign	Your replacement card is on its way
+banking-1-3	banking	en	benign	PAN details updated successfully at branch
+banking-1-4	banking	hinglish	benign	KYC complete hai, receipt sambhal kar rakho
+banking-1-5	banking	en	benign	The bank advises customers to check account freezes in person
+url-0-0	url	und	harmful	https://fakeaxisbank.com/restore
+url-0-1	url	und	harmful	https://axisbank.com.attacker.example/kyc
+url-0-2	url	und	harmful	https://rbi.org.in@payment.example/path
+url-0-3	url	und	harmful	https://issuer.example/bank%2Eapk
+url-0-4	url	und	harmful	https://ax1sbank.example/check
+url-0-5	url	und	harmful	https://notice.example/go?next=https%3A%2F%2Ffakeaxisbank.com
+url-1-0	url	und	benign	https://axisbank.com/branch
+url-1-1	url	und	benign	https://news.example/article?subject=otp
+url-1-2	url	und	benign	https://example.org/manual?format=apk
+url-1-3	url	und	benign	https://bücher.de/catalogue
+url-1-4	url	und	benign	https://receipts.example/invoice/42
+url-1-5	url	und	benign	https://banking.example/safety/avoid-fake-kyc

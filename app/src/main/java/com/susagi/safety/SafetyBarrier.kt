@@ -59,7 +59,7 @@ object SafetyBarrier {
     private val credit = Regex("""refund|\breceive\b|cashback|paane|paisa lene|रिफंड|पाने|प्राप्त""")
     private val approve = Regex("""\b(?:enter|approve|accept|scan|daalo|dalo|karo)\b|दर्ज|डालें|स्कैन""")
     private val payment = Regex("""\b(?:pin|qr|collect request)\b|पिन|क्यूआर""")
-    private val credentials = Regex("""\b(?:otp|cvv|verification code|one.time password)\b|ओटीपी""")
+    private val credentials = Regex("""\b(?:otp|cvv|upi pin|atm pin|net[- ]banking password|authentication code|verification code|one[- ]time password)\b|ओटीपी""")
     private val disclose = Regex("""\b(?:share|send|tell|disclose|forward|batao|bhejo|batana|bataye)\b|भेजें|बताएं|बताइए""")
     private val warning = Regex("""\b(?:never|do not|don't|must not|will never)\s+(?:ask you to\s+)?(?:share|tell|disclose|enter|approve|scan|send|forward|transfer|pay)\b""")
     private val negativeHindi = Regex("""(?:मत|नहीं|न)\s+(?:भेजें|बताएं|बताइए|करें|डालें)|(?:share|send|scan|bhejo|batao)\s+(?:mat|nahi)\s*(?:karo|karna)?|(?:mat|nahi)\s+(?:bhejo|batao|batana|bataye|karo)""")
@@ -120,8 +120,9 @@ object SafetyBarrier {
         val requestsUpiMandate = "upi" in normalized && paymentApproval.containsMatchIn(request)
         if (credit.containsMatchIn(normalized) && (requestsPaymentApproval || requestsUpiMandate)) add(Signal.UPI)
         if (banking.containsMatchIn(normalized) && blocked.containsMatchIn(normalized) && update.containsMatchIn(request)) add(Signal.KYC)
-        if (splitClause.split(request).any { credentials.containsMatchIn(it) && disclose.containsMatchIn(it) }) add(Signal.OTP)
-        if (fee.containsMatchIn(request) && (direct != null || links.containsMatchIn(bounded))) {
+        val credentialRequest = reportedExample.replace(request, " ")
+        if (splitClause.split(credentialRequest).any { credentials.containsMatchIn(it) && disclose.containsMatchIn(it) }) add(Signal.OTP)
+        if (fee.containsMatchIn(request) && (direct != null || destinations.isNotEmpty())) {
             if (utility.containsMatchIn(normalized) && cutoff.containsMatchIn(normalized)) add(Signal.UTILITY)
             if (government.containsMatchIn(normalized)) add(Signal.NOTICE)
             if (delivery.containsMatchIn(normalized)) add(Signal.FEE)
@@ -143,6 +144,9 @@ object SafetyBarrier {
         return Assessment(risk, evidence, host, action, destinations)
     }
 
+    // Limit the exception to a directly attributed, closed quotation. Later demands still count.
+    private val reportedExample = Regex("""\b(?:scammers (?:say|write)|example of a scam message)\s*:?\s*(?:"[^"\n]{1,200}"|“[^”\n]{1,200}”)""")
+
     private class RedirectBudget(var remaining: Int = 8)
 
     private fun inspect(raw: String, depth: Int = 0, budget: RedirectBudget = RedirectBudget()): Assessment {
@@ -152,14 +156,7 @@ object SafetyBarrier {
         val scheme = uri.scheme?.lowercase(Locale.ROOT)
         if (scheme == "upi") {
             if (!uri.rawAuthority.equals("pay", true) || !uri.rawPath.isNullOrEmpty() || uri.rawFragment != null) return invalid()
-            val fields = uri.rawQuery.orEmpty().split('&').groupBy {
-                URLDecoder.decode(it.substringBefore('='), "UTF-8").lowercase(Locale.ROOT)
-            }
-            val payee = fields["pa"]?.singleOrNull()?.substringAfter('=', "") ?: return invalid()
-            if (!Regex("""[A-Za-z0-9._-]+@[A-Za-z0-9.-]+""").matches(URLDecoder.decode(payee, "UTF-8"))) return invalid()
-            val amounts = fields["am"]
-            if (amounts != null && (amounts.size != 1 ||
-                !Regex("""[0-9]{1,12}(?:\.[0-9]{1,2})?""").matches(amounts.single().substringAfter('=', "")))) return invalid()
+            if (!PaymentFields.supported(uri.rawQuery.orEmpty())) return invalid()
             return assess(listOf(Evidence(Signal.PAYMENT)))
         }
         if (scheme !in listOf("http","https")) return invalid()
