@@ -92,6 +92,7 @@ class MainActivity : ComponentActivity() {
                             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         } else {
                             try {
+                                stopService(Intent(this, NotificationScannerService::class.java))
                                 stopService(Intent(this, MessageListenerService::class.java))
                             } catch (_: Exception) {}
                         }

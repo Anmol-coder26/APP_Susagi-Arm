@@ -19,7 +19,10 @@ class BarrierEvaluationTest {
             val canonical = Normalizer.normalize(input,Normalizer.Form.NFKC).lowercase(Locale.ROOT).trim().replace(Regex("\\s+")," ")
             assertTrue("Duplicate input",fingerprints.add(canonical))
         }
-        for ((split, cases) in rows.groupBy { it[0] }) {
+        val groups = rows.groupBy { it[0] }.toMutableMap()
+        // Authored category pairs are also reported separately from the aggregate test split.
+        groups.putAll(rows.filter { it[0] == "test" && it[1].startsWith("pair.") }.groupBy { it[1] })
+        for ((split, cases) in groups) {
             var tp=0; var tn=0; var fp=0; var fn=0; var review=0
             val latencies = mutableListOf<Long>()
             for ((_,_,kind,label,input) in cases) {

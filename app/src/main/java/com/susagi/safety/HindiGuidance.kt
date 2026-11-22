@@ -3,6 +3,11 @@ package com.susagi.safety
 /** Uses only the signals selected by the offline detector. No shared text is interpolated. */
 fun Assessment.hindiGuidance(): List<String> = evidence.map { it.id }.distinct().map { signal ->
     when (signal) {
+        Signal.ADVANCE_FEE -> "नौकरी, काम या लाभ के लिए पहले पैसे माँगे गए हैं। भुगतान से पहले स्वतंत्र पुष्टि करें।"
+        Signal.GUARANTEED_RETURN -> "निश्चित मुनाफे के वादे के साथ जमा राशि माँगी गई है। निवेश और संस्था की स्वतंत्र जाँच करें।"
+        Signal.REMOTE_ACCESS -> "बैंकिंग या रिफंड के लिए रिमोट एक्सेस ऐप लगाने को कहा गया है। आधिकारिक ऐप से संपर्क करें।"
+        Signal.FAMILY_PAYMENT -> "अलग नंबर से रिश्तेदार के नाम पर तुरंत पैसे माँगे गए हैं। पुराने नंबर पर कॉल करके पुष्टि करें।"
+        Signal.FASTAG -> "FASTag बंद करने की बात के साथ लिंक से भुगतान माँगा गया है। जारीकर्ता से सीधे बैलेंस जाँचें।"
         Signal.HTTP -> "इस पते का कनेक्शन एन्क्रिप्टेड नहीं है। निजी जानकारी देने से पहले आधिकारिक HTTPS पता खोलें।"
         Signal.INVALID -> "इस पते या सामग्री की जाँच नहीं हो सकी। आधिकारिक ऐप से जाँचें।"
         Signal.LIMIT -> "स्थानीय जाँच की सीमा पार हो गई। हर पते की अलग जाँच करें।"

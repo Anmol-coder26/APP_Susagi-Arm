@@ -11,6 +11,11 @@ import kotlinx.coroutines.withContext
 enum class Risk { LOW, REVIEW, HIGH, UNKNOWN }
 enum class Action { OFFER_OPEN, ASK_CONFIRMATION, RECOMMEND_BLOCK, DO_NOT_OPEN }
 enum class Signal(val risk: Risk, val category: String, val explanation: String, val advice: String) {
+    ADVANCE_FEE(Risk.HIGH, "advance_fee", "A job, task or benefit is conditional on an advance payment.", "Verify the offer independently before sending money."),
+    GUARANTEED_RETURN(Risk.HIGH, "investment", "A deposit request accompanies a promise of guaranteed investment returns.", "Verify the investment and the person offering it independently."),
+    REMOTE_ACCESS(Risk.HIGH, "remote_access", "A banking or refund instruction asks you to install remote-access software.", "Close the request and contact the institution through its official app."),
+    FAMILY_PAYMENT(Risk.HIGH, "impersonation", "A claimed relative using a different number requests an urgent transfer.", "Call the relative on a previously saved number before paying."),
+    FASTAG(Risk.HIGH, "fastag", "A threatened FASTag restriction accompanies a payment request and a supplied link.", "Check your tag balance directly with the issuer."),
     INVALID(Risk.UNKNOWN, "input", "The destination or input could not be assessed.", "Use the official app or enter the address yourself."),
     LIMIT(Risk.UNKNOWN, "input", "The input exceeds a local inspection limit.", "Check individual destinations separately."),
     HTTP(Risk.REVIEW, "transport", "The URL uses an unencrypted HTTP connection.", "Use the official HTTPS address before entering sensitive information."),
@@ -89,6 +94,9 @@ object SafetyBarrier {
             .replace('’', '\'').replace("\u200b","").replace("\ufeff","")
         val request = negativeHindi.replace(warning.replace(normalized, ""), "")
         fun add(signal: Signal) { evidence.add(Evidence(signal)) }
+        splitClause.split(normalized).forEach { clause ->
+            ContextualScamRules.inspect(clause, destinations.isNotEmpty() || direct != null).forEach(::add)
+        }
         if ((authority.containsMatchIn(normalized) && coercion.containsMatchIn(request)) ||
             (arrestIsolation.containsMatchIn(normalized) && secrecyDemand.containsMatchIn(normalized))) add(Signal.ARREST)
         val requestsPaymentApproval = payment.containsMatchIn(normalized) && approve.containsMatchIn(request)
@@ -118,13 +126,25 @@ object SafetyBarrier {
         return Assessment(risk, evidence, host, action, destinations)
     }
 
-    private fun inspect(raw: String, nested: Boolean = false): Assessment {
+    private class RedirectBudget(var remaining: Int = 8)
+
+    private fun inspect(raw: String, depth: Int = 0, budget: RedirectBudget = RedirectBudget()): Assessment {
         fun invalid() = assess(listOf(Evidence(Signal.INVALID)))
         if (raw.length > MAX) return assess(listOf(Evidence(Signal.LIMIT)))
         val uri = try { URI(if (raw.startsWith("www.", true)) "https://$raw" else raw) } catch (_: Exception) { return invalid() }
         val scheme = uri.scheme?.lowercase(Locale.ROOT)
-        if (scheme == "upi") return if (uri.rawAuthority.equals("pay", true) && uri.rawQuery.orEmpty().split('&').any { it.startsWith("pa=") && it.length > 3 })
-            assess(listOf(Evidence(Signal.PAYMENT))) else invalid()
+        if (scheme == "upi") {
+            if (!uri.rawAuthority.equals("pay", true) || !uri.rawPath.isNullOrEmpty() || uri.rawFragment != null) return invalid()
+            val fields = uri.rawQuery.orEmpty().split('&').groupBy {
+                URLDecoder.decode(it.substringBefore('='), "UTF-8").lowercase(Locale.ROOT)
+            }
+            val payee = fields["pa"]?.singleOrNull()?.substringAfter('=', "") ?: return invalid()
+            if (!Regex("""[A-Za-z0-9._-]+@[A-Za-z0-9.-]+""").matches(URLDecoder.decode(payee, "UTF-8"))) return invalid()
+            val amounts = fields["am"]
+            if (amounts != null && (amounts.size != 1 ||
+                !Regex("""[0-9]{1,12}(?:\.[0-9]{1,2})?""").matches(amounts.single().substringAfter('=', "")))) return invalid()
+            return assess(listOf(Evidence(Signal.PAYMENT)))
+        }
         if (scheme !in listOf("http","https")) return invalid()
         val auth = uri.rawAuthority ?: return invalid()
         val endpoint = auth.substringAfterLast('@')
@@ -154,17 +174,17 @@ object SafetyBarrier {
                 label.any { it in 'a'..'z' } && label.any { it.code in 0x370..0x52f }
             }) add(Signal.MIXED)
         if (uri.path.orEmpty().substringAfterLast('/').substringBefore(';').endsWith(".apk", true)) add(Signal.APK)
-        if (!nested) {
-            var redirectsChecked = 0
+        if (uri.rawQuery != null) {
             uri.rawQuery.orEmpty().split('&').forEach { entry ->
                 if (URLDecoder.decode(entry.substringBefore('='), "UTF-8").lowercase(Locale.ROOT) in listOf("redirect","redirect_uri","returnurl","next","url","target")) {
-                    if (++redirectsChecked > 8) {
-                        if (redirectsChecked == 9) add(Signal.LIMIT)
+                    if (depth >= 3 || budget.remaining == 0) {
+                        if (evidence.none { it.id == Signal.LIMIT }) add(Signal.LIMIT)
                         return@forEach
                     }
+                    budget.remaining--
                     val value = URLDecoder.decode(entry.substringAfter('=', ""), "UTF-8")
                     val dest = try { uri.resolve(value).toString() } catch (_: IllegalArgumentException) { "" }
-                    val target = inspect(dest, true)
+                    val target = inspect(dest, depth + 1, budget)
                     if (target.destinationHost != host || target.evidence.isNotEmpty()) {
                         add(Signal.REDIRECT)
                         evidence += target.evidence

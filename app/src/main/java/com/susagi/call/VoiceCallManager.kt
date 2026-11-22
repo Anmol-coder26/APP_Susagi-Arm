@@ -310,6 +310,11 @@ class VoiceCallManager(
     fun startCall(channelName: String, token: String, uid: Int = 0) {
         callStartTs = System.currentTimeMillis()
         try {
+            if (agoraAppId.isBlank()) {
+                CallDiagnostics.log("RTC", "Agora App ID is unconfigured or blank; direct dev mode fallback", LogLevel.WARN)
+                onErrorOccurred?.invoke(101)
+                return
+            }
             rtcEngine = AgoraEngineManager.get(context, agoraAppId, eventHandler)
             try { rtcEngine.addHandler(eventHandler) } catch (_: Exception) {}
 

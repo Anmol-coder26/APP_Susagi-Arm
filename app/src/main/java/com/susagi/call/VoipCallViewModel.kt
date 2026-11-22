@@ -81,6 +81,10 @@ class VoipCallViewModel @JvmOverloads constructor(
     }
 
     init {
+        if (agoraAppId.isBlank()) {
+            _uiState.value = _uiState.value.copy(connectionBanner = "Development mode: Agora App ID unconfigured")
+        }
+
         manager.onTokenRenewalNeeded = {
             viewModelScope.launch {
                 val currentChannel = _uiState.value.channelName

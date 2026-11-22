@@ -6,6 +6,30 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SafetyBarrierTest {
+    @Test fun contextualDemandsAndBenignCounterexamples() = runBlocking {
+        val demands = mapOf(
+            "To start your job pay the registration fee today" to Signal.ADVANCE_FEE,
+            "नोकरी साठी नोंदणी शुल्क म्हणून पैसे पाठवा" to Signal.ADVANCE_FEE,
+            "For guaranteed monthly returns on trading deposit INR 5000" to Signal.GUARANTEED_RETURN,
+            "Refund ke liye AnyDesk install karo" to Signal.REMOTE_ACCESS,
+            "Mum this is my new number please send money right now" to Signal.FAMILY_PAYMENT,
+            "FASTag blocked: pay here https://tag.example" to Signal.FASTAG
+        )
+        for ((message, signal) in demands) assertTrue(signal.name, SafetyBarrier.analyzeMessage(message).evidence.any { it.id == signal })
+        for (message in listOf("Your job security deposit was returned", "Never install AnyDesk for a refund",
+            "Mum this is my new number, see you tonight", "FASTag balance low; recharge in your app")) {
+            assertEquals(message, Risk.LOW, SafetyBarrier.analyzeMessage(message).risk)
+        }
+    }
+
+    @Test fun nestedRedirectAndAmbiguousUpiFields() = runBlocking {
+        val link = "https://start.example/?next=%2Fgo%3Fnext%3Dhttps%253A%252F%252Ffakeaxisbank.com"
+        assertTrue(SafetyBarrier.analyzeUrl(link).evidence.contains(Evidence(Signal.BRAND, "fakeaxisbank.com")))
+        for (params in listOf("pa=a%40bank&%70a=b%40bank", "pa=a%40bank&am=10&am=1000", "pa=%20")) {
+            assertEquals(Action.DO_NOT_OPEN, SafetyBarrier.analyzeUrl("upi://pay?$params").action)
+        }
+        assertEquals(Action.ASK_CONFIRMATION, SafetyBarrier.analyzeUrl("upi://pay?pa=stall%40bank&am=42.50").action)
+    }
     @Test fun authorizationDemandsNeedFinancialContext() = runBlocking {
         assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage("To receive the newsletter, approve the request in settings.").risk)
         assertEquals(Risk.LOW, SafetyBarrier.analyzeMessage("UPI payment received. Scan QR for the product manual.").risk)
@@ -112,5 +136,29 @@ class SafetyBarrierTest {
     @Test fun missingModelReturnsUnavailable() = runBlocking {
         val result = LocalEvidenceExplainer(File("nonexistent-model-directory")).explain(SafetyBarrier.analyzeMessage("send OTP"))
         assertTrue(result is ExplanationResult.Unavailable)
+    }
+
+    @Test fun endToEndSyntheticScamScenarios() = runBlocking {
+        // (a) Digital arrest Hinglish
+        val arrest = SafetyBarrier.analyzeMessage("Aap digital arrest mein hain. Kisi ko mat batana.")
+        assertEquals(Risk.HIGH, arrest.risk)
+        assertTrue(arrest.evidence.any { it.id == Signal.ARREST })
+
+        // (b) UPI mandate refund trap
+        val upi = SafetyBarrier.analyzeMessage("To receive cashback, approve this mandate in your UPI app.")
+        assertEquals(Risk.HIGH, upi.risk)
+        assertTrue(upi.evidence.any { it.id == Signal.UPI })
+
+        // (c) Electricity bill extortion with APK payload
+        val utility = SafetyBarrier.analyze("https://pay-bill.example/update.apk", "Electricity bill unpaid. Pay now: power will be disconnected tonight. https://pay-bill.example/update.apk")
+        assertEquals(Risk.HIGH, utility.risk)
+        assertTrue(utility.evidence.any { it.id == Signal.UTILITY })
+        assertTrue(utility.evidence.any { it.id == Signal.APK })
+
+        // (d) Benign control message
+        val benign = SafetyBarrier.analyze(null, "Hi Papa, reached safely. Will call later.")
+        assertEquals(Risk.LOW, benign.risk)
+        assertTrue(benign.evidence.isEmpty())
+        assertTrue(benign.explanation.contains("No configured local rule matched"))
     }
 }

@@ -1,4 +1,14 @@
 split	family	kind	label	input
+test	pair.jobs	message	1	भर्ती कार्यालय की नौकरी पक्की करने के लिए पंजीकरण शुल्क जमा करें
+test	pair.jobs	message	0	Your job offer has no joining fee and your interview is on Tuesday.
+test	pair.remote	message	1	Our bank agent needs you to download TeamViewer for KYC support.
+test	pair.remote	message	0	Our bank will never ask you to install remote desktop software.
+test	pair.family	message	1	Papa naya number hai abhi paise bhejo please
+test	pair.family	message	0	Dad, I lost my phone on the train. Can you call the station?
+test	pair.invest	message	1	Transfer funds to the trading desk for guaranteed daily profit
+test	pair.invest	message	0	Investments carry risk. Guaranteed returns cannot be offered.
+test	pair.fastag	message	1	Your FASTag will be deactivated: pay outstanding charges at https://toll.example/fees
+test	pair.fastag	message	0	FASTag recharge received. Your balance is available in the issuer app.
 validation	v.mandate	message	1	To receive cashback, approve this mandate in your UPI app.
 validation	v.awareness	message	0	OTP kisi ko mat batana. Your branch appointment is tomorrow.
 test	t.isolation	message	1	You are in custody. Do not tell anyone.

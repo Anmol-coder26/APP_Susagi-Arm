@@ -140,7 +140,8 @@ class UnifiedThreatEngine(
             detectedTactics = (detectedTactics + assessment.evidence.map { it.id.name.lowercase() }).distinct(),
             evidence = (evidence + assessment.evidence.map { it.id.explanation }).distinct(),
             explanation = if (raised) assessment.explanation else explanation,
-            recommendedActions = (assessment.recommendations + recommendedActions).distinct()
+            recommendedActions = if (raised && isClean) assessment.recommendations
+                else (assessment.recommendations + recommendedActions).distinct()
         )
     }
 

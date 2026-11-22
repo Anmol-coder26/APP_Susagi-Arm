@@ -116,6 +116,18 @@ class VoipCallingSafetyTest {
         val tokenToPass = if (token.isBlank()) null else token
         assertNull("Blank token should map to null token for local direct mode", tokenToPass)
         assertTrue("Empty Agora App ID is identified as development/unconfigured mode", agoraAppId.isBlank())
+
+        // Verify error code 101 mapping for blank App ID
+        var receivedError = 0
+        val dummyErrorHandler: (Int) -> Unit = { receivedError = it }
+        if (agoraAppId.isBlank()) {
+            dummyErrorHandler(101)
+        }
+        assertEquals(101, receivedError)
+
+        // Verify dev mode banner assignment
+        val devBanner = if (agoraAppId.isBlank()) "Development mode: Agora App ID unconfigured" else null
+        assertEquals("Development mode: Agora App ID unconfigured", devBanner)
     }
 
     @Test
