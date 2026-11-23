@@ -9,8 +9,8 @@ object CredentialIntent {
     data class Finding(val clauseIndex: Int, val context: Context, val evidenceId: String)
 
     private val boundary = Regex("""[.!?;।\n]+|\b(?:instead|however|but|lekin)\b""")
-    private val credential = Regex("""\b(?:otp|cvv|upi pin|verification code|authentication code|one.time password|six.digit code|digits from (?:the|your) bank message)\b|ओटीपी""")
-    private val disclosure = Regex("""\b(?:read (?:me |us )?back|read out|dictate|send me|tell me|forward|batao|bhejo)\b|बताओ|भेजो""")
+    private val credential = Regex("""\b(?:otp|cvv|upi pin|verification code|authentication code|one.time password|six.digit code|digits from (?:the|your) bank (?:message|sms|text))\b|ओटीपी""")
+    private val disclosure = Regex("""\b(?:read (?:me |us )?back|read out|read\b[^.!?;\n]{1,80}\b(?:aloud|out loud)|dictate|send me|tell me|forward|batao|bhejo)\b|बताओ|भेजो""")
     private val caution = Regex("""\b(?:never|do not|don't|must not|mat|nahi)\b|मत|नहीं""")
     private val attribution = Regex("""\b(?:scammers? (?:asked|said|say)|caller asked me|example of a scam|fraud awareness)\b""")
 

@@ -1,0 +1,109 @@
+id	split	category	language	label	rule	signals	margin	cues	ml	rule_correct	ml_correct	overlap
+authority-0-0	test	authority	en	harmful	HIGH	ARREST	-0.7365553675499589	@authority	False	True	False	rule_only
+authority-0-1	test	authority	en	harmful	HIGH	ARREST	0.560844665836151	@authority,@authority+request,@request	True	True	True	both
+authority-0-2	test	authority	en	harmful	HIGH	ARREST	0.14446984693007048	@authority,@authority+request,@authority+warning,@request,@request+warning,@warning	False	True	False	rule_only
+authority-0-3	test	authority	hi	harmful	HIGH	ARREST	0.7423503819624635	@authority,@authority+payment,@authority+request,@payment,@payment+request,@request	True	True	True	both
+authority-0-4	test	authority	en	harmful	HIGH	ARREST	-0.14247392494507316	@authority,@authority+warning,@warning	False	True	False	rule_only
+authority-0-5	test	authority	en	harmful	HIGH	ARREST	-0.1728442471685513	@authority,@authority+request,@request	False	True	False	rule_only
+authority-1-0	test	authority	en	benign	LOW		-1.4031123070351819	@attribution,@attribution+authority,@authority	False	True	True	neither
+authority-1-1	test	authority	en	benign	LOW		-2.380768373296953	@authority	False	True	True	neither
+authority-1-2	test	authority	en	benign	LOW		-0.9927138123817676	@authority	False	True	True	neither
+authority-1-3	test	authority	en	benign	LOW		-0.6569269482256875	@warning	False	True	True	neither
+authority-1-4	test	authority	hi	benign	LOW		-0.9409691015212913		False	True	True	neither
+authority-1-5	test	authority	en	benign	LOW		-1.0755654977296745	@authority,@authority+payment,@payment	False	True	True	neither
+credential-0-0	validation	credential	en	harmful	LOW		-1.5190347899237193	@authority	False	False	False	neither
+credential-0-1	validation	credential	en	harmful	HIGH	OTP	0.6048411091520802	@credential,@credential+request,@request	True	True	True	both
+credential-0-2	validation	credential	hinglish	harmful	HIGH	OTP	1.4834830034489044	@credential,@credential+request,@request	True	True	True	both
+credential-0-3	validation	credential	hi	harmful	HIGH	OTP	1.8483144782412158	@credential,@credential+request,@request	True	True	True	both
+credential-0-4	validation	credential	en	harmful	HIGH	OTP	1.553629092923467	@credential,@credential+payment,@credential+request,@payment,@payment+request,@request	True	True	True	both
+credential-0-5	validation	credential	en	harmful	HIGH	OTP	0.49201684980681026	@credential,@credential+request,@request	True	True	True	both
+credential-1-0	validation	credential	en	benign	LOW		-0.3289515221320062	@credential	False	True	True	neither
+credential-1-1	validation	credential	en	benign	LOW		0.4700622546690596	@credential,@credential+warning,@warning	False	True	True	neither
+credential-1-2	validation	credential	hinglish	benign	LOW		-0.5062890973035389	@credential	False	True	True	neither
+credential-1-3	validation	credential	en	benign	LOW		0.6528474849554162	@attribution,@attribution+authority,@attribution+credential,@attribution+request,@authority,@authority+credential,@authority+request,@credential,@credential+request,@request	True	True	False	ml_only
+credential-1-4	validation	credential	en	benign	LOW		-1.5985716014764217	@credential	False	True	True	neither
+credential-1-5	validation	credential	hi	benign	LOW		-0.9409691015212913		False	True	True	neither
+upi-0-0	train	upi	en	harmful	LOW		3.545410115873248	@payment,@payment+request,@request	True	False	True	ml_only
+upi-0-1	train	upi	hinglish	harmful	HIGH	UPI	3.417930572177203	@payment,@payment+request,@request	True	True	True	both
+upi-0-2	train	upi	en	harmful	HIGH	UPI	2.9753054842654993	@request	True	True	True	both
+upi-0-3	train	upi	en	harmful	LOW		3.1620295429800387	@credential,@credential+request,@request	True	False	True	ml_only
+upi-0-4	train	upi	hinglish	harmful	HIGH	REFUND_FEE	2.745689167321308	@payment	True	True	True	both
+upi-0-5	train	upi	en	harmful	LOW		3.3067926027615155	@request	True	False	True	ml_only
+upi-1-0	train	upi	en	benign	LOW		-3.2683942701799196	@receipt	False	True	True	neither
+upi-1-1	train	upi	en	benign	LOW		-2.8501309628120737	@request	False	True	True	neither
+upi-1-2	train	upi	en	benign	LOW		-3.3993610708891784		False	True	True	neither
+upi-1-3	train	upi	hi	benign	LOW		-3.4156396433178897	@receipt	False	True	True	neither
+upi-1-4	train	upi	en	benign	LOW		-3.220415959513532		False	True	True	neither
+upi-1-5	train	upi	en	benign	LOW		-2.780154676279162		False	True	True	neither
+job-0-0	validation	job	en	harmful	HIGH	ADVANCE_FEE	1.1524551715446862	@payment,@payment+receipt,@payment+request,@receipt,@receipt+request,@request	True	True	True	both
+job-0-1	validation	job	en	harmful	LOW		-1.3033801687994124	@payment	False	False	False	neither
+job-0-2	validation	job	en	harmful	HIGH	ADVANCE_FEE	0.3637214708333645	@request	False	True	False	rule_only
+job-0-3	validation	job	en	harmful	HIGH	ADVANCE_FEE	1.545634013161258	@payment,@payment+request,@request	True	True	True	both
+job-0-4	validation	job	hi	harmful	HIGH	ADVANCE_FEE	-0.09618409477536438	@payment	False	True	False	rule_only
+job-0-5	validation	job	mr	harmful	HIGH	ADVANCE_FEE	0.8262077002188062	@payment,@payment+request,@request	True	True	True	both
+job-1-0	validation	job	en	benign	LOW		-2.156504351728489		False	True	True	neither
+job-1-1	validation	job	en	benign	LOW		-2.2655988413040893	@receipt	False	True	True	neither
+job-1-2	validation	job	en	benign	LOW		-0.1359978626741355	@payment,@payment+warning,@warning	False	True	True	neither
+job-1-3	validation	job	en	benign	LOW		-1.4480185266994126		False	True	True	neither
+job-1-4	validation	job	en	benign	LOW		-1.303196134544682		False	True	True	neither
+job-1-5	validation	job	en	benign	LOW		-1.2914879241848842		False	True	True	neither
+investment-0-0	test	investment	en	harmful	HIGH	GUARANTEED_RETURN	-1.103300547488428	@payment	False	True	False	rule_only
+investment-0-1	test	investment	en	harmful	HIGH	ADVANCE_FEE	0.5054494689863098	@request	True	True	True	both
+investment-0-2	test	investment	en	harmful	HIGH	GUARANTEED_RETURN	0.9168365352997805	@payment,@payment+request,@request	True	True	True	both
+investment-0-3	test	investment	en	harmful	HIGH	GUARANTEED_RETURN	3.1761964126240145	@payment,@payment+pressure,@payment+request,@pressure,@pressure+request,@request	True	True	True	both
+investment-0-4	test	investment	en	harmful	HIGH	ADVANCE_FEE	1.4611001872951883	@payment,@payment+request,@request	True	True	True	both
+investment-0-5	test	investment	en	harmful	HIGH	ADVANCE_FEE	1.549262795757885	@payment,@payment+request,@request	True	True	True	both
+investment-1-0	test	investment	en	benign	LOW		-0.7032665905442613		False	True	True	neither
+investment-1-1	test	investment	en	benign	LOW		-1.0639687473591264		False	True	True	neither
+investment-1-2	test	investment	en	benign	LOW		-1.8118859839303942	@attribution	False	True	True	neither
+investment-1-3	test	investment	en	benign	LOW		-1.5343184787590123		False	True	True	neither
+investment-1-4	test	investment	en	benign	LOW		-1.2562686123701752		False	True	True	neither
+investment-1-5	test	investment	en	benign	LOW		-0.06568157874796099	@authority,@authority+payment,@payment	False	True	True	neither
+remote-0-0	train	remote	en	harmful	HIGH	REMOTE_ACCESS	2.8493346804438167	@request	True	True	True	both
+remote-0-1	train	remote	en	harmful	HIGH	SCREEN_CREDENTIAL,OTP	3.3138384674818115	@credential,@credential+request,@request	True	True	True	both
+remote-0-2	train	remote	en	harmful	HIGH	REMOTE_ACCESS	2.4046878133087097	@payment	True	True	True	both
+remote-0-3	train	remote	en	harmful	LOW		3.0970090308814613	@authority,@authority+request,@request	True	False	True	ml_only
+remote-0-4	train	remote	hi	harmful	LOW		3.1041395759304247	@credential	True	False	True	ml_only
+remote-0-5	train	remote	hinglish	harmful	HIGH	OTP	3.244200421552222	@credential,@credential+request,@request	True	True	True	both
+remote-1-0	train	remote	en	benign	LOW		-3.619858535186032		False	True	True	neither
+remote-1-1	train	remote	en	benign	LOW		-2.871272828448163	@authority,@authority+payment,@authority+request,@authority+warning,@payment,@payment+request,@payment+warning,@request,@request+warning,@warning	False	True	True	neither
+remote-1-2	train	remote	en	benign	LOW		-3.517693939700099	@request	False	True	True	neither
+remote-1-3	train	remote	en	benign	LOW		-2.9490621402976975		False	True	True	neither
+remote-1-4	train	remote	en	benign	LOW		-2.9605559818221296		False	True	True	neither
+remote-1-5	train	remote	en	benign	LOW		-3.264941586813569	@authority	False	True	True	neither
+family-0-0	train	family	hinglish	harmful	HIGH	FAMILY_PAYMENT	3.201955119427167	@pressure,@pressure+request,@request	True	True	True	both
+family-0-1	train	family	en	harmful	HIGH	FAMILY_PAYMENT	3.0033696433874684	@payment,@payment+request,@payment+warning,@request,@request+warning,@warning	True	True	True	both
+family-0-2	train	family	en	harmful	LOW		3.3016830356456492	@request	True	False	True	ml_only
+family-0-3	train	family	en	harmful	LOW		3.902190261031311	@pressure,@pressure+request,@request	True	False	True	ml_only
+family-0-4	train	family	hinglish	harmful	LOW		2.8479443728240876	@request	True	False	True	ml_only
+family-0-5	train	family	en	harmful	HIGH	FAMILY_PAYMENT	4.122034447075775	@payment,@payment+pressure,@payment+request,@pressure,@pressure+request,@request	True	True	True	both
+family-1-0	train	family	en	benign	LOW		-3.0026206038249925		False	True	True	neither
+family-1-1	train	family	en	benign	LOW		-3.0849991344216114		False	True	True	neither
+family-1-2	train	family	en	benign	LOW		-3.483383370694168		False	True	True	neither
+family-1-3	train	family	en	benign	LOW		-3.1256255544347966	@payment	False	True	True	neither
+family-1-4	train	family	hi	benign	LOW		-2.8500887079969894		False	True	True	neither
+family-1-5	train	family	en	benign	LOW		-2.921029736315088	@request	False	True	True	neither
+service-0-0	train	service	en	harmful	HIGH	FASTAG	3.7329740350322678	@pressure,@pressure+request,@request	True	True	True	both
+service-0-1	train	service	en	harmful	LOW		3.677814893064363	@payment,@payment+pressure,@pressure	True	False	True	ml_only
+service-0-2	train	service	en	harmful	HIGH	ARREST,FEE	3.9979725087595326	@authority,@authority+payment,@authority+request,@payment,@payment+request,@request	True	True	True	both
+service-0-3	train	service	en	harmful	HIGH	NOTICE	3.1415668770789984	@request	True	True	True	both
+service-0-4	train	service	en	harmful	LOW		3.7760635113051175		True	False	True	ml_only
+service-0-5	train	service	en	harmful	LOW		4.378640128796524	@payment,@payment+request,@request	True	False	True	ml_only
+service-1-0	train	service	en	benign	LOW		-3.067494745621084		False	True	True	neither
+service-1-1	train	service	en	benign	LOW		-3.6070640225926955		False	True	True	neither
+service-1-2	train	service	en	benign	LOW		-3.262954751769474		False	True	True	neither
+service-1-3	train	service	en	benign	LOW		-3.6520789932139146		False	True	True	neither
+service-1-4	train	service	en	benign	LOW		-3.0961519901818537	@receipt	False	True	True	neither
+service-1-5	train	service	mr	benign	LOW		-2.860318023252407		False	True	True	neither
+banking-0-0	train	banking	en	harmful	HIGH	KYC	2.7248348502351325	@authority	True	True	True	both
+banking-0-1	train	banking	en	harmful	HIGH	BRAND,KYC	3.6019890787848667	@authority,@authority+pressure,@pressure	True	True	True	both
+banking-0-2	train	banking	hi	harmful	HIGH	KYC	3.038980213996561		True	True	True	both
+banking-0-3	train	banking	en	harmful	HIGH	KYC	2.981432588012935		True	True	True	both
+banking-0-4	train	banking	en	harmful	LOW		4.550164456669606	@credential,@credential+pressure,@credential+request,@pressure,@pressure+request,@request	True	False	True	ml_only
+banking-0-5	train	banking	en	harmful	HIGH	APK	4.3716402445364615	@authority,@authority+pressure,@authority+request,@pressure,@pressure+request,@request	True	True	True	both
+banking-1-0	train	banking	en	benign	LOW		-3.2743287425274286		False	True	True	neither
+banking-1-1	train	banking	en	benign	LOW		-3.350716018930252	@credential	False	True	True	neither
+banking-1-2	train	banking	en	benign	LOW		-3.2044656704633394		False	True	True	neither
+banking-1-3	train	banking	en	benign	LOW		-2.979634519702145		False	True	True	neither
+banking-1-4	train	banking	hinglish	benign	LOW		-3.001579376411326		False	True	True	neither
+banking-1-5	train	banking	en	benign	LOW		-3.475169351688942	@authority	False	True	True	neither

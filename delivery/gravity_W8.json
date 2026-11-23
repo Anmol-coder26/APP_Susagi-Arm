@@ -3,15 +3,15 @@
   "name": "Arm AI-SoC Bharat Challenge PS3 Submission Release Manifest",
   "status": "COMPLETED",
   "priority": "P0",
-  "timestamp": "2026-11-23T01:26:00+05:30",
+  "timestamp": "2026-11-23T02:04:00+05:30",
   "targetSubmissionDeadline": "2026-11-25T23:59:59+05:30",
   "applicationId": "com.susagi.guardian2",
   "gitBranch": "feature/gravity-product-calling",
   "buildOutputs": {
     "appDebugApk": {
       "path": "app/build/outputs/apk/debug/app-debug.apk",
-      "sizeBytes": 137348270,
-      "sha256": "DEE5245FE9EB868C69C23DCC4940027D5C09663E29930B73FEA0E8A100A9BCA0"
+      "sizeBytes": 137348268,
+      "sha256": "7925AF9EC42AD55D360042FEBE6B167E26A2169CD30374659B7D7B4FE12BF781"
     },
     "appAndroidTestApk": {
       "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
@@ -20,44 +20,40 @@
     }
   },
   "unitTestVerification": {
-    "totalTests": 230,
-    "passed": 230,
+    "totalTests": 233,
+    "passed": 233,
     "failed": 0,
     "ignored": 0,
-    "durationSeconds": 12.46,
-    "pairedDetectors108Harness": {
+    "durationSeconds": 12.5,
+    "liveSafetyBarrier108Evaluation": {
       "totalCases": 108,
-      "ruleStats": {
-        "truePositives": 40,
-        "falsePositives": 0,
-        "trueNegatives": 54,
-        "falseNegatives": 14,
-        "precision": 1.0,
-        "recall": 0.7407,
-        "f1": 0.8511,
-        "falsePositiveRate": 0.0
-      },
-      "mlStats": {
-        "truePositives": 45,
-        "falsePositives": 1,
-        "trueNegatives": 53,
-        "falseNegatives": 9,
-        "precision": 0.9783,
-        "recall": 0.8333,
-        "f1": 0.9,
-        "falsePositiveRate": 0.0185
-      },
-      "agreements": {
-        "both": 33,
-        "neither": 55,
-        "ruleOnly": 7,
-        "modelOnly": 13
-      }
+      "truePositives": 42,
+      "falsePositives": 0,
+      "trueNegatives": 54,
+      "falseNegatives": 12,
+      "precision": 1.0,
+      "recall": 0.7778,
+      "f1": 0.8750,
+      "falsePositiveRate": 0.0,
+      "gapsClosedByDirective27": [
+        "credential-0-0 (digits from bank SMS aloud -> OTP)",
+        "job-0-1 (task deposit required before merchant rating -> ADVANCE_FEE)"
+      ]
     },
     "astraV2LexicalModelShadow": {
       "status": "INTEGRATED_SHADOW_MODE",
-      "parityTest": "PASSED (0 error tolerance)",
-      "pythonReleaseTests": "3/3 PASSED (test_round22_release.py)"
+      "truePositives": 45,
+      "falsePositives": 1,
+      "trueNegatives": 53,
+      "falseNegatives": 9,
+      "precision": 0.9783,
+      "recall": 0.8333,
+      "f1": 0.9,
+      "falsePositiveRate": 0.0185
+    },
+    "combinedCoverage": {
+      "bothMissedHarmful": 0,
+      "combinedHarmfulCoverage": 1.0
     }
   },
   "storageCompliance": {

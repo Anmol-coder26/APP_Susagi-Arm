@@ -95,7 +95,7 @@ fun OfflineDemoScreen(
     val scenarios = listOf(
         DemoScenario(
             id = "demo_a_hindi_arrest",
-            title = "Demo A: Hindi Digital Arrest Coercion",
+            title = "Demo A: Offline Hindi digital arrest analysis",
             description = "Simulates police / customs impersonation claiming parcel contraband to coerce victim to pay fine to avoid arrest.",
             inputSnippet = "कस्टम अधिकारी बोल रहा हूँ: पार्सल में नशीले पदार्थ मिले हैं, गिरफ्तारी से बचने के लिए तुरंत जुर्माना भरें",
             channel = "MESSAGE",
@@ -103,7 +103,7 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_b_upi_refund",
-            title = "Demo B: Suspicious UPI Refund Request",
+            title = "Demo B: UPI reverse-debit trap analysis",
             description = "Simulates reverse debit fraud attempting to deduct ₹4,999 under the guise of an instant cashback refund.",
             inputSnippet = "upi://pay?pa=refund-desk@okhdfcbank&pn=Cashback%20Refund&am=4999.00&cu=INR&tn=UPI%20Refund",
             channel = "UPI",
@@ -111,7 +111,7 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_c_benign_bank",
-            title = "Demo C: Benign Banking Notification",
+            title = "Demo C: Benign banking control",
             description = "Authentic bank credit alert with reference numbers and balance update. Must not produce false alarms.",
             inputSnippet = "Dear Customer, your account XX1234 has been credited with INR 2,500.00 via UPI on 22-Nov-2026. Avl Bal: INR 18,450.00.",
             channel = "MESSAGE",
@@ -119,7 +119,7 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_d_multi_link",
-            title = "Demo D: Multi-Link Independent Inspection",
+            title = "Demo D: Multi-link phishing inspection",
             description = "Message containing multiple links: authentic bank portal alongside malicious APK download trap.",
             inputSnippet = "Verify your account at https://axisbank.com or download our support tool https://bill-helper.example/update.apk",
             channel = "LINK",
@@ -127,7 +127,7 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_e_qr_code",
-            title = "Demo E: QR Payload Advance Fee Extortion",
+            title = "Demo E: Offline QR payload inspection",
             description = "Offline payload demonstration of QR content routing and scam analysis. (Live CameraX scanner is independently reachable in the QR tab).",
             inputSnippet = "Withdrawals are frozen until you pay our release fee of INR 1500",
             channel = "MESSAGE",
@@ -135,15 +135,15 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_f_threat_history",
-            title = "Demo F: Threat History Persistence & 1930 Export",
-            description = "Demonstrates offline logging of flagged threats with masked OTPs and cybercrime 1930 export format.",
+            title = "Demo F: Threat history and cybercrime assistance",
+            description = "Demonstrates offline logging of flagged threats with masked OTPs and cybercrime 1930 / portal assistance.",
             inputSnippet = "ThreatHistoryStore: Offline encrypted persistence, single record delete, clear all, and 1930 report export.",
             channel = "HISTORY",
             expectedOutcome = "PERSISTED (Masked credentials, Full local user control)"
         ),
         DemoScenario(
             id = "demo_g_ai_unprovisioned",
-            title = "Demo G: Honest AI Unprovisioned State",
+            title = "Demo G: Honest on-device AI provisioning status",
             description = "Demonstrates that the app honestly reports unprovisioned model weights without fabricating tokens or synthetic inference.",
             inputSnippet = "ExecuTorchLlamaEngine: State=NOT_PROVISIONED. Fallback=Deterministic SafetyBarrier (Zero fake badges).",
             channel = "EDGE_AI",
@@ -151,7 +151,7 @@ fun OfflineDemoScreen(
         ),
         DemoScenario(
             id = "demo_h_network_c2",
-            title = "Demo H: Offline NetFlow / C2 Beaconing Flow Analysis",
+            title = "Demo H: Offline imported network-flow anomaly analysis",
             description = "Evaluates imported NetFlow telemetry exhibiting periodic heartbeats to a remote C2 server offline without synthetic live packet capture.",
             inputSnippet = "c2_beaconing_telemetry.csv (Periodic 10s SYN;ACK heartbeats with minimal jitter)",
             channel = "NETWORK",

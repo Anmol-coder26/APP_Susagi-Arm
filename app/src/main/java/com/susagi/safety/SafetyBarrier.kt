@@ -100,6 +100,11 @@ object SafetyBarrier {
         val normalized = Normalizer.normalize(links.replace(bounded, " "), Normalizer.Form.NFKC).lowercase(Locale.ROOT)
             .replace('’', '\'').replace("\u200b","").replace("\ufeff","")
             .replace("\u2060", "").replace("\u00ad", "")
+        val intents = FraudIntent.inspect(reportedExample.replace(normalized, " "))
+        if (intents.clauses.any { it.voice == FraudIntent.Voice.INSTRUCTION &&
+                FraudIntent.Act.PAY_FEE in it.actions && (FraudIntent.Pressure.WITHHELD in it.pressures ||
+                    FraudIntent.Pressure.WORK_GATED in it.pressures) })
+            evidence.add(Evidence(Signal.ADVANCE_FEE))
         val request = negativeHindi.replace(warning.replace(normalized, ""), "")
         fun add(signal: Signal) { evidence.add(Evidence(signal)) }
         val clauses = splitClause.split(normalized).filter { it.isNotBlank() }
@@ -200,8 +205,13 @@ object SafetyBarrier {
                         return@forEach
                     }
                     budget.remaining--
-                    val value = URLDecoder.decode(entry.substringAfter('=', ""), "UTF-8")
-                    val dest = try { uri.resolve(value).toString() } catch (_: IllegalArgumentException) { "" }
+                    val first = URLDecoder.decode(entry.substringAfter('=', ""), "UTF-8")
+                    // A second encoding layer may conceal an absolute target. Preserve ordinary
+                    // percent escapes inside already decoded URLs and relative paths.
+                    val value = if (first.startsWith("https%3a", true) || first.startsWith("http%3a", true)) {
+                        try { URLDecoder.decode(first, "UTF-8") } catch (_: IllegalArgumentException) { "" }
+                    } else first
+                    val dest = try { if (value.isEmpty()) "" else uri.resolve(value).toString() } catch (_: IllegalArgumentException) { "" }
                     val target = inspect(dest, depth + 1, budget)
                     if (target.destinationHost != host || target.evidence.isNotEmpty()) {
                         add(Signal.REDIRECT)
