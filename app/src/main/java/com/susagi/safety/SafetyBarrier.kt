@@ -31,7 +31,7 @@ enum class Signal(val risk: Risk, val category: String, val explanation: String,
     FEE(Risk.HIGH, "delivery", "A parcel notice requests a fee through a link.", "Check the notice using the issuer's official service."),
     SHORT(Risk.REVIEW, "redirect", "A short link conceals its final destination.", "Ask for the full address."),
     IP(Risk.REVIEW, "destination", "The address identifies an IP endpoint directly.", "Verify who operates the endpoint."),
-    UPI(Risk.HIGH, "payment", "A promised credit is tied to a PIN, QR scan or collect approval.", "Decline the request and check incoming funds in your UPI app."),
+    UPI(Risk.HIGH, "payment", "Credit or refund wording accompanies a payment instruction.", "Decline the request and check incoming funds in your UPI app."),
     KYC(Risk.HIGH, "banking", "An account restriction is paired with a KYC or banking update request.", "Check KYC status in the official bank app."),
     ARREST(Risk.HIGH, "extortion", "A law-enforcement or custody claim accompanies a demand for payment, secrecy or control of the call.", "End the interaction and contact the authority independently."),
     UTILITY(Risk.HIGH, "utility_extortion", "A power cutoff threat is paired with a payment demand and a link.", "Check the outstanding bill directly with your electricity provider."),
@@ -165,7 +165,9 @@ object SafetyBarrier {
         val scheme = uri.scheme?.lowercase(Locale.ROOT)
         if (scheme == "upi") {
             if (!uri.rawAuthority.equals("pay", true) || !uri.rawPath.isNullOrEmpty() || uri.rawFragment != null) return invalid()
-            if (!PaymentFields.supported(uri.rawQuery.orEmpty())) return invalid()
+            val fields = PaymentFields.inspectUri(raw)
+            if (!fields.isValid) return invalid()
+            if (fields.isAdvanceFeeOrReverseDebit) return assess(listOf(Evidence(Signal.PAYMENT), Evidence(Signal.UPI)))
             return assess(listOf(Evidence(Signal.PAYMENT)))
         }
         if (scheme !in listOf("http","https")) return invalid()

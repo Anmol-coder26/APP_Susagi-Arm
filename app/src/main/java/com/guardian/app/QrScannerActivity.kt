@@ -564,63 +564,70 @@ fun CameraPreviewView(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val active by androidx.compose.runtime.rememberUpdatedState(isScanningActive)
+    val callback by androidx.compose.runtime.rememberUpdatedState(onBarcodeDetected)
+    val previewView = remember(context) { PreviewView(context) }
 
-    AndroidView(
-        factory = { ctx ->
-            val previewView = PreviewView(ctx)
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+    AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
+    androidx.compose.runtime.DisposableEffect(previewView, lifecycleOwner) {
+        val executor = ContextCompat.getMainExecutor(context)
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        val preview = Preview.Builder().build().also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
+        }
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(
+                Barcode.FORMAT_QR_CODE,
+                Barcode.FORMAT_DATA_MATRIX,
+                Barcode.FORMAT_AZTEC,
+                Barcode.FORMAT_UPC_A,
+                Barcode.FORMAT_UPC_E,
+                Barcode.FORMAT_EAN_13,
+                Barcode.FORMAT_CODE_128
+            )
+            .build()
+        val scanner = BarcodeScanning.getClient(options)
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
 
-                val options = BarcodeScannerOptions.Builder()
-                    .setBarcodeFormats(
-                        Barcode.FORMAT_QR_CODE,
-                        Barcode.FORMAT_DATA_MATRIX,
-                        Barcode.FORMAT_AZTEC,
-                        Barcode.FORMAT_UPC_A,
-                        Barcode.FORMAT_UPC_E,
-                        Barcode.FORMAT_EAN_13,
-                        Barcode.FORMAT_CODE_128
-                    )
-                    .build()
-                val scanner = BarcodeScanning.getClient(options)
+        var disposed = false
+        var cameraProvider: ProcessCameraProvider? = null
 
-                val imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-
-                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx)) { imageProxy: ImageProxy ->
-                    val mediaImage = imageProxy.image
-                    if (mediaImage != null && isScanningActive) {
-                        val inputImage = InputImage.fromMediaImage(
-                            mediaImage,
-                            imageProxy.imageInfo.rotationDegrees
-                        )
-                        scanner.process(inputImage)
-                            .addOnSuccessListener { barcodes ->
-                                for (barcode in barcodes) {
-                                    val raw = barcode.rawValue
-                                    if (!raw.isNullOrBlank()) {
-                                        onBarcodeDetected(raw)
-                                        break
-                                    }
+        imageAnalysis.setAnalyzer(executor) { imageProxy: ImageProxy ->
+            val mediaImage = imageProxy.image
+            if (disposed || !active || mediaImage == null) {
+                imageProxy.close()
+            } else {
+                val inputImage = InputImage.fromMediaImage(
+                    mediaImage,
+                    imageProxy.imageInfo.rotationDegrees
+                )
+                scanner.process(inputImage)
+                    .addOnSuccessListener(executor) { barcodes ->
+                        if (!disposed && active) {
+                            for (barcode in barcodes) {
+                                val raw = barcode.rawValue
+                                if (!raw.isNullOrBlank()) {
+                                    callback(raw)
+                                    break
                                 }
                             }
-                            .addOnCompleteListener {
-                                imageProxy.close()
-                            }
-                    } else {
+                        }
+                    }
+                    .addOnCompleteListener(executor) {
                         imageProxy.close()
                     }
-                }
+            }
+        }
 
+        cameraProviderFuture.addListener({
+            if (!disposed) {
                 try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
+                    cameraProvider = cameraProviderFuture.get()
+                    cameraProvider?.unbindAll()
+                    cameraProvider?.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
                         preview,
@@ -629,10 +636,16 @@ fun CameraPreviewView(
                 } catch (e: Exception) {
                     Log.e("GuardianQR", "Camera bind failed: ${e.message}")
                 }
-            }, ContextCompat.getMainExecutor(ctx))
+            }
+        }, executor)
 
-            previewView
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+        onDispose {
+            disposed = true
+            imageAnalysis.clearAnalyzer()
+            try {
+                cameraProvider?.unbindAll()
+                scanner.close()
+            } catch (_: Exception) {}
+        }
+    }
 }

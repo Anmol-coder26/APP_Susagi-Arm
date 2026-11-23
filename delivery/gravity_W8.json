@@ -3,15 +3,15 @@
   "name": "Arm AI-SoC Bharat Challenge PS3 Submission Release Manifest",
   "status": "COMPLETED",
   "priority": "P0",
-  "timestamp": "2026-11-23T02:04:00+05:30",
+  "timestamp": "2026-11-23T09:34:00+05:30",
   "targetSubmissionDeadline": "2026-11-25T23:59:59+05:30",
   "applicationId": "com.susagi.guardian2",
   "gitBranch": "feature/gravity-product-calling",
   "buildOutputs": {
     "appDebugApk": {
       "path": "app/build/outputs/apk/debug/app-debug.apk",
-      "sizeBytes": 137348268,
-      "sha256": "7925AF9EC42AD55D360042FEBE6B167E26A2169CD30374659B7D7B4FE12BF781"
+      "sizeBytes": 137350383,
+      "sha256": "2DE68AE3632E2D54E16D5DB49E4B14D04E9DC4CAD41030E825D9639E838F92EC"
     },
     "appAndroidTestApk": {
       "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
