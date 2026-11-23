@@ -1,7 +1,7 @@
 package com.susagi.safety
 
 internal object ContextualScamRules {
-    private val warning = Regex("""\b(?:never|do not|don't|avoid|refuse to)\s+(?:ask you to\s+)?(?:install|download|send|pay|transfer|deposit|invest)\b|पैसे मत भेज|पैसे न भेज|पैसे पाठवू नका""")
+    private val warning = Regex("""\b(?:never|do not|don't|avoid|refuse to)\s+(?:ask you to\s+)?(?:install|download|send|pay|transfer|deposit|invest|believe)\b|\b(?:beware of|alert|fake|scam awareness|awareness|stay safe from|fraudulent)\b|पैसे मत भेज|पैसे न भेज|पैसे पाठवू नका""")
     private val contrast = Regex("""\b(?:but|however|instead|lekin)\b|लेकिन|मगर""")
     private val demand = Regex("""\b(?:pay|transfer|send money|bharo|jama karo|paise bhejo)\b|\bdeposit\s+(?:now|funds|money|inr|rs\b|₹|\d)|\bwire\s+\d|भुगतान करें|जमा कर|पैसे भेज|पैसे पाठवा|रुपये भेजें|पैसे ट्रांसफर""")
     private val offer = Regex("""\b(?:job|vacancy|task|commission|sarkari yojana|government grant|subsidy|recruiter|salary)\b|नौकरी|सरकारी योजना|नोकरी""")
@@ -24,10 +24,26 @@ internal object ContextualScamRules {
     private val advancePayment = Regex("""(?:send|transfer|pay|wire)\s+(?:rs\.?\s*|inr\s*|₹\s*)\d""")
     private val frozenBalance = Regex("""\b(?:withdrawals?|account|portfolio|funds?|balance)\s+(?:are|is)?\s*(?:frozen|blocked|suspended|locked|on hold)\b|खाता (?:ब्लॉक|फ्रीज)|निकासी रोक|खाता फ्रीज""")
     private val accountVerification = Regex("""(?:to )?(?:verify|unblock|activate) your (?:account|identity|card)""")
+    private val prize = Regex("""\b(?:lottery|lotery|lucky draw|jackpot|cash prize|mega prize)\b|लॉटरी|इनाम|लकी ड्रॉ|पुरस्कार|बंपर ड्रॉ|\bwon (?:a |the )?(?:lottery|prize|cash|₹|\$|rs)|\b(?:aapki|aapko|toh have a|have a)\s+lottery\b""")
+    private val legitimateContext = Regex("""\b(?:our school|school lottery|bought a ticket|bought a lottery|ticket number|colleague won|friend won|yesterday i|purchased a ticket|charity raffle)\b""")
 
     fun inspect(clause: String, hasLink: Boolean, nextClause: String? = null): List<Signal> = buildList {
         for (part in contrast.split(clause)) {
             if (warning.containsMatchIn(part)) continue
+            if (prize.containsMatchIn(part) && !legitimateContext.containsMatchIn(part)) {
+                if (payFee.containsMatchIn(part) || demand.containsMatchIn(part) || advancePayment.containsMatchIn(part)) {
+                    add(Signal.ADVANCE_FEE)
+                } else if (nextClause != null) {
+                    val nextActionable = contrast.split(nextClause).filterNot(warning::containsMatchIn).joinToString(" ; ")
+                    if (payFee.containsMatchIn(nextActionable) || demand.containsMatchIn(nextActionable) || advancePayment.containsMatchIn(nextActionable)) {
+                        add(Signal.ADVANCE_FEE)
+                    } else {
+                        add(Signal.LOTTERY)
+                    }
+                } else {
+                    add(Signal.LOTTERY)
+                }
+            }
             if (shareScreen.containsMatchIn(part) && enterCode.containsMatchIn(part) &&
                 !screenWarning.containsMatchIn(part)) add(Signal.SCREEN_CREDENTIAL)
             if (feeForCredit.containsMatchIn(part) && payFee.containsMatchIn(part)) add(Signal.REFUND_FEE)

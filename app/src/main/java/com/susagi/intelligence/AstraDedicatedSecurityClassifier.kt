@@ -82,11 +82,27 @@ object AstraDedicatedSecurityClassifier {
         val hasCustoms = lower.contains("customs") || lower.contains("courier") || lower.contains("parcel") ||
                 lower.contains("speed post") || lower.contains("पार्सल")
 
+        val hasLottery = lower.contains("lottery") || lower.contains("lotery") ||
+                lower.contains("lucky draw") || lower.contains("jackpot") ||
+                lower.contains("cash prize") || lower.contains("won a prize") ||
+                lower.contains("won prize") || lower.contains("लॉटरी") ||
+                lower.contains("लकी ड्रॉ") || lower.contains("इनाम") || lower.contains("पुरस्कार") ||
+                (lower.contains("won") && (lower.contains("10 k") || lower.contains("10k") || lower.contains("crore") || lower.contains("lakh") || lower.contains("₹") || lower.contains("rs")))
+
+        val hasFee = lower.contains("fee") || lower.contains("charge") || lower.contains("tax") ||
+                lower.contains("deposit") || lower.contains("registration") || lower.contains("processing") ||
+                lower.contains("शुल्क") || lower.contains("टैक्स")
+
+        val isLegitimatePersonal = lower.contains("our school") || lower.contains("school lottery") ||
+                lower.contains("bought a lottery") || lower.contains("bought a ticket") || lower.contains("purchased a ticket") ||
+                lower.contains("friend won") || lower.contains("colleague won") || lower.contains("yesterday i bought")
+
         val claimedAuthority = when {
             hasPolice -> "Law Enforcement / Police / CBI Extortion"
             hasBank -> "Banking Institution / RBI Impersonation"
             hasUtility -> "Electricity DISCOM / Utility Authority"
             hasCustoms -> "Postal / Customs Authority"
+            hasLottery && !isLegitimatePersonal -> "Purported Lottery / Lucky Draw Sponsor"
             else -> "Unverified Senders"
         }
 
@@ -104,6 +120,9 @@ object AstraDedicatedSecurityClassifier {
         if (lower.contains("urgent") || lower.contains("immediately") || lower.contains("within 10 minutes") || lower.contains("तुरंत")) {
             coercionIndicators.add("Psychological urgency pressure")
         }
+        if (hasLottery && !isLegitimatePersonal) {
+            coercionIndicators.add("Unsolicited prize or lottery claim announcement")
+        }
 
         // 5. Credential & Payment Extraction
         val hasOtp = lower.contains("otp") || lower.contains("cvv") || lower.contains("pin") ||
@@ -119,6 +138,12 @@ object AstraDedicatedSecurityClassifier {
         val requestedAction = when {
             hasDigitalArrest ->
                 "Remain in unlawful isolation / video confinement under false digital arrest"
+            hasLottery && !isLegitimatePersonal && hasOtp ->
+                "Disclose confidential OTP or PIN to claim prize payout"
+            hasLottery && !isLegitimatePersonal && (hasPayment || hasFee) ->
+                "Pay upfront processing fee or tax to release promised lottery winnings"
+            hasLottery && !isLegitimatePersonal ->
+                "Respond to unverified prize announcement (potential fee/credential bait)"
             hasOtp && (lower.contains("share") || lower.contains("tell") || lower.contains("send") || lower.contains("बताओ")) ->
                 "Disclose confidential OTP or authentication credential"
             lower.contains("upi pin") || (lower.contains("collect") && lower.contains("receive")) ->
@@ -155,6 +180,12 @@ object AstraDedicatedSecurityClassifier {
             hasDigitalArrest -> {
                 Triple(88, "CONFIRMED_HIGH", "Digital Arrest Law Enforcement Extortion")
             }
+            hasLottery && !isLegitimatePersonal && hasOtp -> {
+                Triple(90, "CONFIRMED_HIGH", "Prize Claim Credential & OTP Harvesting")
+            }
+            hasLottery && !isLegitimatePersonal && (hasPayment || hasFee) -> {
+                Triple(88, "CONFIRMED_HIGH", "Advance-Fee Lottery & Prize Fraud")
+            }
             isAstraHigh || (coercionIndicators.isNotEmpty() && (hasPayment || hasOtp || hasAttackDirective)) -> {
                 val cat = when {
                     hasPolice -> "Digital Arrest Law Enforcement Extortion"
@@ -165,6 +196,9 @@ object AstraDedicatedSecurityClassifier {
                     else -> "Coercive Social Engineering Fraud"
                 }
                 Triple(88, "CONFIRMED_HIGH", cat)
+            }
+            hasLottery && !isLegitimatePersonal -> {
+                Triple(55, "CAUTION_REVIEW", "Unverified Lottery / Prize Solicitation")
             }
             isAstraReview || coercionIndicators.isNotEmpty() || hasOtp || hasPayment -> {
                 Triple(50, "CAUTION_REVIEW", "Suspicious Communication Requiring Verification")

@@ -332,7 +332,11 @@ fun HomeScreen(
 
     if (showVoiceClipScreen) {
         com.susagi.ui.voice.VoiceClipScannerScreen(
-            onBack = { showVoiceClipScreen = false }
+            onBack = { showVoiceClipScreen = false },
+            onOpenModelManager = {
+                showVoiceClipScreen = false
+                showModelManagerScreen = true
+            }
         )
         return
     }

@@ -309,6 +309,24 @@ class ExecuTorchLlamaEngine(
                 val rawParcel = lower.contains("parcel") || lower.contains("customs") || lower.contains("courier") || lower.contains("speed post")
                 val hasParcelScam = rawParcel && (lower.contains("customs") || lower.contains("held") || lower.contains("duty") || lower.contains("fee") || lower.contains("unpaid") || lower.contains("seizure") || lower.contains("penalty") || lower.contains("http"))
 
+                val hasLotteryBait = lower.contains("lottery") || lower.contains("lotery") ||
+                    lower.contains("lucky draw") || lower.contains("jackpot") ||
+                    lower.contains("cash prize") || lower.contains("won a prize") ||
+                    lower.contains("won prize") || lower.contains("लॉटरी") ||
+                    lower.contains("लकी ड्रॉ") || lower.contains("इनाम") || lower.contains("पुरस्कार") ||
+                    (lower.contains("won") && (lower.contains("10 k") || lower.contains("10k") || lower.contains("crore") || lower.contains("lakh") || lower.contains("₹") || lower.contains("rs")))
+
+                val hasFeeDemand = lower.contains("fee") || lower.contains("charge") || lower.contains("tax") ||
+                    lower.contains("deposit") || lower.contains("registration") || lower.contains("processing") ||
+                    lower.contains("transfer") || lower.contains("send") || lower.contains("शुल्क") || lower.contains("टैक्स")
+
+                val hasCredentialDemand = lower.contains("otp") || lower.contains("upi pin") || lower.contains("pin") ||
+                    lower.contains("password") || lower.contains("cvv") || lower.contains("ओटीपी") || lower.contains("पिन")
+
+                val isLegitimatePersonalContext = lower.contains("our school") || lower.contains("school lottery") ||
+                    lower.contains("bought a lottery") || lower.contains("bought a ticket") || lower.contains("purchased a ticket") ||
+                    lower.contains("friend won") || lower.contains("colleague won") || lower.contains("yesterday i bought")
+
                 if (hasArrest) {
                     score = 88
                     threatType = "digital_arrest_extortion"
@@ -351,6 +369,30 @@ class ExecuTorchLlamaEngine(
                     tactics.add("credential_harvesting")
                     explanation = "A request to share or disclose a confidential One Time Password or verification code was detected."
                     actions.add("Never share your OTP with anyone, including bank staff or callers.")
+                } else if (hasLotteryBait && !isLegitimatePersonalContext) {
+                    if (hasCredentialDemand) {
+                        score = 90
+                        threatType = "credential_harvesting_lottery_fraud"
+                        tactics.addAll(listOf("credential_harvesting", "prize_bait"))
+                        explanation = "This message claims you won a lottery or prize and requests your OTP, UPI PIN, or bank credentials. This is credential theft fraud."
+                        actions.add("Never share your OTP or enter your UPI PIN to claim money.")
+                        actions.add("Delete the message and block the sender.")
+                    } else if (hasFeeDemand) {
+                        score = 88
+                        threatType = "advance_fee_lottery_fraud"
+                        tactics.addAll(listOf("advance_fee_fraud", "prize_bait", "financial_extortion"))
+                        explanation = "This message claims you won a lottery or prize but demands an advance fee, tax, or deposit to claim it. This is advance-fee fraud."
+                        actions.add("Never pay money or fees to claim a prize or lottery.")
+                        actions.add("Report the sender to 1930 or cybercrime.gov.in.")
+                    } else {
+                        score = 55
+                        threatType = "unverified_prize_solicitation"
+                        tactics.addAll(listOf("unsolicited_prize_bait", "social_engineering"))
+                        explanation = "This input announces an unexpected lottery win or cash prize. Fraudsters commonly use prize announcements as bait before demanding advance processing fees, taxes, or bank credentials. Do not transfer funds or disclose personal credentials."
+                        actions.add("Do not pay any fee or tax to claim an unexpected prize.")
+                        actions.add("Do not disclose bank details, UPI PIN, or OTPs.")
+                        actions.add("Legitimate lotteries never ask for advance payments to release winnings.")
+                    }
                 }
             }
 
@@ -359,6 +401,24 @@ class ExecuTorchLlamaEngine(
                 val hasPolice = lower.contains("police") || lower.contains("cyber") || lower.contains("crime") || lower.contains("arrest") || lower.contains("cbi") || lower.contains("पुलिस") || lower.contains("साइबर")
                 val hasMoney = lower.contains("transfer") || lower.contains("rupees") || lower.contains("money") || lower.contains("fifty thousand") || lower.contains("खाता") || lower.contains("पैसे")
                 val hasUrgency = lower.contains("immediately") || lower.contains("disconnect") || lower.contains("urgent") || lower.contains("तुरंत")
+
+                val hasLotteryBait = lower.contains("lottery") || lower.contains("lotery") ||
+                    lower.contains("lucky draw") || lower.contains("jackpot") ||
+                    lower.contains("cash prize") || lower.contains("won a prize") ||
+                    lower.contains("won prize") || lower.contains("लॉटरी") ||
+                    lower.contains("लकी ड्रॉ") || lower.contains("इनाम") || lower.contains("पुरस्कार") ||
+                    (lower.contains("won") && (lower.contains("10 k") || lower.contains("10k") || lower.contains("crore") || lower.contains("lakh") || lower.contains("₹") || lower.contains("rs")))
+
+                val hasFeeDemand = lower.contains("fee") || lower.contains("charge") || lower.contains("tax") ||
+                    lower.contains("deposit") || lower.contains("registration") || lower.contains("processing") ||
+                    lower.contains("transfer") || lower.contains("send") || lower.contains("शुल्क") || lower.contains("टैक्स")
+
+                val hasCredentialDemand = lower.contains("otp") || lower.contains("upi pin") || lower.contains("pin") ||
+                    lower.contains("password") || lower.contains("cvv") || lower.contains("ओटीपी") || lower.contains("पिन")
+
+                val isLegitimatePersonalContext = lower.contains("our school") || lower.contains("school lottery") ||
+                    lower.contains("bought a lottery") || lower.contains("bought a ticket") || lower.contains("purchased a ticket") ||
+                    lower.contains("friend won") || lower.contains("colleague won") || lower.contains("yesterday i bought")
 
                 if (hasPolice && (hasMoney || hasUrgency)) {
                     score = 88
@@ -374,6 +434,30 @@ class ExecuTorchLlamaEngine(
                     tactics.add("authority_impersonation")
                     explanation = "Caller claims association with law enforcement or regulatory agencies."
                     actions.add("Ask for official identification and verify badge number through the official precinct desk.")
+                } else if (hasLotteryBait && !isLegitimatePersonalContext) {
+                    if (hasCredentialDemand) {
+                        score = 90
+                        threatType = "credential_harvesting_lottery_fraud"
+                        tactics.addAll(listOf("credential_harvesting", "prize_bait"))
+                        explanation = "The caller claims you won a lottery or prize and demands your OTP, UPI PIN, or bank credentials. This is credential theft fraud."
+                        actions.add("Never disclose OTP or enter UPI PIN to receive money.")
+                        actions.add("Hang up the call immediately.")
+                    } else if (hasFeeDemand) {
+                        score = 88
+                        threatType = "advance_fee_lottery_fraud"
+                        tactics.addAll(listOf("advance_fee_fraud", "prize_bait", "financial_extortion"))
+                        explanation = "The caller claims you won a lottery or prize but demands an upfront processing fee, tax, or deposit. This is advance-fee fraud."
+                        actions.add("Never pay fees, taxes, or deposits to claim a prize.")
+                        actions.add("Hang up and report the number to 1930.")
+                    } else {
+                        score = 55
+                        threatType = "unverified_prize_solicitation"
+                        tactics.addAll(listOf("unsolicited_prize_bait", "social_engineering"))
+                        explanation = "This call announces an unexpected lottery win or cash prize. Fraudsters commonly use prize announcements as bait before demanding advance processing fees, taxes, or bank credentials. Do not transfer funds or disclose financial details without independent verification."
+                        actions.add("Do not pay any fee or tax to claim a prize.")
+                        actions.add("Do not disclose bank details, UPI PIN, or OTPs.")
+                        actions.add("Legitimate lotteries never ask for advance payments to release winnings.")
+                    }
                 }
             }
 

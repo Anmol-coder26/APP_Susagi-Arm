@@ -177,6 +177,9 @@ class UnifiedThreatEngine(
         if (lower.contains("secret") || lower.contains("don't tell") || lower.contains("confidential") || lower.contains("किसी को मत बताना")) {
             evidenceList.add("Forced Isolation / Secrecy Requirement")
         }
+        if (lower.contains("lottery") || lower.contains("lotery") || lower.contains("lucky draw") || lower.contains("jackpot") || lower.contains("prize") || lower.contains("लॉटरी") || lower.contains("इनाम") || (lower.contains("won") && (lower.contains("10 k") || lower.contains("10k")))) {
+            evidenceList.add("Unsolicited Lottery / Prize Solicitation Indicator")
+        }
 
         val input = ThreatInput(
             channel = ThreatChannel.VOIP_CALL,

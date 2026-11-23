@@ -122,7 +122,8 @@ import kotlin.math.sqrt
  */
 @Composable
 fun VoiceClipScannerScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenModelManager: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val whisperMgr = remember { WhisperModelManager(context) }
@@ -136,8 +137,10 @@ fun VoiceClipScannerScreen(
     var audioRmsLevel by remember { mutableFloatStateOf(0.05f) }
     var transcriptText by remember { mutableStateOf("") }
     var threatResult by remember { mutableStateOf<InferenceResult?>(null) }
-    var statusMessage by remember { mutableStateOf("Ready to record voice audio or enter call transcript.") }
+    var statusMessage by remember { mutableStateOf("Ready to record voice audio or inspect call transcript.") }
     var isTranscribing by remember { mutableStateOf(false) }
+    var showDiagnostics by remember { mutableStateOf(false) }
+    var lastRecordedByteCount by remember { mutableIntStateOf(0) }
 
     var recordingJob by remember { mutableStateOf<Job?>(null) }
     var tickerJob by remember { mutableStateOf<Job?>(null) }
@@ -151,11 +154,12 @@ fun VoiceClipScannerScreen(
         audioRmsLevel = 0.05f
 
         val recordedBytes = synchronized(recordedAudioBuffer) { recordedAudioBuffer.toByteArray() }
+        lastRecordedByteCount = recordedBytes.size
 
         if (recordedBytes.isNotEmpty()) {
             if (isWhisperProvisioned) {
                 isTranscribing = true
-                statusMessage = "Transcribing voice audio via on-device Whisper (Arm)..."
+                statusMessage = "Transcribing voice audio via on-device Whisper (Arm offline)..."
                 scope.launch(Dispatchers.IO) {
                     try {
                         val wavFile = File(context.cacheDir, "recorded_voice_sample.wav")
@@ -166,10 +170,11 @@ fun VoiceClipScannerScreen(
                             isTranscribing = false
                             if (res.isSuccess && res.text.isNotBlank()) {
                                 transcriptText = res.text.trim()
-                                statusMessage = "Transcription complete. Analyzing threat signals..."
+                                statusMessage = "Transcription complete. Running automatic threat analysis..."
                                 threatResult = threatEngine.analyzeCallTranscript(transcriptText)
+                                statusMessage = "Automatic speech threat evaluation complete."
                             } else {
-                                statusMessage = "Whisper transcription notice: ${res.errorMessage ?: "No speech tokens detected"}. You can enter transcript text manually below."
+                                statusMessage = "Whisper notice: ${res.errorMessage ?: "No speech tokens detected"}. You can enter transcript text manually below."
                             }
                         }
                     } catch (e: Exception) {
@@ -180,7 +185,7 @@ fun VoiceClipScannerScreen(
                     }
                 }
             } else {
-                statusMessage = "Voice sample (${recordingDurationSec}s) captured. Offline Voice Transcription requires Pack 2 (Whisper model weights). You can inspect call transcripts manually using the text field below."
+                statusMessage = "Audio captured (${recordingDurationSec}s, ${recordedBytes.size} bytes). Speech recognition requires Pack 2 (Whisper Multilingual) from Model Manager. You can inspect transcripts directly below."
             }
         } else {
             statusMessage = "No audio samples captured. Speak into the microphone or test a sample scenario below."
@@ -296,7 +301,7 @@ fun VoiceClipScannerScreen(
             Spacer(Modifier.width(8.dp))
             Column {
                 Text(
-                    "Voice Safety & Speech Shield",
+                    "Voice Clip Threat Analyzer",
                     color = GxTextHi,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
@@ -315,35 +320,45 @@ fun VoiceClipScannerScreen(
         Surface(
             color = if (isWhisperProvisioned) GxSafeSoft else GxSurfaceAlt,
             shape = GxShapeSm,
-            border = BorderStroke(1.dp, if (isWhisperProvisioned) GxSafe.copy(alpha = 0.5f) else GxBorder),
+            border = BorderStroke(1.dp, if (isWhisperProvisioned) GxSafe.copy(alpha = 0.5f) else GxWarning.copy(alpha = 0.5f)),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (isWhisperProvisioned) Icons.Default.Security else Icons.Default.Info,
-                    contentDescription = null,
-                    tint = if (isWhisperProvisioned) GxSafe else GxWarning,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isWhisperProvisioned) "Whisper Engine Ready (ExecuTorch Arm)" else "Deterministic Voice Inspection Active",
-                        color = GxTextHi,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (isWhisperProvisioned) Icons.Default.Security else Icons.Default.WarningAmber,
+                        contentDescription = null,
+                        tint = if (isWhisperProvisioned) GxSafe else GxWarning,
+                        modifier = Modifier.size(20.dp)
                     )
-                    Text(
-                        text = if (isWhisperProvisioned)
-                            "100% offline speech recognition active for local voice and call transcription."
-                        else
-                            "Speech-to-text requires Pack 2 (Whisper Tiny). Manual transcript inspection is fully operational.",
-                        color = GxTextMid,
-                        fontSize = 11.sp
-                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isWhisperProvisioned) "SPEECH ENGINE: On-Device Whisper Multilingual Active (Arm Offline)" else "SPEECH ENGINE: STT Unavailable (Whisper Weights Not Provisioned)",
+                            color = GxTextHi,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (isWhisperProvisioned)
+                                "100% offline speech recognition active for local voice and call transcription."
+                            else
+                                "Speech-to-text requires Pack 2 (Whisper Multilingual). Audio capture & offline text threat analysis are active.",
+                            color = GxTextMid,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+                if (!isWhisperProvisioned && onOpenModelManager != null) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onOpenModelManager,
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxPrimary),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Text("Download Whisper in Model Manager", color = GxPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -562,7 +577,7 @@ fun VoiceClipScannerScreen(
                             statusMessage = "Analyzing transcript with SafetyBarrier & Astra Classifier..."
                             scope.launch {
                                 threatResult = threatEngine.analyzeCallTranscript(trimmed)
-                                statusMessage = "Analysis complete."
+                                statusMessage = "Speech threat analysis complete."
                             }
                         } else {
                             Toast.makeText(context, "Please enter or record a transcript first.", Toast.LENGTH_SHORT).show()
@@ -575,14 +590,14 @@ fun VoiceClipScannerScreen(
                 ) {
                     Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Inspect Voice Transcript", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(if (threatResult != null) "Reanalyze Transcript" else "Analyze Transcript", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }
 
         Spacer(Modifier.height(14.dp))
 
-        // Pre-loaded Scenario Test Buttons
+        // Pre-loaded Scenario Test Buttons (1-Tap Immediate Verification)
         Card(
             shape = GxShapeMd,
             colors = CardDefaults.cardColors(containerColor = GxSurface),
@@ -600,8 +615,23 @@ fun VoiceClipScannerScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    OutlinedButton(
+                        onClick = {
+                            transcriptText = "hello sir toh have a lottery of 10 k"
+                            scope.launch {
+                                threatResult = threatEngine.analyzeCallTranscript(transcriptText)
+                                statusMessage = "Evaluated Lottery Win Bait Scenario."
+                            }
+                        },
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxWarning.copy(alpha = 0.6f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Lottery Bait", color = GxWarning, fontSize = 10.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+                    }
+
                     OutlinedButton(
                         onClick = {
                             transcriptText = "This is Officer Sharma from CBI Mumbai. An arrest warrant is issued against your Aadhaar card for money laundering. You are in digital arrest. Do not disconnect this video call or police will reach your home."
@@ -611,10 +641,10 @@ fun VoiceClipScannerScreen(
                             }
                         },
                         shape = GxShapeSm,
-                        border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.6f)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Digital Arrest Call", color = GxDanger, fontSize = 11.sp, textAlign = TextAlign.Center)
+                        Text("Digital Arrest", color = GxDanger, fontSize = 10.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
                     }
 
                     OutlinedButton(
@@ -626,10 +656,10 @@ fun VoiceClipScannerScreen(
                             }
                         },
                         shape = GxShapeSm,
-                        border = BorderStroke(1.dp, GxWarning.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.6f)),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Bank OTP Theft", color = GxWarning, fontSize = 11.sp, textAlign = TextAlign.Center)
+                        Text("Bank OTP", color = GxDanger, fontSize = 10.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -639,9 +669,16 @@ fun VoiceClipScannerScreen(
         val result = threatResult
         if (result != null) {
             Spacer(Modifier.height(16.dp))
-            val isHighRisk = result.riskScore >= 70
-            val cardColor = if (isHighRisk) GxDangerSoft else GxSafeSoft
-            val borderColor = if (isHighRisk) GxDanger else GxSafe
+            val riskBand = when {
+                result.riskScore >= 70 || result.severity == "HIGH" -> "HIGH RISK"
+                result.riskScore in 40..69 || result.severity == "MEDIUM" -> "NEEDS REVIEW"
+                else -> "LOW RISK"
+            }
+            val (borderColor, cardColor, textColor) = when (riskBand) {
+                "HIGH RISK" -> Triple(GxDanger, GxDangerSoft, GxDanger)
+                "NEEDS REVIEW" -> Triple(GxWarning, GxWarningSoft, GxWarning)
+                else -> Triple(GxSafe, GxSafeSoft, GxSafe)
+            }
 
             Card(
                 shape = GxShapeMd,
@@ -666,14 +703,14 @@ fun VoiceClipScannerScreen(
                         Surface(
                             color = cardColor,
                             shape = GxShapePill,
-                            border = BorderStroke(1.dp, borderColor.copy(alpha = 0.4f))
+                            border = BorderStroke(1.dp, borderColor.copy(alpha = 0.5f))
                         ) {
                             Text(
-                                text = "RISK: ${result.severity} (${result.riskScore}%)",
-                                color = borderColor,
+                                text = riskBand,
+                                color = textColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                             )
                         }
                     }
@@ -710,6 +747,49 @@ fun VoiceClipScannerScreen(
                         result.recommendedActions.forEach { act ->
                             Text("✓ $act", color = GxSafe, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Pipeline Diagnostics Card
+        Card(
+            shape = GxShapeMd,
+            colors = CardDefaults.cardColors(containerColor = GxSurface),
+            border = BorderStroke(1.dp, GxBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Pipeline Diagnostics & Telemetry",
+                        color = GxTextHi,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedButton(
+                        onClick = { showDiagnostics = !showDiagnostics },
+                        shape = GxShapePill,
+                        modifier = Modifier.height(28.dp)
+                    ) {
+                        Text(if (showDiagnostics) "Hide" else "Show", fontSize = 10.sp, color = GxTextMid)
+                    }
+                }
+
+                AnimatedVisibility(visible = showDiagnostics) {
+                    Column(modifier = Modifier.padding(top = 10.dp)) {
+                        Text("• Audio Capture: 16,000 Hz, 16-bit Mono PCM (Hardware AudioRecord)", color = GxTextMid, fontSize = 11.sp)
+                        Text("• Audio Buffer: ${lastRecordedByteCount} bytes (${recordingDurationSec}s recorded)", color = GxTextMid, fontSize = 11.sp)
+                        Text("• STT Engine: " + if (isWhisperProvisioned) "Whisper Tiny Multilingual (Offline ExecuTorch Arm)" else "STT Model Not Provisioned (Pack 2 required)", color = GxTextMid, fontSize = 11.sp)
+                        Text("• Security Core: UnifiedThreatEngine + SafetyBarrier + AstraClassifier", color = GxTextMid, fontSize = 11.sp)
+                        Text("• Inference Latency: ${result?.inferenceLatencyMs ?: 0} ms", color = GxTextMid, fontSize = 11.sp)
+                        Text("• Risk Classification: ${result?.severity ?: "IDLE"}", color = GxTextMid, fontSize = 11.sp)
                     }
                 }
             }

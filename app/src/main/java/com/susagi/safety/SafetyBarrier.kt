@@ -35,7 +35,8 @@ enum class Signal(val risk: Risk, val category: String, val explanation: String,
     KYC(Risk.HIGH, "banking", "An account restriction is paired with a KYC or banking update request.", "Check KYC status in the official bank app."),
     ARREST(Risk.HIGH, "extortion", "A law-enforcement or custody claim accompanies a demand for payment, secrecy or control of the call.", "End the interaction and contact the authority independently."),
     UTILITY(Risk.HIGH, "utility_extortion", "A power cutoff threat is paired with a payment demand and a link.", "Check the outstanding bill directly with your electricity provider."),
-    OTP(Risk.HIGH, "credentials", "The sender asks you to disclose a verification credential.", "Keep the code private and contact your bank independently.")
+    OTP(Risk.HIGH, "credentials", "The sender asks you to disclose a verification credential.", "Keep the code private and contact your bank independently."),
+    LOTTERY(Risk.REVIEW, "lottery_solicitation", "The message or call announces an unexpected lottery win, cash prize, or lucky draw.", "Do not pay any advance fee or disclose banking details to claim an unsolicited prize.")
 }
 data class Evidence(val id: Signal, val host: String? = null)
 data class SharedDestination(val originalUrl: String, val assessment: Assessment)
