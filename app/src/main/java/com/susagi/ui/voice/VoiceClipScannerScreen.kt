@@ -2,15 +2,10 @@ package com.susagi.ui.voice
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,6 +47,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -101,14 +97,29 @@ import com.guardian.app.ui.theme.GxWarningSoft
 import com.susagi.edgeai.InferenceResult
 import com.susagi.intelligence.UnifiedThreatEngine
 import com.susagi.stt.whisper.WhisperModelManager
+import com.susagi.stt.whisper.WhisperSttEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.sqrt
 
+/**
+ * VoiceClipScannerScreen
+ *
+ * Implements Directive 47 Section 10:
+ * Verified pipeline: Microphone -> AudioRecord -> PCM -> Native Whisper -> Transcript -> SafetyBarrier.
+ * - Captures real PCM audio directly from hardware MIC via AudioRecord.
+ * - Computes live RMS amplitude for real-time visualizer waveform.
+ * - Encodes recorded PCM to 16kHz mono WAV for offline Whisper decoding.
+ * - NO Android SpeechRecognizer cloud fallback.
+ * - If Whisper model is unprovisioned, honestly informs the user without fake transcripts.
+ */
 @Composable
 fun VoiceClipScannerScreen(
     onBack: () -> Unit
@@ -126,32 +137,53 @@ fun VoiceClipScannerScreen(
     var transcriptText by remember { mutableStateOf("") }
     var threatResult by remember { mutableStateOf<InferenceResult?>(null) }
     var statusMessage by remember { mutableStateOf("Ready to record voice audio or enter call transcript.") }
+    var isTranscribing by remember { mutableStateOf(false) }
 
     var recordingJob by remember { mutableStateOf<Job?>(null) }
     var tickerJob by remember { mutableStateOf<Job?>(null) }
-    var speechRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
+    val recordedAudioBuffer = remember { ByteArrayOutputStream() }
 
     fun stopRecordingInternal() {
+        if (!isRecording) return
         isRecording = false
         tickerJob?.cancel()
         recordingJob?.cancel()
-        try {
-            speechRecognizer?.stopListening()
-            speechRecognizer?.cancel()
-            speechRecognizer?.destroy()
-        } catch (_: Exception) {}
-        speechRecognizer = null
         audioRmsLevel = 0.05f
 
-        val finalTranscript = transcriptText.trim()
-        if (finalTranscript.isNotBlank()) {
-            statusMessage = "Analyzing audio transcript for extortion and threat signals..."
-            scope.launch {
-                threatResult = threatEngine.analyzeCallTranscript(finalTranscript)
-                statusMessage = "Analysis complete."
+        val recordedBytes = synchronized(recordedAudioBuffer) { recordedAudioBuffer.toByteArray() }
+
+        if (recordedBytes.isNotEmpty()) {
+            if (isWhisperProvisioned) {
+                isTranscribing = true
+                statusMessage = "Transcribing voice audio via on-device Whisper (Arm)..."
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val wavFile = File(context.cacheDir, "recorded_voice_sample.wav")
+                        writePcmToWav(wavFile, recordedBytes, sampleRate = 16000, channels = 1)
+                        val engine = WhisperSttEngine.getInstance(context)
+                        val res = engine.transcribeWav(wavFile)
+                        withContext(Dispatchers.Main) {
+                            isTranscribing = false
+                            if (res.isSuccess && res.text.isNotBlank()) {
+                                transcriptText = res.text.trim()
+                                statusMessage = "Transcription complete. Analyzing threat signals..."
+                                threatResult = threatEngine.analyzeCallTranscript(transcriptText)
+                            } else {
+                                statusMessage = "Whisper transcription notice: ${res.errorMessage ?: "No speech tokens detected"}. You can enter transcript text manually below."
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            isTranscribing = false
+                            statusMessage = "Whisper runtime notice: ${e.message}"
+                        }
+                    }
+                }
+            } else {
+                statusMessage = "Voice sample (${recordingDurationSec}s) captured. Offline Voice Transcription requires Pack 2 (Whisper model weights). You can inspect call transcripts manually using the text field below."
             }
         } else {
-            statusMessage = "No speech detected in audio sample. Speak closer to the microphone or test a sample scenario below."
+            statusMessage = "No audio samples captured. Speak into the microphone or test a sample scenario below."
         }
     }
 
@@ -161,7 +193,8 @@ fun VoiceClipScannerScreen(
         isRecording = true
         recordingDurationSec = 0
         audioRmsLevel = 0.1f
-        statusMessage = "Listening... Speak clearly into your microphone."
+        statusMessage = "Recording PCM audio (16kHz 16-bit mono)... Speak clearly into microphone."
+        synchronized(recordedAudioBuffer) { recordedAudioBuffer.reset() }
 
         // 1. Ticker for recording duration
         tickerJob = scope.launch {
@@ -171,7 +204,7 @@ fun VoiceClipScannerScreen(
             }
         }
 
-        // 2. Hardware AudioRecord thread for real-time RMS audio visualization
+        // 2. Hardware AudioRecord thread for real-time PCM capture and RMS audio visualization
         recordingJob = scope.launch(Dispatchers.IO) {
             val sampleRate = 16000
             val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -192,6 +225,13 @@ fun VoiceClipScannerScreen(
                     while (isActive && isRecording) {
                         val read = recorder.read(buffer, 0, buffer.size)
                         if (read > 0) {
+                            synchronized(recordedAudioBuffer) {
+                                for (i in 0 until read) {
+                                    val s = buffer[i].toInt()
+                                    recordedAudioBuffer.write(s and 0xFF)
+                                    recordedAudioBuffer.write((s shr 8) and 0xFF)
+                                }
+                            }
                             var sum = 0.0
                             for (i in 0 until read) {
                                 val s = buffer[i].toDouble()
@@ -206,6 +246,10 @@ fun VoiceClipScannerScreen(
                     }
                     try { recorder.stop() } catch (_: Exception) {}
                     try { recorder.release() } catch (_: Exception) {}
+                } else {
+                    withContext(Dispatchers.Main) {
+                        statusMessage = "AudioRecord failed to initialize hardware capture."
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -213,53 +257,6 @@ fun VoiceClipScannerScreen(
                 }
             }
         }
-
-        // 3. Android SpeechRecognizer for real-time speech-to-text
-        try {
-            if (SpeechRecognizer.isRecognitionAvailable(context)) {
-                val recognizer = SpeechRecognizer.createSpeechRecognizer(context.applicationContext)
-                speechRecognizer = recognizer
-                recognizer.setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) {}
-                    override fun onBeginningOfSpeech() {}
-                    override fun onRmsChanged(rmsdB: Float) {
-                        val level = ((rmsdB + 2f) / 10f).coerceIn(0.05f, 1f)
-                        if (level > audioRmsLevel) {
-                            audioRmsLevel = level
-                        }
-                    }
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() {}
-                    override fun onError(error: Int) {
-                        // Error 7 is no match; continue listening or allow manual retry
-                    }
-                    override fun onResults(results: Bundle?) {
-                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull()?.trim().orEmpty()
-                        if (text.isNotBlank()) {
-                            transcriptText = if (transcriptText.isBlank()) text else "$transcriptText $text"
-                        }
-                    }
-                    override fun onPartialResults(partialResults: Bundle?) {
-                        val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        val text = matches?.firstOrNull()?.trim().orEmpty()
-                        if (text.isNotBlank()) {
-                            transcriptText = text
-                        }
-                    }
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
-
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-IN")
-                }
-                recognizer.startListening(intent)
-            }
-        } catch (_: Exception) {}
     }
 
     val micLauncher = rememberLauncherForActivityResult(
@@ -299,13 +296,13 @@ fun VoiceClipScannerScreen(
             Spacer(Modifier.width(8.dp))
             Column {
                 Text(
-                    "Voice Clip Threat Analyzer",
+                    "Voice Safety & Speech Shield",
                     color = GxTextHi,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Live microphone capture, acoustic extortion & speech scam shield",
+                    "Hardware AudioRecord capture & on-device Whisper analysis",
                     color = GxTextLo,
                     fontSize = 11.sp
                 )
@@ -318,7 +315,7 @@ fun VoiceClipScannerScreen(
         Surface(
             color = if (isWhisperProvisioned) GxSafeSoft else GxSurfaceAlt,
             shape = GxShapeSm,
-            border = BorderStroke(1.dp, if (isWhisperProvisioned) GxSafe else GxBorder),
+            border = BorderStroke(1.dp, if (isWhisperProvisioned) GxSafe.copy(alpha = 0.5f) else GxBorder),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -326,26 +323,26 @@ fun VoiceClipScannerScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.Info,
+                    imageVector = if (isWhisperProvisioned) Icons.Default.Security else Icons.Default.Info,
                     contentDescription = null,
-                    tint = if (isWhisperProvisioned) GxSafe else GxTextLo,
-                    modifier = Modifier.size(16.dp)
+                    tint = if (isWhisperProvisioned) GxSafe else GxWarning,
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(Modifier.width(8.dp))
-                Column {
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        if (isWhisperProvisioned) "WHISPER MODEL READY (Arm ExecuTorch)"
-                        else "SPEECH ENGINE: Android On-Device Recognizer Active",
-                        color = if (isWhisperProvisioned) GxSafe else GxTextHi,
-                        fontSize = 10.sp,
+                        text = if (isWhisperProvisioned) "Whisper Engine Ready (ExecuTorch Arm)" else "Deterministic Voice Inspection Active",
+                        color = GxTextHi,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        if (isWhisperProvisioned) "Offline ExecuTorch INT8 speech-to-text active on local hardware."
-                        else "Real-time microphone input captures your voice directly. Spoken audio is analyzed by SafetyBarrier and Unified Threat Engine.",
-                        color = GxTextLo,
-                        fontSize = 10.sp,
-                        lineHeight = 14.sp
+                        text = if (isWhisperProvisioned)
+                            "100% offline speech recognition active for local voice and call transcription."
+                        else
+                            "Speech-to-text requires Pack 2 (Whisper Tiny). Manual transcript inspection is fully operational.",
+                        color = GxTextMid,
+                        fontSize = 11.sp
                     )
                 }
             }
@@ -353,352 +350,441 @@ fun VoiceClipScannerScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Recording & Audio Capture Card
+        // Audio Recorder Card
         Card(
             shape = GxShapeMd,
             colors = CardDefaults.cardColors(containerColor = GxSurface),
             border = BorderStroke(1.dp, GxBorder),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (isRecording) "RECORDING IN PROGRESS" else "LIVE MICROPHONE CAPTURE",
+                    color = if (isRecording) GxDanger else GxTextHi,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                // Real-time Audio Level Waveform Simulation
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .background(GxSurfaceAlt, shape = GxShapeSm)
+                        .padding(horizontal = 12.dp)
+                ) {
+                    val barCount = 28
+                    for (i in 0 until barCount) {
+                        val heightMultiplier = if (isRecording) {
+                            val phase = ((i.toFloat() / barCount) * Math.PI).toFloat()
+                            (audioRmsLevel * (0.3f + kotlin.math.sin(phase) * 0.7f)).coerceIn(0.08f, 1.0f)
+                        } else {
+                            0.08f
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height((60 * heightMultiplier).dp.coerceAtLeast(4.dp))
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(if (isRecording) GxPrimary else GxTextLo.copy(alpha = 0.3f))
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "MICROPHONE AUDIO RECORDER",
-                        color = GxTextLo,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        text = "Duration: %02d:%02d".format(recordingDurationSec / 60, recordingDurationSec % 60),
+                        color = GxTextMid,
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold
                     )
 
-                    if (isRecording) {
-                        Surface(
-                            color = GxDangerSoft,
-                            shape = GxShapePill,
-                            border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.5f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(GxDanger, CircleShape)
-                                )
-                                Spacer(Modifier.width(5.dp))
-                                val mins = recordingDurationSec / 60
-                                val secs = recordingDurationSec % 60
-                                Text(
-                                    String.format("REC %02d:%02d", mins, secs),
-                                    color = GxDanger,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
+                    Surface(
+                        color = if (isRecording) GxDangerSoft else GxSurfaceAlt,
+                        shape = GxShapePill,
+                        border = BorderStroke(1.dp, if (isRecording) GxDanger.copy(alpha = 0.5f) else GxBorder)
+                    ) {
+                        Text(
+                            text = if (isRecording) "LIVE PCM" else "STANDBY",
+                            color = if (isRecording) GxDanger else GxTextLo,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(16.dp))
 
-                // Live Audio Level Visualizer (Equalizer Sound Bars)
+                // Primary Record Button
                 if (isRecording) {
-                    Surface(
-                        color = GxSurfaceAlt,
-                        shape = GxShapeSm,
-                        border = BorderStroke(1.dp, GxBorder),
+                    Button(
+                        onClick = { stopRecordingInternal() },
+                        colors = ButtonDefaults.buttonColors(containerColor = GxDanger),
+                        shape = GxShapePill,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(48.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val barCount = 16
-                            for (i in 0 until barCount) {
-                                val factor = ((i * 3 + 1) % 5 + 1) / 5f
-                                val barHeight = (8.dp + 36.dp * (audioRmsLevel * factor).coerceIn(0.08f, 1f))
-                                Box(
-                                    modifier = Modifier
-                                        .width(6.dp)
-                                        .height(barHeight)
-                                        .clip(RoundedCornerShape(3.dp))
-                                        .background(if (audioRmsLevel > 0.4f) GxDanger else GxPrimary)
-                                )
-                            }
-                        }
+                        Icon(Icons.Default.Stop, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Stop Recording & Analyze", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
-                    Spacer(Modifier.height(10.dp))
-                }
+                } else {
+                    Button(
+                        onClick = {
+                            val hasPermission = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
 
-                // Record / Stop Buttons
+                            if (hasPermission) {
+                                startRecordingInternal()
+                            } else {
+                                micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
+                        shape = GxShapePill,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Record Voice Audio", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // Status Message Bar
+        Surface(
+            color = GxSurfaceAlt,
+            shape = GxShapeSm,
+            border = BorderStroke(1.dp, GxBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isTranscribing) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = GxPrimary, strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    text = statusMessage,
+                    color = GxTextMid,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        // Transcript Field Card
+        Card(
+            shape = GxShapeMd,
+            colors = CardDefaults.cardColors(containerColor = GxSurface),
+            border = BorderStroke(1.dp, GxBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (!isRecording) {
-                        Button(
-                            onClick = {
-                                val hasMic = ContextCompat.checkSelfPermission(
-                                    context, Manifest.permission.RECORD_AUDIO
-                                ) == PackageManager.PERMISSION_GRANTED
-                                if (hasMic) {
-                                    startRecordingInternal()
-                                } else {
-                                    micLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
-                            shape = GxShapeSm,
-                            modifier = Modifier.weight(1f).height(46.dp)
-                        ) {
-                            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Record Audio Sample", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        Button(
-                            onClick = {
-                                stopRecordingInternal()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = GxDanger),
-                            shape = GxShapeSm,
-                            modifier = Modifier.weight(1f).height(46.dp)
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Stop & Analyze Audio", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Text(
+                        text = "Voice Transcript (Editable)",
+                        color = GxTextHi,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Offline NLP",
+                        color = GxTextLo,
+                        fontSize = 10.sp
+                    )
                 }
 
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    statusMessage,
-                    color = GxTextLo,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp
-                )
 
-                Spacer(Modifier.height(12.dp))
-
-                // Transcript Display & Input Field
                 OutlinedTextField(
                     value = transcriptText,
                     onValueChange = { transcriptText = it },
                     placeholder = {
                         Text(
-                            "Spoken speech will appear here automatically while recording, or paste any transcript...",
+                            "Voice transcript appears here. You can also paste audio transcripts directly to test scam detection...",
                             color = GxTextLo,
                             fontSize = 12.sp
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp),
                     shape = GxShapeSm,
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = GxSurfaceAlt,
+                        unfocusedContainerColor = GxSurfaceAlt,
                         focusedBorderColor = GxPrimary,
                         unfocusedBorderColor = GxBorder,
                         focusedTextColor = GxTextHi,
                         unfocusedTextColor = GxTextHi
-                    ),
-                    minLines = 3,
-                    maxLines = 6
+                    )
                 )
 
                 Spacer(Modifier.height(10.dp))
 
                 Button(
                     onClick = {
-                        val text = transcriptText.trim()
-                        if (text.isNotBlank()) {
+                        val trimmed = transcriptText.trim()
+                        if (trimmed.isNotBlank()) {
+                            statusMessage = "Analyzing transcript with SafetyBarrier & Astra Classifier..."
                             scope.launch {
-                                statusMessage = "Analyzing speech threat..."
-                                threatResult = threatEngine.analyzeCallTranscript(text)
+                                threatResult = threatEngine.analyzeCallTranscript(trimmed)
                                 statusMessage = "Analysis complete."
                             }
                         } else {
-                            Toast.makeText(context, "Please record audio or enter a transcript to analyze", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Please enter or record a transcript first.", Toast.LENGTH_SHORT).show()
                         }
                     },
+                    enabled = transcriptText.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
                     shape = GxShapeSm,
                     modifier = Modifier.fillMaxWidth().height(42.dp)
                 ) {
                     Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Analyze Speech Threat", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Inspect Voice Transcript", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }
 
-        // Quick Sample Speech Scenarios
         Spacer(Modifier.height(14.dp))
-        Text(
-            "QUICK TEST SCENARIOS (ONE-TAP EVALUATION)",
-            color = GxTextLo,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-        Spacer(Modifier.height(8.dp))
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        transcriptText = "This is DCP Crime Branch. A parcel with narcotics has been intercepted in your name. You are under digital arrest. Transfer Rs 50,000 to RBI verification account immediately."
-                        scope.launch { threatResult = threatEngine.analyzeCallTranscript(transcriptText) }
-                    },
-                    border = BorderStroke(0.5.dp, GxBorder),
-                    shape = GxShapeSm,
-                    modifier = Modifier.weight(1f).height(38.dp)
-                ) {
-                    Text("🚨 Digital Arrest Scam", fontSize = 11.sp, color = GxTextMid)
-                }
+        // Pre-loaded Scenario Test Buttons
+        Card(
+            shape = GxShapeMd,
+            colors = CardDefaults.cardColors(containerColor = GxSurface),
+            border = BorderStroke(1.dp, GxBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "Test Audio Scenarios (Instant Evaluation)",
+                    color = GxTextHi,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(8.dp))
 
-                OutlinedButton(
-                    onClick = {
-                        transcriptText = "Dear customer, your bank account is suspended due to expired KYC. Share the OTP received on SMS immediately to avoid permanent closure."
-                        scope.launch { threatResult = threatEngine.analyzeCallTranscript(transcriptText) }
-                    },
-                    border = BorderStroke(0.5.dp, GxBorder),
-                    shape = GxShapeSm,
-                    modifier = Modifier.weight(1f).height(38.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("💳 Bank KYC Scam", fontSize = 11.sp, color = GxTextMid)
-                }
-            }
+                    OutlinedButton(
+                        onClick = {
+                            transcriptText = "This is Officer Sharma from CBI Mumbai. An arrest warrant is issued against your Aadhaar card for money laundering. You are in digital arrest. Do not disconnect this video call or police will reach your home."
+                            scope.launch {
+                                threatResult = threatEngine.analyzeCallTranscript(transcriptText)
+                                statusMessage = "Evaluated Digital Arrest Scenario."
+                            }
+                        },
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.5f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Digital Arrest Call", color = GxDanger, fontSize = 11.sp, textAlign = TextAlign.Center)
+                    }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        transcriptText = "Earn 5000 rupees daily by liking YouTube videos. Pay initial task deposit of 2000 rupees to get assigned merchant rating tasks."
-                        scope.launch { threatResult = threatEngine.analyzeCallTranscript(transcriptText) }
-                    },
-                    border = BorderStroke(0.5.dp, GxBorder),
-                    shape = GxShapeSm,
-                    modifier = Modifier.weight(1f).height(38.dp)
-                ) {
-                    Text("💼 Job Task Scam", fontSize = 11.sp, color = GxTextMid)
-                }
-
-                OutlinedButton(
-                    onClick = {
-                        transcriptText = "Hi Dad, I will reach home by 8 PM tonight. Please ask mom to keep dinner ready."
-                        scope.launch { threatResult = threatEngine.analyzeCallTranscript(transcriptText) }
-                    },
-                    border = BorderStroke(0.5.dp, GxBorder),
-                    shape = GxShapeSm,
-                    modifier = Modifier.weight(1f).height(38.dp)
-                ) {
-                    Text("👨‍👩‍👧 Benign Family Call", fontSize = 11.sp, color = GxTextMid)
+                    OutlinedButton(
+                        onClick = {
+                            transcriptText = "Hello sir, I am calling from State Bank verification. Your debit card is expiring today. Please share the 6-digit OTP sent to your phone to keep the card active."
+                            scope.launch {
+                                threatResult = threatEngine.analyzeCallTranscript(transcriptText)
+                                statusMessage = "Evaluated Bank OTP Scam Scenario."
+                            }
+                        },
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxWarning.copy(alpha = 0.5f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Bank OTP Theft", color = GxWarning, fontSize = 11.sp, textAlign = TextAlign.Center)
+                    }
                 }
             }
         }
 
-        // Assessment Results
-        val res = threatResult
-        if (res != null) {
+        // Threat Inspection Results Card
+        val result = threatResult
+        if (result != null) {
             Spacer(Modifier.height(16.dp))
-            val statusColor = when (res.severity) {
-                "HIGH" -> GxDanger
-                "MEDIUM" -> GxWarning
-                else -> GxSafe
-            }
-            val statusSoft = when (res.severity) {
-                "HIGH" -> GxDangerSoft
-                "MEDIUM" -> GxWarningSoft
-                else -> GxSafeSoft
-            }
+            val isHighRisk = result.riskScore >= 70
+            val cardColor = if (isHighRisk) GxDangerSoft else GxSafeSoft
+            val borderColor = if (isHighRisk) GxDanger else GxSafe
 
             Card(
-                shape = GxShapeLg,
+                shape = GxShapeMd,
                 colors = CardDefaults.cardColors(containerColor = GxSurface),
-                border = BorderStroke(1.dp, GxBorder),
+                border = BorderStroke(1.5.dp, borderColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text(
+                            text = "SECURITY ASSESSMENT",
+                            color = GxTextLo,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+
                         Surface(
-                            color = statusSoft,
+                            color = cardColor,
                             shape = GxShapePill,
-                            border = BorderStroke(1.dp, statusColor.copy(alpha = 0.5f))
+                            border = BorderStroke(1.dp, borderColor.copy(alpha = 0.4f))
                         ) {
                             Text(
-                                "${res.severity} RISK · SCORE ${res.riskScore}/100",
-                                color = statusColor,
-                                fontSize = 10.sp,
+                                text = "RISK: ${result.severity} (${result.riskScore}%)",
+                                color = borderColor,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
-
-                        Text(
-                            "Source: ${res.analysisSource}",
-                            color = GxTextLo,
-                            fontSize = 10.sp
-                        )
                     }
 
-                    Spacer(Modifier.height(12.dp))
-
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        res.threatType.replace("_", " ").uppercase(),
+                        text = result.threatType.replace('_', ' ').uppercase(),
                         color = GxTextHi,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
 
                     Spacer(Modifier.height(6.dp))
-
                     Text(
-                        res.explanation,
+                        text = result.explanation,
                         color = GxTextMid,
                         fontSize = 12.sp,
-                        lineHeight = 16.sp
+                        lineHeight = 17.sp
                     )
 
-                    if (res.detectedTactics.isNotEmpty()) {
+                    if (result.evidence.isNotEmpty()) {
                         Spacer(Modifier.height(10.dp))
-                        Text("DETECTED TACTICS & PATTERNS", color = GxTextLo, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text("Detected Threat Signals:", color = GxTextHi, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        res.detectedTactics.forEach { tactic ->
-                            Text("• $tactic", color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        result.evidence.forEach { ev ->
+                            Text("• $ev", color = GxTextMid, fontSize = 11.sp)
                         }
                     }
 
-                    if (res.recommendedActions.isNotEmpty()) {
+                    if (result.recommendedActions.isNotEmpty()) {
                         Spacer(Modifier.height(10.dp))
-                        Text("RECOMMENDED PROTECTIVE ACTIONS", color = GxTextLo, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text("Recommended Defensive Steps:", color = GxTextHi, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        res.recommendedActions.forEach { act ->
-                            Text("✓ $act", color = GxTextHi, fontSize = 11.sp)
+                        result.recommendedActions.forEach { act ->
+                            Text("✓ $act", color = GxSafe, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(30.dp))
+    }
+}
+
+/**
+ * Encodes raw 16-bit PCM audio samples into a standard 44-byte header WAV file.
+ */
+private fun writePcmToWav(
+    wavFile: File,
+    pcmData: ByteArray,
+    sampleRate: Int = 16000,
+    channels: Int = 1
+) {
+    val totalAudioLen = pcmData.size.toLong()
+    val totalDataLen = totalAudioLen + 36
+    val byteRate = (sampleRate * channels * 16) / 8
+
+    val header = ByteArray(44)
+    // RIFF chunk
+    header[0] = 'R'.code.toByte()
+    header[1] = 'I'.code.toByte()
+    header[2] = 'F'.code.toByte()
+    header[3] = 'F'.code.toByte()
+    header[4] = (totalDataLen and 0xff).toByte()
+    header[5] = ((totalDataLen shr 8) and 0xff).toByte()
+    header[6] = ((totalDataLen shr 16) and 0xff).toByte()
+    header[7] = ((totalDataLen shr 24) and 0xff).toByte()
+    // WAVE chunk
+    header[8] = 'W'.code.toByte()
+    header[9] = 'A'.code.toByte()
+    header[10] = 'V'.code.toByte()
+    header[11] = 'E'.code.toByte()
+    // 'fmt ' chunk
+    header[12] = 'f'.code.toByte()
+    header[13] = 'm'.code.toByte()
+    header[14] = 't'.code.toByte()
+    header[15] = ' '.code.toByte()
+    header[16] = 16 // Subchunk1Size for PCM
+    header[17] = 0
+    header[18] = 0
+    header[19] = 0
+    header[20] = 1 // AudioFormat 1 = PCM
+    header[21] = 0
+    header[22] = channels.toByte()
+    header[23] = 0
+    header[24] = (sampleRate and 0xff).toByte()
+    header[25] = ((sampleRate shr 8) and 0xff).toByte()
+    header[26] = ((sampleRate shr 16) and 0xff).toByte()
+    header[27] = ((sampleRate shr 24) and 0xff).toByte()
+    header[28] = (byteRate and 0xff).toByte()
+    header[29] = ((byteRate shr 8) and 0xff).toByte()
+    header[30] = ((byteRate shr 16) and 0xff).toByte()
+    header[31] = ((byteRate shr 24) and 0xff).toByte()
+    header[32] = (channels * 16 / 8).toByte() // BlockAlign
+    header[33] = 0
+    header[34] = 16 // BitsPerSample
+    header[35] = 0
+    // 'data' chunk
+    header[36] = 'd'.code.toByte()
+    header[37] = 'a'.code.toByte()
+    header[38] = 't'.code.toByte()
+    header[39] = 'a'.code.toByte()
+    header[40] = (totalAudioLen and 0xff).toByte()
+    header[41] = ((totalAudioLen shr 8) and 0xff).toByte()
+    header[42] = ((totalAudioLen shr 16) and 0xff).toByte()
+    header[43] = ((totalAudioLen shr 24) and 0xff).toByte()
+
+    FileOutputStream(wavFile).use { fos ->
+        fos.write(header)
+        fos.write(pcmData)
+        fos.flush()
     }
 }
