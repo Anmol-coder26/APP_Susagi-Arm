@@ -161,10 +161,11 @@ fun ModelManagerScreen(
         String.format("%.2f", availableBytes.toDouble() / (1024 * 1024 * 1024))
     }
 
+    val whisperMgr = remember { com.susagi.stt.whisper.WhisperModelManager(ctx) }
     var pack2Downloading by remember { mutableStateOf(false) }
     var pack2Progress by remember { mutableStateOf(0f) }
     var pack2Installed by remember {
-        mutableStateOf(File(modelManager.modelsDir, ModelManifest.WHISPER_TINY_ARM.modelFileName).exists())
+        mutableStateOf(whisperMgr.isReady())
     }
 
     var pack4Downloading by remember { mutableStateOf(false) }
@@ -404,10 +405,11 @@ fun ModelManagerScreen(
                             pack4Ready = modelManager.isReady()
                             Toast.makeText(ctx, "Llama 3.2 1B removed from device storage.", Toast.LENGTH_SHORT).show()
                         } else if (pack.id == "pack_offline_voice") {
-                            val whisperFile = File(modelManager.modelsDir, ModelManifest.WHISPER_TINY_ARM.modelFileName)
-                            if (whisperFile.exists()) whisperFile.delete()
+                            if (whisperMgr.modelFile.exists()) whisperMgr.modelFile.delete()
+                            if (whisperMgr.preprocessorFile.exists()) whisperMgr.preprocessorFile.delete()
+                            if (whisperMgr.tokenizerFile.exists()) whisperMgr.tokenizerFile.delete()
                             pack2Installed = false
-                            Toast.makeText(ctx, "Whisper model removed from device storage.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(ctx, "Whisper model assets removed from device storage.", Toast.LENGTH_SHORT).show()
                         }
                     } else {
                         // Request explicit authorization before downloading multi-megabyte / gigabyte weights
@@ -514,8 +516,28 @@ fun ModelManagerScreen(
                                     pack4Downloading = false
                                 }
                             }
+                        } else if (pack.id == "pack_offline_voice") {
+                            pack2Downloading = true
+                            scope.launch {
+                                try {
+                                    val result = whisperMgr.downloadWhisperAssets { progress ->
+                                        pack2Progress = progress.percent / 100f
+                                    }
+                                    if (result.isSuccess) {
+                                        pack2Installed = whisperMgr.isReady()
+                                        Toast.makeText(ctx, "Whisper Multilingual downloaded & verified!", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        val err = result.exceptionOrNull()?.message ?: "Download failed"
+                                        Toast.makeText(ctx, "Whisper download failed: $err", Toast.LENGTH_LONG).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(ctx, "Download error: ${e.message}", Toast.LENGTH_LONG).show()
+                                } finally {
+                                    pack2Downloading = false
+                                }
+                            }
                         } else {
-                            Toast.makeText(ctx, "Voice model download queued. Tap Diagnostics to verify status.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(ctx, "Model download queued.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = GxPrimary)

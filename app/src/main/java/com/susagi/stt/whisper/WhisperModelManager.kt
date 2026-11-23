@@ -39,6 +39,7 @@ class WhisperModelManager(private val context: Context) {
         // Candidate model filenames supported by ExecuTorch runtime
         val CANDIDATE_MODEL_NAMES = listOf(
             "whisper_small_vivo_executorch_optimized.pte",
+            "whisper_tiny_vivo_executorch_optimized.pte",
             "whisper_small.pte",
             "whisper.pte",
             "whisper_tiny.pte"
