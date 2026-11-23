@@ -14,7 +14,7 @@
 | 5: Voice & Call Shields | P1 | READY (VoIP EXP) | `VoiceClipScannerScreen`, `CallRiskActivity`, `VoipCallActivity` | Whisper audio pipeline ready; VoIP experimental |
 | 6: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 266/266 tests passed, 0 failures |
 
-- **Current HEAD:** `3817068` | **Branch:** `feature/gravity-product-calling`
+- **Current HEAD:** `5717b75` | **Branch:** `feature/gravity-product-calling`
 - **Debug APK SHA-256:** `22C0032B84D96D558C1A0C7351CFCFCD36C755A396C02922E6F25A84247A01EF`
 - **Debug APK Size:** 137,816,130 bytes (`app-debug.apk`)
 - **Blockers:** USB debugging / ADB execution and model weights download to laptop strictly blocked per user safety policy.
