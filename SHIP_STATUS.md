@@ -2,8 +2,8 @@
 
 | Work Item | Priority | Status | Entry Point / Component | Verification / Commit |
 |:---|:---:|:---:|:---|:---|
-| 1A: Message Share Shield | P0 | READY | `LinkCheckActivity` (`ACTION_SEND`) | 230/230 JVM tests (100% precision, 0 FP) |
-| 1B: URL / Link Shield | P0 | READY | `LinkCheckActivity` (`ACTION_VIEW`), `LinkSafetyBarrierScreen` | `SecurityFlowIntegrationTest` |
+| 1A: Message Share Shield | P0 | READY | `LinkCheckActivity` (`ACTION_SEND`) | 233/233 JVM tests (100% precision, 0 FP) |
+| 1B: URL / Link Shield | P0 | READY | `LinkCheckActivity` (`ACTION_VIEW`), `LinkSafetyBarrierScreen` | 2nd-layer encoded redirect verified |
 | 1C: UPI & QR Shield | P0 | READY | `QrScannerActivity`, `PaymentFields.inspectUri` | 9 QR routing & mutation tests |
 | 1D: Notification Companion | P0 | READY | `NotificationScannerService`, `ScamWarningActivity` | Companion Alert, 4 dedup tests |
 | 2E: Incident History | P0 | READY | `IncidentHistoryStore`, `IncidentsScreen` | Masked OTP (`******`), 1930 / portal actions |
@@ -12,9 +12,9 @@
 | 3: Local ML Classifier | P0 | READY | `LocalThreatClassifier`, `LexicalMessageModel` (Shadow) | 108-case paired comparison: F1=0.90 |
 | 4: Llama ExecuTorch | P0 | IMPLEMENTED_UNVERIFIED | `LocalEvidenceExplainer`, `ModelManifest` | Hardware blocked pending approval |
 | 5: Network & APK Shields | P1 | READY | `NetworkShieldScreen`, `ApkRiskScannerScreen` | 8/8 tests, CICIDS + APK parser |
-| 6: Build & Test Artifacts | P0 | READY | `app-debug.apk`, `app-debug-androidTest.apk` | 230/230 tests passed, 0 failures |
+| 6: Build & Test Artifacts | P0 | READY | `app-debug.apk`, `app-debug-androidTest.apk` | 233/233 tests passed, 0 failures |
 
-- **Current HEAD:** `90bbd22` | **Branch:** `feature/gravity-product-calling`
-- **Debug APK SHA-256:** `DEE5245FE9EB868C69C23DCC4940027D5C09663E29930B73FEA0E8A100A9BCA0`
+- **Current HEAD:** `5793b37` | **Branch:** `feature/gravity-product-calling`
+- **Debug APK SHA-256:** `7925AF9EC42AD55D360042FEBE6B167E26A2169CD30374659B7D7B4FE12BF781`
 - **AndroidTest APK SHA-256:** `2609AB7E62F64202A55BA18D95474BF79F7064B1BF4D52B884C898EA786CC8D1`
 - **Blockers:** USB debugging / ADB execution and model weights download to laptop strictly blocked per user safety policy.
