@@ -11,6 +11,8 @@ import kotlinx.coroutines.withContext
 enum class Risk { LOW, REVIEW, HIGH, UNKNOWN }
 enum class Action { OFFER_OPEN, ASK_CONFIRMATION, RECOMMEND_BLOCK, DO_NOT_OPEN }
 enum class Signal(val risk: Risk, val category: String, val explanation: String, val advice: String) {
+    PRIZE_CLAIM(Risk.REVIEW, "unverified_prize", "The speaker addresses the recipient about a possible prize. Its legitimacy is unknown.", "Verify the prize independently before responding or paying."),
+    PRIZE_FRAGMENT(Risk.REVIEW, "incomplete_prize", "The brief prize reference gives too little context to assess a request.", "Check the rest of the conversation before taking action."),
     SCREEN_CREDENTIAL(Risk.HIGH, "credentials", "The message asks you to share your screen while entering a financial credential.", "End screen sharing before entering any banking code."),
     REFUND_FEE(Risk.HIGH, "advance_fee", "The message asks for an upfront fee to obtain a refund or cashback.", "Check the credit in the official app before taking any action."),
     ADVANCE_FEE(Risk.HIGH, "advance_fee", "The message ties an opportunity, benefit or payout to an advance payment.", "Verify the offer independently before sending money."),
@@ -111,6 +113,12 @@ object SafetyBarrier {
         val clauses = splitClause.split(normalized).filter { it.isNotBlank() }
         clauses.forEachIndexed { index, clause ->
             val nextClause = clauses.getOrNull(index + 1)
+            when (PrizeIntent.inspect(clause, nextClause)) {
+                PrizeIntent.Finding.CLAIM -> add(Signal.PRIZE_CLAIM)
+                PrizeIntent.Finding.INCOMPLETE -> add(Signal.PRIZE_FRAGMENT)
+                PrizeIntent.Finding.ADVANCE_FEE -> add(Signal.ADVANCE_FEE)
+                else -> Unit
+            }
             ContextualScamRules.inspect(clause, destinations.isNotEmpty() || direct != null, nextClause).forEach(::add)
         }
         // A routine mention of police must not lend authority to an unrelated payment instruction.

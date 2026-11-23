@@ -24,26 +24,10 @@ internal object ContextualScamRules {
     private val advancePayment = Regex("""(?:send|transfer|pay|wire)\s+(?:rs\.?\s*|inr\s*|₹\s*)\d""")
     private val frozenBalance = Regex("""\b(?:withdrawals?|account|portfolio|funds?|balance)\s+(?:are|is)?\s*(?:frozen|blocked|suspended|locked|on hold)\b|खाता (?:ब्लॉक|फ्रीज)|निकासी रोक|खाता फ्रीज""")
     private val accountVerification = Regex("""(?:to )?(?:verify|unblock|activate) your (?:account|identity|card)""")
-    private val prize = Regex("""\b(?:lottery|lotery|lucky draw|jackpot|cash prize|mega prize)\b|लॉटरी|इनाम|लकी ड्रॉ|पुरस्कार|बंपर ड्रॉ|\bwon (?:a |the )?(?:lottery|prize|cash|₹|\$|rs)|\b(?:aapki|aapko|toh have a|have a)\s+lottery\b""")
-    private val legitimateContext = Regex("""\b(?:our school|school lottery|bought a ticket|bought a lottery|ticket number|colleague won|friend won|yesterday i|purchased a ticket|charity raffle)\b""")
 
     fun inspect(clause: String, hasLink: Boolean, nextClause: String? = null): List<Signal> = buildList {
         for (part in contrast.split(clause)) {
             if (warning.containsMatchIn(part)) continue
-            if (prize.containsMatchIn(part) && !legitimateContext.containsMatchIn(part)) {
-                if (payFee.containsMatchIn(part) || demand.containsMatchIn(part) || advancePayment.containsMatchIn(part)) {
-                    add(Signal.ADVANCE_FEE)
-                } else if (nextClause != null) {
-                    val nextActionable = contrast.split(nextClause).filterNot(warning::containsMatchIn).joinToString(" ; ")
-                    if (payFee.containsMatchIn(nextActionable) || demand.containsMatchIn(nextActionable) || advancePayment.containsMatchIn(nextActionable)) {
-                        add(Signal.ADVANCE_FEE)
-                    } else {
-                        add(Signal.LOTTERY)
-                    }
-                } else {
-                    add(Signal.LOTTERY)
-                }
-            }
             if (shareScreen.containsMatchIn(part) && enterCode.containsMatchIn(part) &&
                 !screenWarning.containsMatchIn(part)) add(Signal.SCREEN_CREDENTIAL)
             if (feeForCredit.containsMatchIn(part) && payFee.containsMatchIn(part)) add(Signal.REFUND_FEE)

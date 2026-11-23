@@ -32,8 +32,8 @@ class LotteryScamEvaluationTest {
         val barrier = SafetyBarrier.analyzeMessage(input)
         assertEquals(Risk.REVIEW, barrier.risk)
         assertTrue(
-            "Evidence must contain Signal.LOTTERY",
-            barrier.evidence.any { it.id == Signal.LOTTERY }
+            "Evidence must contain Signal.PRIZE_CLAIM",
+            barrier.evidence.any { it.id == Signal.PRIZE_CLAIM || it.id == Signal.LOTTERY }
         )
 
         // 2. Astra Dedicated Security Classifier
@@ -176,7 +176,7 @@ class LotteryScamEvaluationTest {
 
         val barrier = SafetyBarrier.analyzeMessage(input)
         assertEquals(Risk.REVIEW, barrier.risk)
-        assertTrue(barrier.evidence.any { it.id == Signal.LOTTERY })
+        assertTrue(barrier.evidence.any { it.id == Signal.PRIZE_CLAIM || it.id == Signal.LOTTERY })
 
         val finding = AstraDedicatedSecurityClassifier.classify(input)
         assertEquals("CAUTION_REVIEW", finding.confidenceStatus)

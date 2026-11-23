@@ -181,13 +181,27 @@ class UnifiedThreatEngine(
             evidenceList.add("Unsolicited Lottery / Prize Solicitation Indicator")
         }
 
+        val barrierAssessment = SafetyBarrier.analyzeMessage(trimmed)
         val input = ThreatInput(
             channel = ThreatChannel.VOIP_CALL,
             rawContent = trimmed,
-            structuredEvidence = evidenceList
+            structuredEvidence = if (evidenceList.isNotEmpty()) evidenceList else barrierAssessment.evidence.map { it.id.explanation }
         )
 
-        val barrierAssessment = SafetyBarrier.analyzeMessage(trimmed)
+        if (barrierAssessment.evidence.any { it.id.category in setOf("unverified_prize", "incomplete_prize") }) {
+            val high = barrierAssessment.risk == Risk.HIGH
+            return InferenceResult(
+                threatType = barrierAssessment.evidence.first { it.id.risk == barrierAssessment.risk }.id.category,
+                riskScore = if (high) 85 else 40,
+                severity = if (high) "HIGH" else "MEDIUM",
+                detectedTactics = barrierAssessment.evidence.map { it.id.name },
+                evidence = barrierAssessment.evidence.map { it.id.explanation },
+                explanation = barrierAssessment.explanation,
+                recommendedActions = barrierAssessment.recommendations,
+                analysisSource = AnalysisSources.LOCAL_RULES
+            )
+        }
+
         return llamaEngine.analyzeThreat(input).withBarrier(barrierAssessment)
     }
 
