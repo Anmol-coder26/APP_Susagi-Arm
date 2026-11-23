@@ -34,6 +34,19 @@ enum class Speaker { LOCAL, REMOTE }
 
 enum class PillStatus { GREEN, AMBER, RED }
 
+enum class CallConnectionState {
+    IDLE,
+    REQUESTING_TOKEN,
+    CONNECTING,
+    JOINED,
+    PEER_CONNECTED,
+    AUDIO_ACTIVE,
+    RECONNECTING,
+    DISCONNECTED,
+    FAILED,
+    ENDED
+}
+
 data class DiagnosticsPillsState(
     val rtcJoined: PillStatus = PillStatus.RED,
     val peerPresent: PillStatus = PillStatus.RED,
@@ -166,6 +179,9 @@ class VoiceCallManager(
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
+    private val _callConnectionState = MutableStateFlow(CallConnectionState.IDLE)
+    val callConnectionState: StateFlow<CallConnectionState> = _callConnectionState.asStateFlow()
+
     private val _pillsState = MutableStateFlow(DiagnosticsPillsState())
     val pillsState: StateFlow<DiagnosticsPillsState> = _pillsState.asStateFlow()
 
@@ -181,17 +197,57 @@ class VoiceCallManager(
     private var connectivityManager: android.net.ConnectivityManager? = null
     private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
 
+    companion object {
+        fun mapConnectionReason(reason: Int): String = when (reason) {
+            1 -> "Connecting"
+            2 -> "Join success"
+            3 -> "Interrupted network connection"
+            4 -> "Banned by Agora server"
+            5 -> "Join channel failed"
+            6 -> "Left channel"
+            7 -> "Invalid Agora App ID"
+            8 -> "Invalid channel name format"
+            9 -> "Invalid or missing token (Token authentication required)"
+            10 -> "Token expired"
+            11 -> "Rejected by Agora server"
+            12 -> "Proxy server configured"
+            13 -> "Token renewed"
+            14 -> "Client IP changed"
+            15 -> "Keep-alive timeout (Agora servers unreachable)"
+            16 -> "Rejoin success"
+            17 -> "Lost connection to Agora gateway"
+            18 -> "Echo test active"
+            19 -> "Client IP changed by user"
+            20 -> "Same UID logged in from another device"
+            21 -> "Too many broadcasters"
+            else -> "Code $reason"
+        }
+
+        fun mapErrorCode(err: Int): String = when (err) {
+            17 -> "Join channel rejected by server (Code 17)"
+            101 -> "Agora App ID unconfigured or invalid (Code 101)"
+            102 -> "Invalid room / channel name (Code 102)"
+            109 -> "Agora token expired (Code 109)"
+            110 -> "Agora token invalid or missing (Code 110: Project requires RTC Token)"
+            115 -> "Engine not ready (Code 115)"
+            -999 -> "Agora/Audio initialization failure (Code -999)"
+            else -> "Agora RTC error (Code $err)"
+        }
+    }
+
     private val eventHandler = object : IRtcEngineEventHandler() {
         override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
             CallDiagnostics.log("RTC", "onJoinChannelSuccess: channel=$channel, uid=$uid, elapsed=${elapsed}ms")
             rtcJoinedFlag = true
             _isConnected.value = true
+            _callConnectionState.value = if (peerPresentFlag) CallConnectionState.PEER_CONNECTED else CallConnectionState.JOINED
             updatePills()
         }
 
         override fun onUserJoined(uid: Int, elapsed: Int) {
             CallDiagnostics.log("RTC", "onUserJoined: peer uid=$uid, elapsed=${elapsed}ms")
             peerPresentFlag = true
+            _callConnectionState.value = CallConnectionState.PEER_CONNECTED
             try {
                 rtcEngine.muteRemoteAudioStream(uid, false)
             } catch (_: Exception) {}
@@ -199,8 +255,10 @@ class VoiceCallManager(
         }
 
         override fun onUserOffline(uid: Int, reason: Int) {
-            CallDiagnostics.log("RTC", "onUserOffline: peer uid=$uid, reason=$reason", LogLevel.WARN)
+            val reasonDesc = mapConnectionReason(reason)
+            CallDiagnostics.log("RTC", "onUserOffline: peer uid=$uid, reason=$reason ($reasonDesc)", LogLevel.WARN)
             peerPresentFlag = false
+            _callConnectionState.value = if (rtcJoinedFlag) CallConnectionState.JOINED else CallConnectionState.DISCONNECTED
             updatePills()
             onRemoteUserHungUp?.invoke(reason)
         }
@@ -210,6 +268,7 @@ class VoiceCallManager(
             rtcJoinedFlag = false
             peerPresentFlag = false
             _isConnected.value = false
+            _callConnectionState.value = CallConnectionState.DISCONNECTED
             updatePills()
         }
 
@@ -232,12 +291,22 @@ class VoiceCallManager(
                 5 -> "FAILED"
                 else -> "UNKNOWN($state)"
             }
-            CallDiagnostics.log("RTC", "onConnectionStateChanged: state=$stateName, reason=$reason")
+            val reasonDesc = mapConnectionReason(reason)
+            CallDiagnostics.log("RTC", "onConnectionStateChanged: state=$stateName ($state), reason=$reasonDesc ($reason)")
+            when (state) {
+                1 -> _callConnectionState.value = CallConnectionState.DISCONNECTED
+                2 -> _callConnectionState.value = CallConnectionState.CONNECTING
+                3 -> _callConnectionState.value = if (peerPresentFlag) CallConnectionState.PEER_CONNECTED else CallConnectionState.JOINED
+                4 -> _callConnectionState.value = CallConnectionState.RECONNECTING
+                5 -> _callConnectionState.value = CallConnectionState.FAILED
+            }
             onConnectionStateUpdate?.invoke(state, reason)
         }
 
         override fun onError(err: Int) {
-            CallDiagnostics.log("RTC", "Agora RTC error code: $err", LogLevel.ERROR)
+            val errorDesc = mapErrorCode(err)
+            CallDiagnostics.log("RTC", "Agora RTC error: $errorDesc", LogLevel.ERROR)
+            _callConnectionState.value = CallConnectionState.FAILED
             onErrorOccurred?.invoke(err)
         }
     }
@@ -309,6 +378,7 @@ class VoiceCallManager(
 
     fun startCall(channelName: String, token: String, uid: Int = 0) {
         callStartTs = System.currentTimeMillis()
+        _callConnectionState.value = CallConnectionState.CONNECTING
         try {
             if (agoraAppId.isBlank()) {
                 CallDiagnostics.log("RTC", "Agora App ID is unconfigured or blank; direct dev mode fallback", LogLevel.WARN)
@@ -456,6 +526,7 @@ class VoiceCallManager(
         rtcJoinedFlag = false
         peerPresentFlag = false
         _isConnected.value = false
+        _callConnectionState.value = CallConnectionState.ENDED
         updatePills()
     }
 
@@ -525,5 +596,9 @@ class VoiceCallManager(
             localNoAudioWarning = locDead,
             remoteNoAudioWarning = remDead
         )
+
+        if (peerPresentFlag && remCount > 0 && (_callConnectionState.value == CallConnectionState.PEER_CONNECTED || _callConnectionState.value == CallConnectionState.JOINED)) {
+            _callConnectionState.value = CallConnectionState.AUDIO_ACTIVE
+        }
     }
 }

@@ -106,6 +106,48 @@ class VoipCallingSafetyTest {
         assertEquals("Join channel rejected by server (Code 17)", mapErrorCode(17))
         assertEquals("Audio/Agora initialization failure (Code -999)", mapErrorCode(-999))
         assertEquals("Call connection error (Code 404)", mapErrorCode(404))
+
+        // Also verify production VoiceCallManager mappings
+        assertEquals("Agora token invalid or missing (Code 110: Project requires RTC Token)", VoiceCallManager.mapErrorCode(110))
+        assertEquals("Agora token expired (Code 109)", VoiceCallManager.mapErrorCode(109))
+        assertEquals("Agora App ID unconfigured or invalid (Code 101)", VoiceCallManager.mapErrorCode(101))
+        assertEquals("Invalid or missing token (Token authentication required)", VoiceCallManager.mapConnectionReason(9))
+        assertEquals("Keep-alive timeout (Agora servers unreachable)", VoiceCallManager.mapConnectionReason(15))
+    }
+
+    @Test
+    fun testCallConnectionState_fullLifecycle() {
+        var state = VoipUiState()
+        assertEquals(CallConnectionState.IDLE, state.callState)
+
+        // Requesting token
+        state = state.copy(callState = CallConnectionState.REQUESTING_TOKEN)
+        assertEquals(CallConnectionState.REQUESTING_TOKEN, state.callState)
+
+        // Connecting
+        state = state.copy(callState = CallConnectionState.CONNECTING)
+        assertEquals(CallConnectionState.CONNECTING, state.callState)
+
+        // Joined room
+        state = state.copy(callState = CallConnectionState.JOINED)
+        assertEquals(CallConnectionState.JOINED, state.callState)
+
+        // Peer connected
+        state = state.copy(callState = CallConnectionState.PEER_CONNECTED)
+        assertEquals(CallConnectionState.PEER_CONNECTED, state.callState)
+
+        // Audio active
+        state = state.copy(callState = CallConnectionState.AUDIO_ACTIVE, isTranscriptionActive = true)
+        assertEquals(CallConnectionState.AUDIO_ACTIVE, state.callState)
+        assertTrue(state.isTranscriptionActive)
+
+        // Failure
+        state = state.copy(
+            callState = CallConnectionState.FAILED,
+            diagnosticReason = "Token backend unreachable (Connection refused on port 3001)"
+        )
+        assertEquals(CallConnectionState.FAILED, state.callState)
+        assertEquals("Token backend unreachable (Connection refused on port 3001)", state.diagnosticReason)
     }
 
     @Test

@@ -502,8 +502,8 @@ private fun RoomCodeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FeatureCheckRow("Agora 16 kHz High-Fidelity Audio Frame Capture")
-                    FeatureCheckRow("Dual-Channel Bhashini Socket.IO Streaming STT")
-                    FeatureCheckRow("On-Device Gemini Live Risk & Role Engine")
+                    FeatureCheckRow("Dual-Channel Speech Recognition Pipeline")
+                    FeatureCheckRow("Real-Time Threat Classifier & Coercion Radar")
                 }
             }
         }

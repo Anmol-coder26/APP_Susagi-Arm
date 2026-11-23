@@ -44,7 +44,11 @@ data class VoipUiState(
     val connectionBanner: String? = null,
     val activeSttEngine: String = "Direct Two-Way VoIP",
     val pills: DiagnosticsPillsState = DiagnosticsPillsState(),
-    val logs: List<DiagnosticEntry> = emptyList()
+    val logs: List<DiagnosticEntry> = emptyList(),
+    val callState: CallConnectionState = CallConnectionState.IDLE,
+    val diagnosticReason: String? = null,
+    val isSimulatedCall: Boolean = false,
+    val isTranscriptionActive: Boolean = false
 )
 
 class VoipCallViewModel @JvmOverloads constructor(
@@ -112,24 +116,70 @@ class VoipCallViewModel @JvmOverloads constructor(
         }
 
         manager.onConnectionStateUpdate = { state, reason ->
-            val banner = when (state) {
-                4 -> "Network unstable, reconnecting..."
-                5 -> "Call connection failed"
-                else -> null
+            val reasonDesc = VoiceCallManager.mapConnectionReason(reason)
+            when (state) {
+                1 -> {
+                    _uiState.value = _uiState.value.copy(
+                        callState = CallConnectionState.DISCONNECTED,
+                        connectionBanner = "Disconnected ($reasonDesc)"
+                    )
+                }
+                2 -> {
+                    _uiState.value = _uiState.value.copy(
+                        callState = CallConnectionState.CONNECTING,
+                        connectionBanner = "Connecting to Agora RTC room..."
+                    )
+                }
+                3 -> {
+                    _uiState.value = _uiState.value.copy(
+                        callState = if (_uiState.value.pills.peerPresent == PillStatus.GREEN) CallConnectionState.PEER_CONNECTED else CallConnectionState.JOINED,
+                        connectionBanner = null,
+                        diagnosticReason = null
+                    )
+                }
+                4 -> {
+                    _uiState.value = _uiState.value.copy(
+                        callState = CallConnectionState.RECONNECTING,
+                        connectionBanner = "Network unstable, reconnecting... ($reasonDesc)"
+                    )
+                }
+                5 -> {
+                    val detail = buildString {
+                        append("Agora connection failed: $reasonDesc.")
+                        val tokenErr = _uiState.value.diagnosticReason
+                        if (!tokenErr.isNullOrBlank()) {
+                            append(" [$tokenErr]")
+                        }
+                        if (reason == 9 || reason == 10) {
+                            append(" (RTC Token required by project)")
+                        }
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        callState = CallConnectionState.FAILED,
+                        connectionBanner = "Call connection failed: $reasonDesc",
+                        diagnosticReason = detail
+                    )
+                }
             }
-            _uiState.value = _uiState.value.copy(connectionBanner = banner)
         }
 
         manager.onErrorOccurred = { err ->
-            val message = when (err) {
-                109, 110 -> "Agora token invalid/expired (Code $err)"
-                101 -> "CALLING NOT CONFIGURED: Agora App ID unconfigured (Code $err)"
-                17 -> "Join channel rejected by server (Code $err)"
-                -999 -> "Audio/Agora initialization failure (Code $err)"
-                else -> "Call connection error (Code $err)"
-            }
+            val message = VoiceCallManager.mapErrorCode(err)
             CallDiagnostics.log("RTC", "Agora Error: $message", LogLevel.ERROR)
-            _uiState.value = _uiState.value.copy(connectionBanner = message)
+            _uiState.value = _uiState.value.copy(
+                callState = CallConnectionState.FAILED,
+                connectionBanner = message,
+                diagnosticReason = message
+            )
+        }
+
+        viewModelScope.launch {
+            manager.callConnectionState.collect { state ->
+                _uiState.value = _uiState.value.copy(
+                    callState = state,
+                    isTranscriptionActive = (state == CallConnectionState.AUDIO_ACTIVE)
+                )
+            }
         }
 
         viewModelScope.launch {
@@ -229,7 +279,14 @@ class VoipCallViewModel @JvmOverloads constructor(
         familyAlertSent = false
         viewModelScope.launch {
             CallDiagnostics.log("RTC", "Starting call using server-issued RTC token for channel '$channelName'")
-            _uiState.value = _uiState.value.copy(isCallActive = true, channelName = channelName)
+            _uiState.value = _uiState.value.copy(
+                isCallActive = true,
+                channelName = channelName,
+                callState = CallConnectionState.CONNECTING,
+                connectionBanner = "Connecting with pre-issued token...",
+                diagnosticReason = null,
+                isSimulatedCall = false
+            )
             manager.startCall(channelName, token)
         }
     }
@@ -238,15 +295,30 @@ class VoipCallViewModel @JvmOverloads constructor(
         if (peerPhone.isNotBlank()) this.peerNumber = peerPhone
         familyAlertSent = false
         viewModelScope.launch {
-            CallDiagnostics.log("RTC", "Initiating Agora VoIP call for channel '$channelName', requesting token...")
-            _uiState.value = _uiState.value.copy(isCallActive = true, channelName = channelName, connectionBanner = "Connecting...")
-            val token = fetchAgoraToken(channelName)
-            if (token.isNotBlank()) {
-                CallDiagnostics.log("RTC", "Acquired token from server, connecting to Agora channel '$channelName'")
+            CallDiagnostics.log("RTC", "Initiating Agora VoIP call for channel '$channelName', requesting token from $tokenServerUrl...")
+            _uiState.value = _uiState.value.copy(
+                isCallActive = true,
+                channelName = channelName,
+                callState = CallConnectionState.REQUESTING_TOKEN,
+                connectionBanner = "Requesting token from $tokenServerUrl...",
+                diagnosticReason = null,
+                isSimulatedCall = false
+            )
+            val tokenResult = fetchAgoraTokenDetailed(channelName)
+            if (tokenResult.token.isNotBlank()) {
+                CallDiagnostics.log("RTC", "Acquired token from server (${tokenResult.latencyMs}ms), connecting to Agora channel '$channelName'")
+                _uiState.value = _uiState.value.copy(
+                    callState = CallConnectionState.CONNECTING,
+                    connectionBanner = "Connecting to encrypted Agora room..."
+                )
             } else {
-                CallDiagnostics.log("RTC", "No token returned by server; using direct authentication", LogLevel.INFO)
+                CallDiagnostics.log("RTC", "Token acquisition failed: ${tokenResult.error}; attempting direct connection", LogLevel.WARN)
+                _uiState.value = _uiState.value.copy(
+                    diagnosticReason = tokenResult.error,
+                    connectionBanner = "Connecting (Token Server: ${tokenResult.error})..."
+                )
             }
-            manager.startCall(channelName, token)
+            manager.startCall(channelName, tokenResult.token)
         }
     }
 
@@ -254,7 +326,14 @@ class VoipCallViewModel @JvmOverloads constructor(
         stopSimulation()
         familyAlertSent = false
         manager.endCall()
-        _uiState.value = _uiState.value.copy(isCallActive = false, isConnected = false)
+        _uiState.value = _uiState.value.copy(
+            isCallActive = false,
+            isConnected = false,
+            callState = CallConnectionState.ENDED,
+            connectionBanner = null,
+            diagnosticReason = null,
+            isSimulatedCall = false
+        )
     }
 
     fun simulateScamCall() {
@@ -262,7 +341,8 @@ class VoipCallViewModel @JvmOverloads constructor(
         _uiState.value = _uiState.value.copy(
             isConnected = true,
             isCallActive = true,
-            connectionBanner = "SIMULATION ACTIVE: Demonstrating real-time VoIP extortion defense"
+            isSimulatedCall = true,
+            connectionBanner = "DEMO — SYNTHETIC INPUT (Offline Extortion Simulation)"
         )
         viewModelScope.launch {
             val script = listOf(
@@ -330,9 +410,60 @@ class VoipCallViewModel @JvmOverloads constructor(
         simulationJob?.cancel()
         simulationJob = null
         _uiState.value = _uiState.value.copy(
+            isSimulatedCall = false,
             connectionBanner = if (_uiState.value.isConnected) null else "Call connection standby"
         )
     }
+
+    data class TokenFetchResult(
+        val token: String,
+        val latencyMs: Long,
+        val error: String? = null
+    )
+
+    suspend fun fetchAgoraTokenDetailed(channelName: String): TokenFetchResult = withContext(Dispatchers.IO) {
+        val startTs = System.currentTimeMillis()
+        try {
+            val request = Request.Builder()
+                .url("$tokenServerUrl?channelName=$channelName")
+                .get()
+                .build()
+            http.newCall(request).execute().use { resp ->
+                val latency = System.currentTimeMillis() - startTs
+                val body = resp.body?.string()
+                CallDiagnostics.log("RTC", "Token HTTP response code: ${resp.code} (${latency}ms)")
+                if (resp.isSuccessful && !body.isNullOrBlank()) {
+                    val token = JSONObject(body).optString("token", "")
+                    if (token.isNotBlank()) {
+                        CallDiagnostics.log("RTC", "Token received successfully (length=${token.length})")
+                        TokenFetchResult(token, latency)
+                    } else {
+                        TokenFetchResult("", latency, "Backend returned empty token (App Certificate unconfigured)")
+                    }
+                } else {
+                    TokenFetchResult("", latency, "Backend returned HTTP ${resp.code}")
+                }
+            }
+        } catch (e: java.net.ConnectException) {
+            val latency = System.currentTimeMillis() - startTs
+            CallDiagnostics.log("RTC", "Token server connection refused at $tokenServerUrl (${latency}ms)", LogLevel.WARN)
+            TokenFetchResult("", latency, "Token backend unreachable at $tokenServerUrl (Connection refused on port 3001)")
+        } catch (e: java.net.SocketTimeoutException) {
+            val latency = System.currentTimeMillis() - startTs
+            CallDiagnostics.log("RTC", "Token server timed out at $tokenServerUrl (>1000ms)", LogLevel.WARN)
+            TokenFetchResult("", latency, "Token backend timed out at $tokenServerUrl (>1000ms)")
+        } catch (e: SecurityException) {
+            val latency = System.currentTimeMillis() - startTs
+            CallDiagnostics.log("RTC", "Cleartext HTTP blocked by network security policy", LogLevel.WARN)
+            TokenFetchResult("", latency, "Cleartext HTTP traffic blocked by Android security policy")
+        } catch (e: Exception) {
+            val latency = System.currentTimeMillis() - startTs
+            CallDiagnostics.log("RTC", "Token request exception: ${e.message}", LogLevel.WARN)
+            TokenFetchResult("", latency, e.message ?: "Token request failed")
+        }
+    }
+
+    private suspend fun fetchAgoraToken(channelName: String): String = fetchAgoraTokenDetailed(channelName).token
 
     private fun sendFamilyAlert(
         riskScore: Int,
@@ -392,26 +523,7 @@ class VoipCallViewModel @JvmOverloads constructor(
         }
     }
 
-    private suspend fun fetchAgoraToken(channelName: String): String = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("$tokenServerUrl?channelName=$channelName")
-                .get()
-                .build()
-            http.newCall(request).execute().use { resp ->
-                val body = resp.body?.string()
-                CallDiagnostics.log("RTC", "Token HTTP response code: ${resp.code}")
-                if (resp.isSuccessful && !body.isNullOrBlank()) {
-                    val token = JSONObject(body).optString("token", "")
-                    CallDiagnostics.log("RTC", "Token received successfully (length=${token.length})")
-                    token
-                } else ""
-            }
-        } catch (e: Exception) {
-            CallDiagnostics.log("RTC", "Token request exception: ${e.message}", com.guardian.app.voip.LogLevel.WARN)
-            ""
-        }
-    }
+
 
     override fun onCleared() {
         super.onCleared()

@@ -85,6 +85,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.guardian.app.BuildConfig
 import com.guardian.app.ui.theme.GxBase
 import com.guardian.app.ui.theme.GxBorder
 import com.guardian.app.ui.theme.GxDanger
@@ -131,10 +132,16 @@ fun VoipCallScreen(
     val context = LocalContext.current
     var showDebugOverlay by remember { mutableStateOf(false) }
 
-    // Live Call Timer
+    // Live Call Timer (Active only on connected channel or simulation)
     var elapsedSeconds by remember { mutableIntStateOf(0) }
-    LaunchedEffect(uiState.isConnected) {
-        if (uiState.isConnected) {
+    val isTimerActive = (uiState.callState in listOf(
+        CallConnectionState.JOINED,
+        CallConnectionState.PEER_CONNECTED,
+        CallConnectionState.AUDIO_ACTIVE
+    ) || uiState.isSimulatedCall) && uiState.callState != CallConnectionState.FAILED
+
+    LaunchedEffect(uiState.callState, uiState.isSimulatedCall) {
+        if (isTimerActive) {
             while (true) {
                 delay(1000)
                 elapsedSeconds++
@@ -238,13 +245,21 @@ fun VoipCallScreen(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                PulsingLiveIndicator(color = GxSafe, size = 6.dp)
+                                val timerDotColor = when {
+                                    uiState.callState == CallConnectionState.FAILED -> GxDanger
+                                    uiState.isSimulatedCall -> Color(0xFFF59E0B)
+                                    isTimerActive -> GxSafe
+                                    uiState.callState in listOf(CallConnectionState.CONNECTING, CallConnectionState.REQUESTING_TOKEN) -> GxWarning
+                                    else -> GxTextLo
+                                }
+                                PulsingLiveIndicator(color = timerDotColor, size = 6.dp)
                                 Spacer(Modifier.width(6.dp))
                                 val mins = elapsedSeconds / 60
                                 val secs = elapsedSeconds % 60
                                 Text(
-                                    String.format("%02d:%02d", mins, secs),
-                                    color = GxTextHi,
+                                    if (uiState.callState == CallConnectionState.FAILED) "--:--"
+                                    else String.format("%02d:%02d", mins, secs),
+                                    color = if (uiState.callState == CallConnectionState.FAILED) GxDanger else GxTextHi,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
@@ -277,15 +292,67 @@ fun VoipCallScreen(
             }
 
             // ==========================================
-            // HERO THREAT RADAR CARD (Vibrant Amber/Coral Alert Capsule)
+            // HERO THREAT RADAR CARD (Vibrant Alert Capsule)
             // ==========================================
+            val isCallConnected = uiState.callState in listOf(
+                CallConnectionState.JOINED,
+                CallConnectionState.PEER_CONNECTED,
+                CallConnectionState.AUDIO_ACTIVE
+            )
+            val isAudioActive = uiState.callState == CallConnectionState.AUDIO_ACTIVE
+
+            val radarTitle = when {
+                uiState.isSimulatedCall -> "DEMO — SYNTHETIC INPUT"
+                uiState.callState == CallConnectionState.FAILED -> "CALL FAILED"
+                uiState.callState == CallConnectionState.REQUESTING_TOKEN -> "REQUESTING TOKEN..."
+                uiState.callState == CallConnectionState.CONNECTING -> "CONNECTING TO ROOM..."
+                uiState.callState == CallConnectionState.JOINED -> "ROOM JOINED · WAITING FOR PEER"
+                isCallConnected -> {
+                    when {
+                        uiState.riskScore >= 75 -> "CRITICAL EXTORTION THREAT"
+                        uiState.riskScore >= 40 -> "SUSPICIOUS COERCIVE PATTERNS"
+                        else -> "PROTECTED · NORMAL FLOW"
+                    }
+                }
+                else -> "CALL STANDBY"
+            }
+
+            val radarAccent = when {
+                uiState.isSimulatedCall -> Color(0xFFF59E0B)
+                uiState.callState == CallConnectionState.FAILED -> GxDanger
+                uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> GxWarning
+                uiState.callState == CallConnectionState.JOINED -> GxPrimary
+                uiState.riskScore >= 75 -> GxDanger
+                uiState.riskScore >= 40 -> GxWarning
+                isCallConnected -> GxSafe
+                else -> GxTextLo
+            }
+
+            val radarSubtitle = when {
+                uiState.isSimulatedCall -> "Offline Simulated Dialogue • Synthetic Threat Scenario"
+                uiState.callState == CallConnectionState.FAILED -> "LIVE PROTECTION INACTIVE · TRANSCRIPTION NOT RUNNING"
+                uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> "Authenticating with encrypted Agora RTC gateway..."
+                uiState.callState == CallConnectionState.JOINED -> "Connected to channel • Waiting for peer to enter room"
+                uiState.callState == CallConnectionState.PEER_CONNECTED && !isAudioActive -> "Peer joined room • Establishing bidirectional audio stream..."
+                isAudioActive -> "Two-way audio stream active • AI Coercion Guard monitoring"
+                else -> "Initiate a call or join a room to activate live security monitoring"
+            }
+
+            val scoreBadgeText = when {
+                uiState.callState == CallConnectionState.FAILED -> "--"
+                uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> "..."
+                uiState.callState == CallConnectionState.JOINED -> "WAIT"
+                isCallConnected || uiState.isSimulatedCall -> "${uiState.riskScore}%"
+                else -> "--"
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = GxShapeMd,
-                colors = CardDefaults.cardColors(containerColor = if (uiState.riskScore > 65) Color(0xFFFFFBEB) else GxSurface),
-                border = BorderStroke(2.dp, if (uiState.riskScore > 65) Color(0xFFFCD34D) else GxSafe.copy(alpha = 0.5f))
+                colors = CardDefaults.cardColors(containerColor = if (uiState.riskScore > 65 || uiState.callState == CallConnectionState.FAILED) Color(0xFFFFFBEB) else GxSurface),
+                border = BorderStroke(2.dp, if (uiState.callState == CallConnectionState.FAILED) GxDanger.copy(alpha = 0.6f) else if (uiState.riskScore > 65) Color(0xFFFCD34D) else radarAccent.copy(alpha = 0.5f))
             ) {
                 Column(
                     modifier = Modifier
@@ -307,35 +374,31 @@ fun VoipCallScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = when {
-                                    uiState.riskScore >= 75 -> "CRITICAL EXTORTION THREAT"
-                                    uiState.riskScore >= 40 -> "SUSPICIOUS COERCIVE PATTERNS"
-                                    else -> "PROTECTED · NORMAL FLOW"
-                                },
-                                color = riskAccent,
+                                text = radarTitle,
+                                color = radarAccent,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                text = "Dual-speaker acoustic analysis + on-device Gemini inference",
+                                text = radarSubtitle,
                                 color = GxTextLo,
                                 fontSize = 11.sp
                             )
                         }
 
-                        // Circular Risk Score
+                        // Circular Risk Score Badge
                         Surface(
-                            color = riskAccent.copy(alpha = 0.12f),
+                            color = radarAccent.copy(alpha = 0.12f),
                             shape = CircleShape,
-                            border = BorderStroke(2.dp, riskAccent),
+                            border = BorderStroke(2.dp, radarAccent),
                             modifier = Modifier.size(58.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
-                                    "${uiState.riskScore}%",
-                                    color = GxTextHi,
-                                    fontSize = 18.sp,
+                                    scoreBadgeText,
+                                    color = if (uiState.callState == CallConnectionState.FAILED) GxDanger else GxTextHi,
+                                    fontSize = if (scoreBadgeText.length > 3) 12.sp else 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -398,36 +461,53 @@ fun VoipCallScreen(
                             }
                         }
                     }
+                }
+            }
 
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (uiState.connectionBanner?.contains("SIMULATION") == true) {
-                            OutlinedButton(
-                                onClick = onStopSimulation,
-                                shape = GxShapeSm,
-                                border = BorderStroke(1.dp, GxDanger),
-                                modifier = Modifier.height(34.dp)
-                            ) {
-                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(14.dp), tint = GxDanger)
-                                Spacer(Modifier.width(4.dp))
-                                Text("Stop Simulation", fontSize = 11.sp, color = GxDanger, fontWeight = FontWeight.Bold)
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = onSimulateScam,
-                                shape = GxShapeSm,
-                                border = BorderStroke(1.dp, GxPrimary),
-                                modifier = Modifier.height(34.dp)
-                            ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp), tint = GxPrimary)
-                                Spacer(Modifier.width(4.dp))
-                                Text("Simulate Scammer Voice Stream", fontSize = 11.sp, color = GxPrimary, fontWeight = FontWeight.Bold)
-                            }
+            // ==========================================
+            // CALL FAILURE / DIAGNOSTIC WARNING CARD
+            // ==========================================
+            if (uiState.callState == CallConnectionState.FAILED) {
+                Surface(
+                    color = GxDangerSoft,
+                    shape = GxShapeSm,
+                    border = BorderStroke(1.dp, GxDanger.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.WarningAmber,
+                                contentDescription = null,
+                                tint = GxDanger,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                "CALL CONNECTION FAILED",
+                                color = GxDanger,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            uiState.diagnosticReason ?: uiState.connectionBanner ?: "VoIP channel connection failed.",
+                            color = GxDanger,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "• Backend Token Server: ${BuildConfig.BACKEND_URL} (Port 3001 unreachable or server offline)\n• Agora RTC: Channel session requires valid server token or reachable LAN host.\n• Standalone Shields: Message Shield, Link Shield and Assistant remain fully operational.",
+                            color = GxTextMid,
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp
+                        )
                     }
                 }
             }
@@ -435,7 +515,7 @@ fun VoipCallScreen(
             // ==========================================
             // CONNECTION / PEER STATUS NOTICE
             // ==========================================
-            if (!uiState.isConnected) {
+            if (!uiState.isConnected && uiState.callState != CallConnectionState.FAILED) {
                 Surface(
                     color = GxWarningSoft,
                     modifier = Modifier
@@ -458,7 +538,7 @@ fun VoipCallScreen(
                         )
                     }
                 }
-            } else if (uiState.pills.peerPresent != PillStatus.GREEN) {
+            } else if (uiState.isConnected && uiState.pills.peerPresent != PillStatus.GREEN) {
                 Surface(
                     color = GxPrimarySoft,
                     modifier = Modifier
@@ -514,30 +594,29 @@ fun VoipCallScreen(
                             }
                         }
                         Text(
-                            "Live Transcription Stream",
+                            when {
+                                uiState.callState == CallConnectionState.FAILED -> "Audio Stream Disconnected"
+                                isCallConnected -> "Live Transcription Stream"
+                                else -> "Transcription Standby"
+                            },
                             color = GxTextHi,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "Speak or listen. Live transcription is active via ${uiState.activeSttEngine}.",
+                            when {
+                                uiState.callState == CallConnectionState.FAILED -> "Transcription Standby: Call is not connected. No live audio frames are being received."
+                                isAudioActive -> "Two-way audio stream confirmed. Live transcription active."
+                                uiState.callState == CallConnectionState.PEER_CONNECTED -> "Peer entered room. Awaiting microphone audio frames..."
+                                uiState.callState == CallConnectionState.JOINED -> "Room joined. Share the 6-digit room code with the other device to connect audio."
+                                else -> "Audio pipeline is in standby. Initiate a call or start demo simulation."
+                            },
                             color = GxTextLo,
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.widthIn(max = 280.dp),
                             lineHeight = 16.sp
                         )
-                        Spacer(Modifier.height(10.dp))
-                        Button(
-                            onClick = onSimulateScam,
-                            colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
-                            shape = GxShapeSm,
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Simulate Scammer Voice Call", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
             } else {
@@ -551,6 +630,81 @@ fun VoipCallScreen(
                 ) {
                     itemsIndexed(uiState.transcriptLines) { _, line ->
                         ModernTranscriptBubble(line)
+                    }
+                }
+            }
+
+            // ==========================================
+            // DEMO & SIMULATION SECTION (EXPLICITLY SEGREGATED)
+            // ==========================================
+            Surface(
+                color = GxSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = GxShapeSm,
+                border = BorderStroke(1.dp, GxBorder)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "DEMO — SYNTHETIC INPUT",
+                            color = Color(0xFFF59E0B),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Surface(
+                            color = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                            shape = GxShapePill
+                        ) {
+                            Text(
+                                "OFFLINE SIMULATION ONLY",
+                                color = Color(0xFFF59E0B),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Inject synthetic scam dialogue to demonstrate real-time AI classification and extortion defense without requiring a live two-device VoIP peer.",
+                        color = GxTextLo,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    if (uiState.isSimulatedCall) {
+                        OutlinedButton(
+                            onClick = onStopSimulation,
+                            shape = GxShapeSm,
+                            border = BorderStroke(1.dp, GxDanger),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(14.dp), tint = GxDanger)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Stop Simulation", fontSize = 11.sp, color = GxDanger, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onSimulateScam,
+                            shape = GxShapeSm,
+                            border = BorderStroke(1.dp, Color(0xFFF59E0B)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFFF59E0B))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Simulate Scammer Dialogue (Demo)", fontSize = 11.sp, color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
