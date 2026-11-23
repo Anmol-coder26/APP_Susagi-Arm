@@ -29,26 +29,34 @@ enum class DiagnosticStepId(val stepNumber: Int, val title: String) {
 }
 
 enum class DiagnosticStepStatus {
+    NOT_RUN,
     PENDING,
     RUNNING,
     PASS,
     FAIL,
+    FAILED,
     BLOCKED
 }
 
 /**
- * Standard error codes mapped from Directive 54 Phase 14.
+ * Standard error codes mapped from Directive 54 Phase 14 & Directive 55 Phase 5.
  */
 enum class DiagnosticErrorCode {
     MODEL_FILE_MISSING,
+    MODEL_NOT_FOUND,
     MODEL_CHECKSUM_FAILED,
+    MODEL_INTEGRITY_FAILED,
     MODEL_FORMAT_INCOMPATIBLE,
+    MODEL_INCOMPATIBLE,
     TOKENIZER_MISSING,
     NATIVE_LIBRARY_MISSING,
+    NATIVE_RUNTIME_UNAVAILABLE,
     MODEL_LOAD_FAILED,
     OUT_OF_MEMORY,
     TOKEN_GENERATION_FAILED,
+    INFERENCE_FAILED,
     INFERENCE_CANCELLED,
+    GENERATION_CANCELLED,
     STT_MODEL_UNAVAILABLE,
     STT_DECODER_FAILED,
     NETWORK_SERVICE_UNREACHABLE
@@ -66,7 +74,7 @@ data class DiagnosticStepResult(
 data class DiagnosticReport(
     val timestamp: Long = System.currentTimeMillis(),
     val appVersion: String = "2.0.0-PS3",
-    val buildCommit: String = "564aff5",
+    val buildCommit: String = "0da0963",
     val deviceModel: String,
     val androidVersion: String,
     val cpuAbi: String,
@@ -101,10 +109,10 @@ data class DiagnosticReport(
         for (r in results) {
             val statusBadge = when (r.status) {
                 DiagnosticStepStatus.PASS -> "[PASS]"
-                DiagnosticStepStatus.FAIL -> "[FAIL]"
+                DiagnosticStepStatus.FAIL, DiagnosticStepStatus.FAILED -> "[FAIL]"
                 DiagnosticStepStatus.BLOCKED -> "[BLOCKED]"
                 DiagnosticStepStatus.RUNNING -> "[RUNNING]"
-                DiagnosticStepStatus.PENDING -> "[PENDING]"
+                DiagnosticStepStatus.PENDING, DiagnosticStepStatus.NOT_RUN -> "[NOT RUN]"
             }
             sb.appendLine("### Step ${r.stepId.stepNumber}: ${r.title}")
             sb.appendLine("- Status: $statusBadge")

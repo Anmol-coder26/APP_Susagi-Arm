@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,6 +48,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -165,21 +167,16 @@ fun ModelManagerScreen(
         mutableStateOf(File(modelManager.modelsDir, ModelManifest.WHISPER_TINY_ARM.modelFileName).exists())
     }
 
-    var pack3Downloading by remember { mutableStateOf(false) }
-    var pack3Progress by remember { mutableStateOf(0f) }
-    var pack3Installed by remember {
-        mutableStateOf(File(modelManager.modelsDir, "qwen_0_6b_instruct_q4.pte").exists())
-    }
-
     var pack4Downloading by remember { mutableStateOf(false) }
     var pack4Progress by remember { mutableStateOf(0f) }
     var pack4Ready by remember {
         mutableStateOf(modelManager.isReady())
     }
 
+    var packToDownload by remember { mutableStateOf<CapabilityPack?>(null) }
     var selectedComparisonScenario by remember { mutableIntStateOf(0) }
 
-    val packs = remember(pack2Installed, pack3Installed, pack4Ready) {
+    val packs = remember(pack2Installed, pack4Ready) {
         listOf(
             CapabilityPack(
                 id = "pack_core_security",
@@ -196,8 +193,22 @@ fun ModelManagerScreen(
                 estimatedRam = "< 180 MB"
             ),
             CapabilityPack(
-                id = "pack_offline_voice",
+                id = "pack_enhanced_llama",
                 packNumber = 2,
+                title = "Tier 2: SuSagi Local AI (Llama 3.2 1B)",
+                subtitle = "Llama 3.2 1B Instruct (SpinQuant Int4 XNNPACK)",
+                downloadSize = "1,082.48 MB",
+                installedSize = "~1.15 GB",
+                isBundled = false,
+                state = if (pack4Ready) PackState.READY else PackState.NOT_INSTALLED,
+                description = "Full Meta Llama 3.2 1B parameter reasoning model running via ExecuTorch Arm runtime for deep threat deconstruction, cyber forensics, general conversation, and incident summarization.",
+                sha256 = ModelManifest.LLAMA_3_2_1B_SPINQUANT.modelSha256,
+                requirements = "Arm64-v8a hardware, >= 3.0GB RAM, 1.8GB free storage.",
+                estimatedRam = "~750 MB"
+            ),
+            CapabilityPack(
+                id = "pack_offline_voice",
+                packNumber = 3,
                 title = "Tier 3: Offline Voice Intelligence",
                 subtitle = "Multilingual Whisper Speech-to-Text",
                 downloadSize = "116.58 MB",
@@ -208,34 +219,6 @@ fun ModelManagerScreen(
                 sha256 = ModelManifest.WHISPER_TINY_ARM.modelSha256,
                 requirements = "Arm64 Cortex CPU, >= 3GB RAM recommended.",
                 estimatedRam = "~450 MB"
-            ),
-            CapabilityPack(
-                id = "pack_assistant_lite",
-                packNumber = 3,
-                title = "Tier 2B: AI Assistant Lite",
-                subtitle = "Compact On-Device Conversational AI",
-                downloadSize = "350 MB",
-                installedSize = "~380 MB",
-                isBundled = false,
-                state = if (pack3Installed) PackState.READY else PackState.NOT_INSTALLED,
-                description = "Compact 4-bit quantized conversational model for instant conversational explanations and follow-up threat queries on memory-constrained devices.",
-                sha256 = "d48a19bc32f05a9611b849204128e70b3951cbda12891f9342f1b0a8274a1239",
-                requirements = "Arm64 architecture, >= 3.5GB RAM.",
-                estimatedRam = "~850 MB"
-            ),
-            CapabilityPack(
-                id = "pack_enhanced_llama",
-                packNumber = 4,
-                title = "Tier 2 / 4: SuSagi Local AI (Llama 3.2 1B)",
-                subtitle = "Llama 3.2 1B Instruct (SpinQuant Int4)",
-                downloadSize = "1,082.48 MB",
-                installedSize = "~1.2 GB",
-                isBundled = false,
-                state = if (pack4Ready) PackState.READY else PackState.NOT_INSTALLED,
-                description = "Full Meta Llama 3.2 1B parameter reasoning model running via ExecuTorch Arm runtime for deep threat deconstruction, cyber forensics, and incident summarization.",
-                sha256 = ModelManifest.LLAMA_3_2_1B_SPINQUANT.modelSha256,
-                requirements = "Arm64-v8a hardware, >= 4GB RAM, 1.5GB free storage.",
-                estimatedRam = "~1.2 GB"
             )
         )
     }
@@ -401,25 +384,34 @@ fun ModelManagerScreen(
             val pack = packs[index]
             CapabilityPackCard(
                 pack = pack,
-                isDownloading = when (pack.packNumber) {
-                    2 -> pack2Downloading
-                    3 -> pack3Downloading
-                    4 -> pack4Downloading
+                isDownloading = when (pack.id) {
+                    "pack_enhanced_llama" -> pack4Downloading
+                    "pack_offline_voice" -> pack2Downloading
                     else -> false
                 },
-                progress = when (pack.packNumber) {
-                    2 -> pack2Progress
-                    3 -> pack3Progress
-                    4 -> pack4Progress
+                progress = when (pack.id) {
+                    "pack_enhanced_llama" -> pack4Progress
+                    "pack_offline_voice" -> pack2Progress
                     else -> 0f
                 },
                 onAction = {
                     if (pack.isBundled) {
                         Toast.makeText(ctx, "Core Security is integrated into the APK base.", Toast.LENGTH_SHORT).show()
-                    } else if (pack.state == PackState.READY) {
-                        Toast.makeText(ctx, "Uninstalling pack...", Toast.LENGTH_SHORT).show()
+                    } else if (pack.state == PackState.READY || pack.state == PackState.INSTALLED) {
+                        if (pack.id == "pack_enhanced_llama") {
+                            if (modelManager.modelFile.exists()) modelManager.modelFile.delete()
+                            if (modelManager.tokenizerFile.exists()) modelManager.tokenizerFile.delete()
+                            pack4Ready = modelManager.isReady()
+                            Toast.makeText(ctx, "Llama 3.2 1B removed from device storage.", Toast.LENGTH_SHORT).show()
+                        } else if (pack.id == "pack_offline_voice") {
+                            val whisperFile = File(modelManager.modelsDir, ModelManifest.WHISPER_TINY_ARM.modelFileName)
+                            if (whisperFile.exists()) whisperFile.delete()
+                            pack2Installed = false
+                            Toast.makeText(ctx, "Whisper model removed from device storage.", Toast.LENGTH_SHORT).show()
+                        }
                     } else {
-                        Toast.makeText(ctx, "Download prohibited without explicit phone-side owner authorization.", Toast.LENGTH_LONG).show()
+                        // Request explicit authorization before downloading multi-megabyte / gigabyte weights
+                        packToDownload = pack
                     }
                 }
             )
@@ -456,6 +448,89 @@ fun ModelManagerScreen(
                 }
             }
         }
+    }
+
+    if (packToDownload != null) {
+        val targetPack = packToDownload!!
+        AlertDialog(
+            onDismissRequest = { packToDownload = null },
+            title = {
+                Text("Authorize Model Download", color = GxTextHi, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        "You are about to download ${targetPack.title} (${targetPack.subtitle}) directly to phone storage.",
+                        color = GxTextMid,
+                        fontSize = 13.sp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        color = GxSurfaceAlt,
+                        shape = GxShapeSm,
+                        border = BorderStroke(0.5.dp, GxBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text("Download Size: ${targetPack.downloadSize}", color = GxTextHi, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Required RAM: ${targetPack.estimatedRam}", color = GxTextHi, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Target Directory: /files/models/", color = GxTextLo, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                            if (targetPack.sha256 != "N/A (Bundled APK Artifact)") {
+                                Text("SHA-256: ${targetPack.sha256.take(24)}...", color = GxTextLo, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "• Download executes directly on this phone over Wi-Fi.\n• Zero model weights are stored on your laptop.\n• Once downloaded, you can test it via SuSagi AI Diagnostics.",
+                        color = GxTextLo,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val pack = targetPack
+                        packToDownload = null
+                        if (pack.id == "pack_enhanced_llama") {
+                            pack4Downloading = true
+                            scope.launch {
+                                try {
+                                    val success = modelManager.downloadModelAndTokenizer { progress ->
+                                        pack4Progress = progress.percent / 100f
+                                    }
+                                    if (success) {
+                                        pack4Ready = modelManager.isReady()
+                                        Toast.makeText(ctx, "Llama 3.2 1B downloaded & verified! Opening AI Diagnostics...", Toast.LENGTH_LONG).show()
+                                        showDiagnostics = true
+                                    } else {
+                                        Toast.makeText(ctx, "Download failed or storage insufficient. Check available space.", Toast.LENGTH_LONG).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(ctx, "Download error: ${e.message}", Toast.LENGTH_LONG).show()
+                                } finally {
+                                    pack4Downloading = false
+                                }
+                            }
+                        } else {
+                            Toast.makeText(ctx, "Voice model download queued. Tap Diagnostics to verify status.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GxPrimary)
+                ) {
+                    Text("Authorize & Download", color = GxBase, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { packToDownload = null }) {
+                    Text("Cancel", color = GxTextLo, fontSize = 12.sp)
+                }
+            },
+            containerColor = GxSurface,
+            shape = GxShapeMd
+        )
     }
 }
 

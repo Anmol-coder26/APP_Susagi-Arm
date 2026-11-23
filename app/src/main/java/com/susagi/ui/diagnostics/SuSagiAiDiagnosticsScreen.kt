@@ -162,13 +162,13 @@ fun SuSagiAiDiagnosticsScreen(
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "SuSagi AI Diagnostics",
+                        "SuSagi AI Health Check",
                         color = GxTextHi,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Arm ExecuTorch Native Runtime & Model Self-Test",
+                        "Arm ExecuTorch Native Runtime Self-Test & Diagnostics",
                         color = GxTextLo,
                         fontSize = 12.sp
                     )
@@ -306,7 +306,7 @@ fun SuSagiAiDiagnosticsScreen(
                             } else {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, tint = GxBase, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Run Diagnostics", color = GxBase, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Run Health Check", color = GxBase, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -370,10 +370,10 @@ fun SuSagiAiDiagnosticsScreen(
 
             val (badgeColor, badgeBg, badgeIcon) = when (result.status) {
                 DiagnosticStepStatus.PASS -> Triple(GxSafe, GxSafeSoft, Icons.Default.CheckCircle)
-                DiagnosticStepStatus.FAIL -> Triple(GxDanger, GxDangerSoft, Icons.Default.Error)
+                DiagnosticStepStatus.FAIL, DiagnosticStepStatus.FAILED -> Triple(GxDanger, GxDangerSoft, Icons.Default.Error)
                 DiagnosticStepStatus.BLOCKED -> Triple(GxWarning, GxWarningSoft, Icons.Default.Warning)
                 DiagnosticStepStatus.RUNNING -> Triple(GxPrimary, GxPrimarySoft, Icons.Default.HourglassTop)
-                DiagnosticStepStatus.PENDING -> Triple(GxTextLo, GxSurfaceAlt, Icons.Default.BugReport)
+                DiagnosticStepStatus.PENDING, DiagnosticStepStatus.NOT_RUN -> Triple(GxTextLo, GxSurfaceAlt, Icons.Default.BugReport)
             }
 
             Surface(
