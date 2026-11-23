@@ -1,4 +1,4 @@
-# SuSagi Guardian V2 — Shipping Status (Directive 50: Intelligence Breakthrough)
+# SuSagi Guardian V2 — Shipping Status (Directive 51: Project Phoenix)
 
 | Work Item | Priority | Status | Entry Point / Component | Verification / Commit |
 |:---|:---:|:---:|:---|:---|
@@ -9,11 +9,11 @@
 | 1E: Incident History & Home | P0 | READY | `IncidentHistoryStore`, `HomeScreen` | Masked OTP (`******`), 1930 / portal actions |
 | 2: Branding & Identity | P0 | READY | Cyber shield icon, `SuSagi Guardian V2` | Vector foreground, electric cyan/mint theme |
 | 3: Dedicated Security AI | P0 | READY | `SecurityModel`, `AstraDedicatedSecurityClassifier` | 3-tier calibrated risk bands (HIGH/REVIEW/LOW) |
-| 4: Generative AI Assistant | P0 | READY | `SuSagiAssistantScreen`, `ConversationManager` | Native cancellation, resetContext, 5 explicit tools |
+| 4: Generative AI Assistant | P0 | READY | `SuSagiAssistantScreen`, `ConversationManager` | Native cancellation, resetContext, Category G prompt injection test |
 | 5: Model Manager & Matrix | P0 | READY | `ModelManagerScreen`, `PackState` | 8-state machine, interactive comparison matrix |
 | 6: Voice Safety Shield | P0 | READY | `VoiceClipScannerScreen`, `AudioRecord` | PCM->WAV->native Whisper STT (zero cloud API) |
 | 7: Calling Protection | P1 | EXP | `CallRiskActivity`, `VoipCallActivity` | Honesty gate: --:-- timer, experimental banner |
-| 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 284/284 tests passed (46 suites, 0 failures) |
+| 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 285/285 tests passed (46 suites, 0 failures) |
 
 - **Current Branch / HEAD:** `feature/gravity-product-calling`
 - **Debug APK SHA-256:** `90702ED717B9CBF13A6785BD0012D0401F49C63BBE7B653418BC1612346C90B6`
