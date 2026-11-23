@@ -16,7 +16,7 @@
 | 7: Calling Protection | P1 | EXP | `CallRiskActivity`, `VoipCallActivity` | Honesty gate: --:-- timer, experimental banner |
 | 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 293/293 tests passed (47 suites, 0 failures) |
 
-- **Current Branch / HEAD:** `feature/gravity-product-calling`
+- **Current Branch / HEAD:** `feature/gravity-product-calling` (`75a1b96`)
 - **Debug APK SHA-256:** `3A1C263A1AC23E81BF533F0B33C83FE3420FECB23A4B6EBC80D3A85ACBB69143`
 - **Debug APK Size:** 137,411,690 bytes (131.05 MB)
 - **Phase 1 Archive Integrity:** `D:\SUSAGI_PS3_CANDIDATES` and `GOLDEN_BACKUP` preserved bit-for-bit.
