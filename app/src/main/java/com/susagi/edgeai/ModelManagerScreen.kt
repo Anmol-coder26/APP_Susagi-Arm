@@ -240,6 +240,16 @@ fun ModelManagerScreen(
         )
     }
 
+    var showDiagnostics by remember { mutableStateOf(false) }
+
+    if (showDiagnostics) {
+        com.susagi.ui.diagnostics.SuSagiAiDiagnosticsScreen(
+            onBack = { showDiagnostics = false },
+            onOpenModelManager = { showDiagnostics = false }
+        )
+        return
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -259,7 +269,7 @@ fun ModelManagerScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = GxTextHi, modifier = Modifier.size(20.dp))
                 }
                 Spacer(Modifier.width(10.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "AI Model Manager",
                         color = GxTextHi,
@@ -271,6 +281,21 @@ fun ModelManagerScreen(
                         color = GxTextLo,
                         fontSize = 12.sp
                     )
+                }
+                Surface(
+                    color = GxPrimarySoft,
+                    shape = GxShapeSm,
+                    border = BorderStroke(0.5.dp, GxPrimary.copy(alpha = 0.5f)),
+                    modifier = Modifier.clickable { showDiagnostics = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Memory, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Diagnostics", color = GxPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
