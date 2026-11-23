@@ -89,4 +89,23 @@ class SuSagiAssistantTest {
         assertTrue(promptForFollowUp.contains("Binary search repeatedly divides the search interval in half."))
         assertTrue(promptForFollowUp.contains("Can you show this in Hindi?"))
     }
+
+    @Test
+    fun testToolMode_QRShield_evaluatesReverseDebitPayload() {
+        val reverseDebitQr = "upi://pay?pa=cashback@desk&pn=Cashback%20Desk&am=5000.00&cu=INR&tn=Approve%20to%20receive%20cashback"
+        val verdict = com.guardian.app.QrScannerActivity.evaluateQrContent(reverseDebitQr)
+
+        assertEquals(com.guardian.app.RiskStatus.High, verdict.status)
+        assertTrue(verdict.isUpi)
+        assertTrue(verdict.title.contains("FRAUDULENT REVERSE UPI QR", ignoreCase = true) || verdict.title.contains("TAMPERED", ignoreCase = true))
+    }
+
+    @Test
+    fun testToolMode_QRShield_cleanQrGeneratesLowRisk() {
+        val cleanUrlQr = "https://cybercrime.gov.in"
+        val verdict = com.guardian.app.QrScannerActivity.evaluateQrContent(cleanUrlQr)
+
+        assertEquals(com.guardian.app.RiskStatus.Low, verdict.status)
+        assertFalse(verdict.isUpi)
+    }
 }

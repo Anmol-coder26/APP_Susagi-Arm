@@ -10,6 +10,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,7 +113,9 @@ enum class ToolMode {
     CHAT,
     ANALYZE_MESSAGE,
     INSPECT_URL,
-    INSPECT_UPI
+    INSPECT_UPI,
+    INSPECT_QR,
+    REVIEW_HISTORY
 }
 
 data class AssistantMessage(
@@ -169,7 +173,9 @@ fun SuSagiAssistantScreen(
                     "Explain compound interest",
                     "🛡️ Analyze Message",
                     "🔗 Inspect URL",
-                    "💳 Inspect UPI"
+                    "💳 Inspect UPI",
+                    "📷 Inspect QR",
+                    "📜 Threat History"
                 )
             )
         )
@@ -189,6 +195,7 @@ fun SuSagiAssistantScreen(
     }
 
     fun stopGeneration() {
+        llamaEngine.stopGeneration()
         currentGenerationJob?.cancel()
         currentGenerationJob = null
         isGenerating = false
@@ -372,6 +379,131 @@ fun SuSagiAssistantScreen(
         }
     }
 
+    fun executeInspectQrTool(rawQr: String) {
+        val trimmed = rawQr.trim()
+        if (trimmed.isBlank()) return
+
+        messages.add(AssistantMessage(isUser = true, text = "📷 Inspect QR Payload: $trimmed"))
+        conversationManager.addUserMessage("Inspect this decoded QR code content for security threats: $trimmed")
+
+        coroutineScope.launch {
+            val verdict = com.guardian.app.QrScannerActivity.evaluateQrContent(trimmed)
+            val isHigh = verdict.status == com.guardian.app.RiskStatus.High
+            val isReview = verdict.status == com.guardian.app.RiskStatus.Suspicious
+
+            val riskBand = when {
+                isHigh -> "HIGH"
+                isReview -> "NEEDS REVIEW"
+                else -> "LOW"
+            }
+            val threatCategory = if (verdict.isUpi) "UPI_QR_FRAUD" else if (verdict.isUrl) "SUSPICIOUS_LINK_QR" else "GENERIC_QR"
+
+            val evidence = mutableListOf<String>()
+            evidence.add(verdict.title)
+            evidence.add(verdict.reason)
+            if (verdict.parsedPayee != null) evidence.add("Parsed Payee: ${verdict.parsedPayee}")
+            if (verdict.parsedAmount != null) evidence.add("Parsed Amount: ${verdict.parsedAmount}")
+
+            val explanation = when {
+                isHigh -> "🚨 CRITICAL QR SECURITY ALERT:\n\n" +
+                        "${verdict.title}\n\n" +
+                        "Findings: ${verdict.reason}\n\n" +
+                        "Recommended Defensive Action: Do NOT proceed or approve this payment request. Scammers use modified QR codes to trigger reverse debits."
+                isReview -> "⚠️ CAUTION — UNVERIFIED QR PAYLOAD:\n\n" +
+                        "${verdict.title}\n\n" +
+                        "Findings: ${verdict.reason}\n\n" +
+                        "Recommended Action: Verify the destination and recipient before taking action."
+                else -> "✅ QR SAFETY ASSESSMENT:\n\n" +
+                        "${verdict.title}\n\n" +
+                        "The scanned QR contains standard content with no immediate indicators of reverse debit or phishing."
+            }
+
+            val toolMsg = AssistantMessage(
+                isUser = false,
+                isToolResult = true,
+                toolName = "QR Shield",
+                text = explanation,
+                threatCategory = threatCategory,
+                riskBand = riskBand,
+                evidence = evidence,
+                suggestedActions = listOf("Explain with AI", "Dial 1930", "New Chat")
+            )
+            messages.add(toolMsg)
+            lastThreatReport = toolMsg
+            conversationManager.addToolResult(
+                toolName = "QRShield",
+                summary = explanation.take(300),
+                evidence = evidence,
+                threatCategory = threatCategory,
+                riskBand = riskBand
+            )
+        }
+    }
+
+    fun executeReviewHistoryTool() {
+        messages.add(AssistantMessage(isUser = true, text = "📜 Review Threat Incident History"))
+        conversationManager.addUserMessage("Retrieve and summarize the recent locally stored threat assessments.")
+
+        coroutineScope.launch {
+            val store = com.susagi.history.IncidentHistoryStore.getInstance(ctx)
+            val records = store.getAllRecords()
+
+            if (records.isEmpty()) {
+                val emptyMsg = AssistantMessage(
+                    isUser = false,
+                    isToolResult = true,
+                    toolName = "Threat History",
+                    text = "📋 INCIDENT HISTORY — CLEAN:\n\n" +
+                            "No threat incidents have been recorded on this device. " +
+                            "When you inspect suspicious messages, links, or payments, high and review-level findings are stored privately on your handset.",
+                    riskBand = "LOW",
+                    threatCategory = "HISTORY_CLEAN",
+                    suggestedActions = listOf("🛡️ Analyze Message", "🔗 Inspect URL", "💳 Inspect UPI")
+                )
+                messages.add(emptyMsg)
+                conversationManager.addToolResult(
+                    toolName = "ThreatHistory",
+                    summary = "No threat incidents recorded on device.",
+                    riskBand = "LOW",
+                    threatCategory = "HISTORY_CLEAN"
+                )
+            } else {
+                val latest = records.take(5)
+                val summaryLines = StringBuilder()
+                summaryLines.append("📋 RECENT ON-DEVICE INCIDENTS (${records.size} total recorded):\n\n")
+
+                val evidenceList = mutableListOf<String>()
+                latest.forEachIndexed { i, rec ->
+                    summaryLines.append("${i + 1}. [${rec.severity}] ${rec.category} • ${rec.formattedDate()}\n")
+                    summaryLines.append("   ${rec.title}\n")
+                    summaryLines.append("   ${rec.explanation.take(120)}...\n\n")
+                    evidenceList.add("${rec.severity}: ${rec.category} (${rec.formattedDate()})")
+                }
+                summaryLines.append("All incident telemetry is stored strictly on your handset with credential masking.")
+
+                val historyMsg = AssistantMessage(
+                    isUser = false,
+                    isToolResult = true,
+                    toolName = "Threat History",
+                    text = summaryLines.toString(),
+                    riskBand = if (records.any { it.severity == "HIGH" }) "HIGH" else "NEEDS REVIEW",
+                    threatCategory = "HISTORICAL_RECORDS",
+                    evidence = evidenceList,
+                    suggestedActions = listOf("Explain with AI", "Dial 1930", "New Chat")
+                )
+                messages.add(historyMsg)
+                lastThreatReport = historyMsg
+                conversationManager.addToolResult(
+                    toolName = "ThreatHistory",
+                    summary = "Retrieved ${latest.size} recent incident records.",
+                    evidence = evidenceList,
+                    riskBand = if (records.any { it.severity == "HIGH" }) "HIGH" else "NEEDS REVIEW",
+                    threatCategory = "HISTORICAL_RECORDS"
+                )
+            }
+        }
+    }
+
     fun executeExplainThreatReportTool(report: AssistantMessage) {
         messages.add(AssistantMessage(isUser = true, text = "🤖 Explain this threat report"))
         conversationManager.addUserMessage("Explain the findings in the previous threat report in conversational terms.")
@@ -471,6 +603,16 @@ fun SuSagiAssistantScreen(
                 executeInspectUpiTool(trimmed)
                 return
             }
+            ToolMode.INSPECT_QR -> {
+                activeToolMode = ToolMode.CHAT
+                executeInspectQrTool(trimmed)
+                return
+            }
+            ToolMode.REVIEW_HISTORY -> {
+                activeToolMode = ToolMode.CHAT
+                executeReviewHistoryTool()
+                return
+            }
             ToolMode.CHAT -> {
                 // Check if user clicked an explicit tool action from chips
                 if (trimmed.startsWith("🛡️ Analyze") || trimmed.contains("Check suspicious message")) {
@@ -483,6 +625,14 @@ fun SuSagiAssistantScreen(
                 }
                 if (trimmed.startsWith("💳 Inspect UPI") || trimmed.contains("Is UPI cashback safe?")) {
                     activeToolMode = ToolMode.INSPECT_UPI
+                    return
+                }
+                if (trimmed.startsWith("📷 Inspect QR")) {
+                    activeToolMode = ToolMode.INSPECT_QR
+                    return
+                }
+                if (trimmed.startsWith("📜 Threat History") || trimmed.contains("Review Threat History")) {
+                    executeReviewHistoryTool()
                     return
                 }
                 if (trimmed.contains("Explain with AI")) {
@@ -654,6 +804,7 @@ fun SuSagiAssistantScreen(
                             onClick = {
                                 stopGeneration()
                                 conversationManager.newChat()
+                                llamaEngine.resetContext()
                                 messages.clear()
                                 messages.add(
                                     AssistantMessage(
@@ -764,7 +915,9 @@ fun SuSagiAssistantScreen(
         ) {
             // Tool selector chips
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 ToolSelectorChip(
@@ -786,6 +939,19 @@ fun SuSagiAssistantScreen(
                     label = "💳 Inspect UPI",
                     isSelected = activeToolMode == ToolMode.INSPECT_UPI,
                     onClick = { activeToolMode = ToolMode.INSPECT_UPI }
+                )
+                ToolSelectorChip(
+                    label = "📷 Inspect QR",
+                    isSelected = activeToolMode == ToolMode.INSPECT_QR,
+                    onClick = { activeToolMode = ToolMode.INSPECT_QR }
+                )
+                ToolSelectorChip(
+                    label = "📜 Threat History",
+                    isSelected = activeToolMode == ToolMode.REVIEW_HISTORY,
+                    onClick = {
+                        activeToolMode = ToolMode.CHAT
+                        executeReviewHistoryTool()
+                    }
                 )
             }
 
@@ -821,6 +987,8 @@ fun SuSagiAssistantScreen(
                 ToolMode.ANALYZE_MESSAGE -> "Paste suspicious SMS or message to inspect with SafetyBarrier..."
                 ToolMode.INSPECT_URL -> "Enter link or URL to inspect (e.g. https://...)..."
                 ToolMode.INSPECT_UPI -> "Enter UPI ID or collect request text to verify..."
+                ToolMode.INSPECT_QR -> "Paste decoded QR text or payload to inspect..."
+                ToolMode.REVIEW_HISTORY -> "Review local threat incident history..."
             }
 
             Row(

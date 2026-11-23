@@ -632,6 +632,30 @@ class ExecuTorchLlamaEngine(
             )
         }
     }
+
+    /**
+     * Halts ongoing native autoregressive token generation immediately.
+     */
+    fun stopGeneration() {
+        try {
+            (nativeLlmModule as? org.pytorch.executorch.extension.llm.LlmModule)?.stop()
+            logI("Native ExecuTorch LlmModule generation stopped")
+        } catch (t: Throwable) {
+            logW("Error stopping native LlmModule: ${t.message}")
+        }
+    }
+
+    /**
+     * Resets native KV-cache context for a fresh conversational session.
+     */
+    fun resetContext() {
+        try {
+            (nativeLlmModule as? org.pytorch.executorch.extension.llm.LlmModule)?.resetContext()
+            logI("Native ExecuTorch LlmModule context reset")
+        } catch (t: Throwable) {
+            logW("Error resetting native LlmModule context: ${t.message}")
+        }
+    }
 }
 
 data class NativeInferenceBenchmark(
