@@ -158,9 +158,7 @@ object AstraSecurityBridge : SecurityAssessmentContract {
                     allCategories.any { it.contains("digital_arrest", ignoreCase = true) } ||
                     lowerText.contains("digital arrest") ||
                     lowerText.contains("डिजिटल अरेस्ट") ||
-                    lowerText.contains("गिरफ्तार") ||
-                    (lowerText.contains("सीबीआई") && lowerText.contains("नोटिस")) ||
-                    allCategories.any { it.contains("authority", ignoreCase = true) } -> "Digital Arrest Coercion"
+                    (lowerText.contains("सीबीआई") && (lowerText.contains("नोटिस") || lowerText.contains("गिरफ्तार"))) -> "Digital Arrest Coercion"
             astra.evidence.any { it.id == Signal.UTILITY } ||
                     allCategories.any { it.contains("electricity", ignoreCase = true) } ||
                     lowerText.contains("electricity") ||

@@ -1075,6 +1075,30 @@ class LinkCheckActivity : ComponentActivity() {
                         payload.urls.map { evaluateLinkSafety(it) }
                     }
 
+                    // Fast-path for educational / advisory / technical research content in Android Share:
+                    // Never allow harmless technical discussions to trigger false alarms on the share screen.
+                    val isEducational = com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(text) &&
+                            evaluatedUrls.all { it.status == RiskStatus.Low } &&
+                            astra.risk == Risk.LOW
+
+                    if (isEducational) {
+                        return@withContext UnifiedSecurityAssessment(
+                            actualRiskScore = 10,
+                            status = RiskStatus.Low,
+                            categoryTitle = "EDUCATIONAL / SECURITY ADVISORY",
+                            plainExplanationEn = "This content discusses cybersecurity concepts, analysis, or defensive guidance rather than an active attack.",
+                            plainExplanationHi = "यह सामग्री किसी सक्रिय हमले के बजाय साइबर सुरक्षा अवधारणाओं, विश्लेषण या सुरक्षात्मक मार्गदर्शन पर चर्चा करती है।",
+                            detectedSignals = listOf("educational_advisory"),
+                            evaluatedUrls = evaluatedUrls,
+                            engineLabel = "Astra SafetyBarrier Offline Heuristic Rule Engine",
+                            isTextOnly = evaluatedUrls.isEmpty(),
+                            rawTextSnippet = text,
+                            riskLevel = Risk.LOW,
+                            uncertaintyNote = "Educational/advisory context identified. No offensive attack directives detected.",
+                            rawAssessment = astra
+                        )
+                    }
+
                     // Real offline heuristic rule scoring
                     val keywordReport = KeywordScorer.score(text)
                     var highestRegionalScore = 0
@@ -1090,7 +1114,7 @@ class LinkCheckActivity : ComponentActivity() {
                     val maxUrlScore = evaluatedUrls.maxOfOrNull { it.riskScore } ?: 0
                     val textScore = maxOf(keywordReport.riskScore, highestRegionalScore)
                     val combinedScore = if (textScore >= 35 && maxUrlScore >= 50) {
-                        (textScore + (maxUrlScore * 0.5f).toInt()).coerceAtMost(98)
+                        (textScore + (maxUrlScore * 0.5f).toInt()).coerceAtMost(88)
                     } else {
                         maxOf(textScore, maxUrlScore)
                     }
@@ -1129,9 +1153,11 @@ class LinkCheckActivity : ComponentActivity() {
                         astra.evidence.any { it.id == Signal.SCREEN_CREDENTIAL } -> "SCREEN SHARING CREDENTIAL HARVESTING"
                         astra.evidence.any { it.id == Signal.REFUND_FEE } -> "REFUND & CASHBACK ADVANCE FEE FRAUD"
                         astra.evidence.any { it.id == Signal.ARREST } ||
-                                lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
-                                (lower.contains("cbi") && lower.contains("arrest")) ||
-                                (lower.contains("सीबीआई") && lower.contains("नोटिस")) -> "DIGITAL ARREST EXTORTION"
+                                (!isEducational && (
+                                    lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
+                                    (lower.contains("cbi") && lower.contains("arrest")) ||
+                                    (lower.contains("सीबीआई") && lower.contains("नोटिस"))
+                                )) -> "DIGITAL ARREST EXTORTION"
                         astra.evidence.any { it.id == Signal.ADVANCE_FEE } -> "ADVANCE FEE & JOB OFFER FRAUD"
                         astra.evidence.any { it.id == Signal.GUARANTEED_RETURN } -> "GUARANTEED INVESTMENT SCAM"
                         astra.evidence.any { it.id == Signal.REMOTE_ACCESS } -> "REMOTE ACCESS SCREEN SHARING FRAUD"

@@ -201,23 +201,24 @@ class WhisperSttEngine(
                 val latencyMs = elapsedNs / 1_000_000L
                 val rtf = if (audioDurationMs > 0) latencyMs.toFloat() / audioDurationMs.toFloat() else 0f
                 val tokens = tokenCount.get()
-                val tokensPerSec = if (latencyMs > 0) (tokens * 1000f) / latencyMs.toFloat() else 0f
-
                 val rawText = if (nativeResult.isNotBlank()) nativeResult else tokenBuffer.toString()
                 val cleanedText = WhisperDecoder.decode(rawText)
+
+                val effectiveTokens = if (tokens > 0) tokens else if (cleanedText.isNotBlank()) cleanedText.split(Regex("\\s+")).size else 0
+                val tokensPerSec = if (latencyMs > 0) (effectiveTokens * 1000f) / latencyMs.toFloat() else 0f
 
                 lastInferenceLatencyMs = latencyMs
                 lastAudioDurationMs = audioDurationMs
                 lastRtf = rtf
-                lastTokensGenerated = tokens
+                lastTokensGenerated = effectiveTokens
                 lastTokensPerSec = tokensPerSec
 
-                val isSuccess = callbackError == null && cleanedText.isNotBlank() && tokens > 0
+                val isSuccess = callbackError == null && cleanedText.isNotBlank() && effectiveTokens > 0
                 if (isSuccess) {
                     totalTranscriptions++
                     lastTranscript = cleanedText
                     lastError = null
-                    logI("Whisper transcription completed in ${latencyMs}ms (RTF: ${"%.2f".format(rtf)}x, ${tokens} tokens): $cleanedText")
+                    logI("Whisper transcription completed in ${latencyMs}ms (RTF: ${"%.2f".format(rtf)}x, ${effectiveTokens} tokens): $cleanedText")
                 } else {
                     lastError = callbackError ?: if (cleanedText.isBlank()) "Empty transcription generated" else "Inference failed"
                     logW("Whisper transcription failed or yielded empty result (isSuccess=false): $lastError")

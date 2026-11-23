@@ -43,10 +43,13 @@ object EducationalContentDetector {
     private val attackCallToActionKeywords = listOf(
         "click here", "click link", "open this link", "download apk", "install this",
         "transfer now", "send money to", "pay immediately", "share otp", "tell me otp",
-        "tell your otp", "give otp", "enter pin", "approve request", "accept collect",
+        "tell your otp", "give otp", "enter pin", "enter upi pin", "approve request", "accept collect",
         "connect anydesk", "install teamviewer", "do not hang up", "do not disconnect",
         "stay on the line", "room lock", "कमरा बंद", "फोन मत काटना", "पैसे भेजो",
-        "ओटीपी बताओ", "पिन दर्ज करो", "तुरंत भेजो"
+        "ओटीपी बताओ", "पिन दर्ज करो", "तुरंत भेजो", "transfer to safe account",
+        "pay to avoid arrest", "call immediately", "call electricity officer",
+        "transfer ₹", "transfer rs", "transfer 50000", "send 50000", "pay 50000",
+        "डिजिटल अरेस्ट में रहें", "तुरंत डिजिटल अरेस्ट", "stay in digital arrest"
     )
 
     /**
@@ -55,6 +58,7 @@ object EducationalContentDetector {
      */
     fun isEducationalOrAnalysis(text: String): Boolean {
         if (text.isBlank()) return false
+        if (hasActionableAttackDirective(text)) return false
         val lower = text.lowercase(Locale.ROOT)
 
         // Direct phrase match
@@ -71,11 +75,25 @@ object EducationalContentDetector {
     }
 
     /**
-     * Returns true if the text contains an actionable imperative attack directive / call-to-action.
+     * Returns true if the text contains an unnegated actionable attack directive / call-to-action.
      */
     fun hasActionableAttackDirective(text: String): Boolean {
         if (text.isBlank()) return false
         val lower = text.lowercase(Locale.ROOT)
-        return attackCallToActionKeywords.any { lower.contains(it) }
+        return attackCallToActionKeywords.any { kw ->
+            val index = lower.indexOf(kw)
+            if (index == -1) {
+                false
+            } else {
+                // Check if negated by preceding defensive words
+                val preceding = lower.substring(maxOf(0, index - 30), index)
+                val isNegated = preceding.contains("never") || preceding.contains("don't") ||
+                        preceding.contains("do not") || preceding.contains("should not") ||
+                        preceding.contains("avoid") || preceding.contains("refuse") ||
+                        preceding.contains("मत") || preceding.contains("नहीं") ||
+                        preceding.contains("how scammers") || preceding.contains("warning signs")
+                !isNegated
+            }
+        }
     }
 }
