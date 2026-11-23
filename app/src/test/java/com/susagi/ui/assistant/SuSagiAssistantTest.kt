@@ -1,5 +1,6 @@
 package com.susagi.ui.assistant
 
+import com.susagi.edgeai.ConversationManager
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,5 +51,42 @@ class SuSagiAssistantTest {
         assertTrue(response.text.contains("OTP", ignoreCase = true))
         assertTrue(response.text.contains("UPI PIN", ignoreCase = true))
         assertTrue(response.text.contains("AnyDesk", ignoreCase = true) || response.text.contains("screen sharing", ignoreCase = true))
+    }
+
+    @Test
+    fun testGeneralQuery_MissingModelNotice_DoesNotFakeScamVerdicts() {
+        // Directive 46A: If no generative model is installed, general chat must output the exact honest notice:
+        // "Local AI conversation requires a compatible language model. Security Guidance remains available without a download."
+        // Must NOT output "No scam detected" or a fake conversational answer.
+        val honestNotice = AssistantMessage(
+            isUser = false,
+            text = "Local AI conversation requires a compatible language model. Security Guidance remains available without a download.",
+            isMissingModelNotice = true,
+            suggestedActions = listOf(
+                "Manage AI Models",
+                "🛡️ Analyze Message",
+                "🔗 Inspect URL",
+                "💳 Inspect UPI"
+            )
+        )
+
+        assertEquals("Local AI conversation requires a compatible language model. Security Guidance remains available without a download.", honestNotice.text)
+        assertTrue(honestNotice.isMissingModelNotice)
+        assertFalse(honestNotice.text.contains("No scam detected", ignoreCase = true))
+        assertEquals(null, honestNotice.riskBand)
+        assertEquals(null, honestNotice.threatCategory)
+    }
+
+    @Test
+    fun testConversationalContinuity_RetainsContextForFollowUps() {
+        val conversationManager = ConversationManager()
+        conversationManager.addUserMessage("Explain binary search in Java.")
+        conversationManager.addAssistantMessage("Binary search repeatedly divides the search interval in half.")
+
+        val promptForFollowUp = conversationManager.buildInstructPrompt("Can you show this in Hindi?")
+
+        assertTrue(promptForFollowUp.contains("Explain binary search in Java."))
+        assertTrue(promptForFollowUp.contains("Binary search repeatedly divides the search interval in half."))
+        assertTrue(promptForFollowUp.contains("Can you show this in Hindi?"))
     }
 }

@@ -34,9 +34,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Stop
@@ -71,6 +74,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.guardian.app.KeywordScorer
 import com.guardian.app.ui.theme.GxBase
 import com.guardian.app.ui.theme.GxBorder
 import com.guardian.app.ui.theme.GxDanger
@@ -89,11 +93,9 @@ import com.guardian.app.ui.theme.GxTextLo
 import com.guardian.app.ui.theme.GxTextMid
 import com.guardian.app.ui.theme.GxWarning
 import com.guardian.app.ui.theme.GxWarningSoft
-import com.guardian.app.KeywordScorer
+import com.susagi.edgeai.ConversationManager
 import com.susagi.edgeai.ExecuTorchLlamaEngine
 import com.susagi.edgeai.ModelManager
-import com.susagi.edgeai.ThreatChannel
-import com.susagi.edgeai.ThreatInput
 import com.susagi.intelligence.EducationalContentDetector
 import com.susagi.safety.Risk
 import com.susagi.safety.SafetyBarrier
@@ -105,25 +107,40 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+enum class ToolMode {
+    CHAT,
+    ANALYZE_MESSAGE,
+    INSPECT_URL,
+    INSPECT_UPI
+}
+
 data class AssistantMessage(
     val id: String = UUID.randomUUID().toString(),
     val isUser: Boolean,
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
+    val isToolResult: Boolean = false,
+    val toolName: String? = null,
     val evidence: List<String> = emptyList(),
     val threatCategory: String? = null,
     val riskBand: String? = null, // "LOW", "REVIEW", "HIGH"
     val suggestedActions: List<String> = emptyList(),
-    val isStreaming: Boolean = false
+    val isStreaming: Boolean = false,
+    val isMissingModelNotice: Boolean = false
 )
 
 /**
  * SuSagi AI Assistant Screen
  *
- * Dedicated conversational cybersecurity advisor and threat explainer.
- * Operates in two truthful modes:
- * - Local AI Conversation Mode (ExecuTorch Arm LLM) when provisioned.
- * - Security Guidance Mode (Deterministic, Grounded in SafetyBarrier) when unprovisioned.
+ * Implements GRAVITY DIRECTIVE 46A:
+ * - General-purpose conversational AI assistant is the DEFAULT experience.
+ * - Answers arbitrary, open-ended questions across many subjects (programming, math, science, finance, writing).
+ * - NOT a greeting bot, NOT an FAQ bot, NOT a scam classifier wrapped in chat UI.
+ * - Architecture: User message -> Conversation Manager -> Local LLM -> Generated Answer -> Chat UI.
+ * - Honest Model Reporting: If model is not provisioned, displays the exact truthful notice:
+ *   "Local AI conversation requires a compatible language model. Security Guidance remains available without a download."
+ * - Explicit Security Tools: User-initiated tools for Message Analysis, URL Inspection, UPI Verification, and Threat Explanation.
+ * - Security detection is independent: General conversation NEVER automatically produces "No scam detected".
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -138,25 +155,31 @@ fun SuSagiAssistantScreen(
     val modelManager = remember { ModelManager(ctx) }
     val llamaEngine = remember { ExecuTorchLlamaEngine(ctx, modelManager) }
     val isLlmReady = remember { llamaEngine.isReady }
+    val conversationManager = remember { ConversationManager() }
 
     val messages = remember {
         mutableStateListOf(
             AssistantMessage(
                 isUser = false,
-                text = "Hello! I am your SuSagi Cybersecurity Assistant. You can paste suspicious messages, ask if a payment request or UPI link is safe, or get guidance on how to avoid digital arrest extortion.",
+                text = "Hello! I am SuSagi AI, your on-device conversational assistant and cybersecurity advisor. " +
+                        "You can ask me open-ended questions across programming, science, mathematics, and writing, " +
+                        "or use specialized security tools below to inspect suspicious messages, links, and UPI requests.",
                 suggestedActions = listOf(
-                    "Check suspicious message",
-                    "Is UPI cashback safe?",
-                    "What to avoid sharing"
+                    "Explain binary search in Java",
+                    "Explain compound interest",
+                    "🛡️ Analyze Message",
+                    "🔗 Inspect URL",
+                    "💳 Inspect UPI"
                 )
             )
         )
     }
 
+    var activeToolMode by remember { mutableStateOf(ToolMode.CHAT) }
     var inputText by remember { mutableStateOf("") }
     var isGenerating by remember { mutableStateOf(false) }
     var currentGenerationJob by remember { mutableStateOf<Job?>(null) }
-    var lastEvaluatedThreatContext by remember { mutableStateOf<String?>(null) }
+    var lastThreatReport by remember { mutableStateOf<AssistantMessage?>(null) }
 
     // Scroll to bottom when new messages arrive
     LaunchedEffect(messages.size) {
@@ -175,17 +198,310 @@ fun SuSagiAssistantScreen(
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Tool Execution Handlers
+    // -------------------------------------------------------------------------
+
+    fun executeAnalyzeMessageTool(rawMessage: String) {
+        val trimmed = rawMessage.trim()
+        if (trimmed.isBlank()) return
+
+        messages.add(AssistantMessage(isUser = true, text = "🛡️ [Tool: Analyze Message]\n$trimmed"))
+        conversationManager.addUserMessage("Analyze this suspicious message: $trimmed")
+
+        coroutineScope.launch {
+            val guidance = generateDeterministicGuidance(trimmed, context = null)
+            val toolMsg = AssistantMessage(
+                isUser = false,
+                isToolResult = true,
+                toolName = "Message Shield (SafetyBarrier)",
+                text = guidance.text,
+                threatCategory = guidance.threatCategory,
+                riskBand = guidance.riskBand,
+                evidence = guidance.evidence,
+                suggestedActions = listOf("Explain with AI", "Dial 1930", "What to avoid sharing")
+            )
+            messages.add(toolMsg)
+            lastThreatReport = toolMsg
+            conversationManager.addToolResult(
+                toolName = "MessageShield",
+                summary = guidance.text.take(300),
+                evidence = guidance.evidence,
+                threatCategory = guidance.threatCategory,
+                riskBand = guidance.riskBand
+            )
+        }
+    }
+
+    fun executeInspectUrlTool(rawUrl: String) {
+        val trimmed = rawUrl.trim()
+        if (trimmed.isBlank()) return
+
+        messages.add(AssistantMessage(isUser = true, text = "🔗 [Tool: Inspect URL]\n$trimmed"))
+        conversationManager.addUserMessage("Inspect this link for security threats: $trimmed")
+
+        coroutineScope.launch {
+            val lower = trimmed.lowercase(Locale.ROOT)
+            val isApk = lower.endsWith(".apk") || lower.contains(".apk?") || lower.endsWith(".exe")
+            val hasIpHost = Regex("""https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}""").containsMatchIn(trimmed)
+            val hasLoginKyc = lower.contains("login") || lower.contains("kyc") || lower.contains("verify") || lower.contains("pan")
+            val isSuspiciousTld = lower.contains(".top") || lower.contains(".xyz") || lower.contains(".apk") || lower.contains(".cc")
+
+            val riskBand = when {
+                isApk || (hasIpHost && hasLoginKyc) -> "HIGH"
+                hasIpHost || hasLoginKyc || isSuspiciousTld -> "REVIEW"
+                else -> "LOW"
+            }
+
+            val threatCategory = when (riskBand) {
+                "HIGH" -> if (isApk) "Malicious APK Sideload Distribution" else "Credential Harvesting Phishing Link"
+                "REVIEW" -> "Unverified Domain / Suspicious Routing"
+                else -> "Benign Web Navigation"
+            }
+
+            val evidence = mutableListOf<String>()
+            if (isApk) evidence.add("Direct executable/APK download link bypassing official app stores")
+            if (hasIpHost) evidence.add("Raw IP address used instead of authenticated domain name")
+            if (hasLoginKyc) evidence.add("Simulates sensitive KYC/account verification login endpoint")
+            if (isSuspiciousTld) evidence.add("High-abuse top-level domain frequently associated with short-lived scams")
+            if (evidence.isEmpty()) evidence.add("No homoglyph spoofing or malware download patterns detected")
+
+            val explanation = when (riskBand) {
+                "HIGH" -> "🚨 DANGEROUS LINK DETECTED:\n\n" +
+                        "This URL points directly to an unverified APK download or credential-harvesting phishing site. " +
+                        "Installing APKs outside Google Play frequently installs Remote Access Trojans (RATs) to intercept SMS and drain bank accounts.\n\n" +
+                        "Defensive Action:\n" +
+                        "• DO NOT click or open this link.\n" +
+                        "• Delete the message containing this link immediately."
+                "REVIEW" -> "⚠️ CAUTION ADVISED ON UNVERIFIED LINK:\n\n" +
+                        "This link uses an uncommon domain structure, raw IP host, or sensitive keyword. " +
+                        "Verify whether you were expecting a message from this organization before visiting.\n\n" +
+                        "Guidance:\n" +
+                        "• Check official bookmarks or visit the company's verified website directly."
+                else -> "✅ LINK INSPECTION COMPLETE:\n\n" +
+                        "No deceptive homoglyphs, unauthorized APK download paths, or IP host disguises were identified. Always exercise vigilance with external URLs."
+            }
+
+            val toolMsg = AssistantMessage(
+                isUser = false,
+                isToolResult = true,
+                toolName = "Link Shield",
+                text = explanation,
+                threatCategory = threatCategory,
+                riskBand = riskBand,
+                evidence = evidence,
+                suggestedActions = listOf("Explain with AI", "Check another link", "What to avoid sharing")
+            )
+            messages.add(toolMsg)
+            lastThreatReport = toolMsg
+            conversationManager.addToolResult(
+                toolName = "LinkShield",
+                summary = explanation.take(300),
+                evidence = evidence,
+                threatCategory = threatCategory,
+                riskBand = riskBand
+            )
+        }
+    }
+
+    fun executeInspectUpiTool(rawUpi: String) {
+        val trimmed = rawUpi.trim()
+        if (trimmed.isBlank()) return
+
+        messages.add(AssistantMessage(isUser = true, text = "💳 [Tool: Inspect UPI]\n$trimmed"))
+        conversationManager.addUserMessage("Check this UPI request: $trimmed")
+
+        coroutineScope.launch {
+            val lower = trimmed.lowercase(Locale.ROOT)
+            val hasPinToReceive = lower.contains("enter pin") || lower.contains("pin to receive") || lower.contains("पिन दर्ज करें")
+            val hasCashback = lower.contains("cashback") || lower.contains("reward") || lower.contains("lottery") || lower.contains("won")
+            val hasCollectRequest = lower.contains("collect request") || lower.contains("requesting money") || lower.contains("pay request")
+
+            val isFraud = hasPinToReceive || (hasCashback && (hasCollectRequest || lower.contains("pin")))
+            val isReview = hasCollectRequest || hasCashback
+
+            val riskBand = when {
+                isFraud -> "HIGH"
+                isReview -> "REVIEW"
+                else -> "LOW"
+            }
+
+            val threatCategory = if (isFraud) "UPI Reverse Debit Collect Trap" else if (isReview) "Unverified Payment Collect Request" else "Standard Payment Inquiry"
+
+            val evidence = mutableListOf<String>()
+            if (hasPinToReceive) evidence.add("Claims UPI PIN must be entered to receive money (technically impossible)")
+            if (hasCashback) evidence.add("Lures user with fake cashback or lottery reward to disguise debit transaction")
+            if (hasCollectRequest) evidence.add("Uses merchant collect request mechanism to extract funds from victim")
+            if (evidence.isEmpty()) evidence.add("Standard payment inquiry; follows normal UPI transaction rules")
+
+            val explanation = when {
+                isFraud -> "🚨 CRITICAL UPI REVERSE-DEBIT FRAUD DETECTED:\n\n" +
+                        "Rule: You NEVER need to enter your UPI PIN to receive money or cashback.\n\n" +
+                        "Entering your UPI PIN ALWAYS deducts money from your bank account. " +
+                        "Scammers send 'Collect Requests' labeled as rewards or refunds, tricking victims into authorizing debits.\n\n" +
+                        "Immediate Defensive Steps:\n" +
+                        "1. Immediately DECLINE or IGNORE the request in your UPI app.\n" +
+                        "2. Never scan a QR code to 'receive' payment.\n" +
+                        "3. If funds were debited, dial national cyber helpline 1930 immediately."
+                isReview -> "⚠️ CAUTION: UNVERIFIED UPI TRANSACTION:\n\n" +
+                        "Always verify who sent the collect request before approving. " +
+                        "Remember that approving any request in PhonePe/GPay/Paytm with your PIN will debit your balance."
+                else -> "✅ UPI SAFETY GUIDANCE:\n\n" +
+                        "Standard payment rules apply: Enter PIN only when sending money to a verified contact. Never share PIN or OTP with anyone."
+            }
+
+            val toolMsg = AssistantMessage(
+                isUser = false,
+                isToolResult = true,
+                toolName = "Payment Inspector",
+                text = explanation,
+                threatCategory = threatCategory,
+                riskBand = riskBand,
+                evidence = evidence,
+                suggestedActions = listOf("Explain with AI", "Dial 1930", "Is UPI PIN safe?")
+            )
+            messages.add(toolMsg)
+            lastThreatReport = toolMsg
+            conversationManager.addToolResult(
+                toolName = "PaymentInspector",
+                summary = explanation.take(300),
+                evidence = evidence,
+                threatCategory = threatCategory,
+                riskBand = riskBand
+            )
+        }
+    }
+
+    fun executeExplainThreatReportTool(report: AssistantMessage) {
+        messages.add(AssistantMessage(isUser = true, text = "🤖 Explain this threat report"))
+        conversationManager.addUserMessage("Explain the findings in the previous threat report in conversational terms.")
+
+        if (isLlmReady) {
+            currentGenerationJob = coroutineScope.launch {
+                isGenerating = true
+                val assistantMsgId = UUID.randomUUID().toString()
+                messages.add(
+                    AssistantMessage(
+                        id = assistantMsgId,
+                        isUser = false,
+                        text = "",
+                        isStreaming = true
+                    )
+                )
+
+                val prompt = conversationManager.buildInstructPrompt(
+                    "Please explain the following verified security findings in simple, clear conversational language without inventing new claims:\n" +
+                            "Threat Category: ${report.threatCategory ?: "Suspicious Signal"}\n" +
+                            "Risk Band: ${report.riskBand ?: "REVIEW"}\n" +
+                            "Evidence: ${report.evidence.joinToString("; ")}\n" +
+                            "Report Summary: ${report.text.take(400)}"
+                )
+
+                val accumulated = StringBuilder()
+                val genResult = llamaEngine.generateConversationResponse(prompt) { token ->
+                    accumulated.append(token)
+                    val idx = messages.indexOfFirst { it.id == assistantMsgId }
+                    if (idx != -1) {
+                        messages[idx] = messages[idx].copy(text = accumulated.toString().trim())
+                    }
+                }
+
+                val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
+                if (finalIndex != -1) {
+                    if (genResult.isSuccess && accumulated.isNotBlank()) {
+                        messages[finalIndex] = messages[finalIndex].copy(
+                            text = accumulated.toString().trim(),
+                            isStreaming = false
+                        )
+                        conversationManager.addAssistantMessage(accumulated.toString().trim())
+                    } else {
+                        val fallbackExplanation = "Here is a breakdown of why this was flagged:\n\n" +
+                                "• ${report.evidence.joinToString("\n• ")}\n\n" +
+                                "This pattern indicates an attempt to manipulate or extract credentials under pressure. Stay cautious and verify independently."
+                        messages[finalIndex] = messages[finalIndex].copy(
+                            text = fallbackExplanation,
+                            isStreaming = false
+                        )
+                        conversationManager.addAssistantMessage(fallbackExplanation)
+                    }
+                }
+                isGenerating = false
+                currentGenerationJob = null
+            }
+        } else {
+            val explanation = "Here is a breakdown of why this was flagged:\n\n" +
+                    "• ${report.evidence.joinToString("\n• ")}\n\n" +
+                    "This pattern matches tactics used to coerce victims into compliance or credential disclosure. " +
+                    "Always verify caller/sender identity via official precinct or bank numbers."
+            messages.add(
+                AssistantMessage(
+                    isUser = false,
+                    text = explanation,
+                    suggestedActions = listOf("Dial 1930", "What to avoid sharing", "New Chat")
+                )
+            )
+            conversationManager.addAssistantMessage(explanation)
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Core Conversational Submission (Default Experience)
+    // -------------------------------------------------------------------------
+
     fun submitUserQuery(query: String) {
         val trimmed = query.trim()
         if (trimmed.isBlank() || isGenerating) return
 
         inputText = ""
+
+        // Check if an explicit tool mode is currently active
+        when (activeToolMode) {
+            ToolMode.ANALYZE_MESSAGE -> {
+                activeToolMode = ToolMode.CHAT
+                executeAnalyzeMessageTool(trimmed)
+                return
+            }
+            ToolMode.INSPECT_URL -> {
+                activeToolMode = ToolMode.CHAT
+                executeInspectUrlTool(trimmed)
+                return
+            }
+            ToolMode.INSPECT_UPI -> {
+                activeToolMode = ToolMode.CHAT
+                executeInspectUpiTool(trimmed)
+                return
+            }
+            ToolMode.CHAT -> {
+                // Check if user clicked an explicit tool action from chips
+                if (trimmed.startsWith("🛡️ Analyze") || trimmed.contains("Check suspicious message")) {
+                    activeToolMode = ToolMode.ANALYZE_MESSAGE
+                    return
+                }
+                if (trimmed.startsWith("🔗 Inspect URL")) {
+                    activeToolMode = ToolMode.INSPECT_URL
+                    return
+                }
+                if (trimmed.startsWith("💳 Inspect UPI") || trimmed.contains("Is UPI cashback safe?")) {
+                    activeToolMode = ToolMode.INSPECT_UPI
+                    return
+                }
+                if (trimmed.contains("Explain with AI")) {
+                    val report = lastThreatReport
+                    if (report != null) {
+                        executeExplainThreatReportTool(report)
+                        return
+                    }
+                }
+            }
+        }
+
+        // Default Mode: Conversational AI (User message -> Conversation Manager -> Local LLM -> Chat UI)
         messages.add(AssistantMessage(isUser = true, text = trimmed))
+        conversationManager.addUserMessage(trimmed)
 
         currentGenerationJob = coroutineScope.launch {
             isGenerating = true
 
-            // Temporary streaming placeholder message
             val assistantMsgId = UUID.randomUUID().toString()
             val initialAssistantMsg = AssistantMessage(
                 id = assistantMsgId,
@@ -196,65 +512,66 @@ fun SuSagiAssistantScreen(
             messages.add(initialAssistantMsg)
 
             if (isLlmReady) {
-                // ExecuTorch Local AI Mode
+                // ExecuTorch Local AI Mode: Native token generation on Arm runtime
                 try {
-                    val threatInput = ThreatInput(
-                        rawContent = trimmed,
-                        channel = ThreatChannel.MESSAGE,
-                        metadata = mapOf("context" to (lastEvaluatedThreatContext ?: ""))
-                    )
-                    val result = llamaEngine.analyzeThreat(threatInput)
-
-                    // Stream response tokens
-                    val fullResponse = buildString {
-                        append(result.explanation)
-                        if (result.recommendedActions.isNotEmpty()) {
-                            append("\n\n🛡️ Recommended Actions:\n")
-                            result.recommendedActions.forEach { act ->
-                                append("• $act\n")
-                            }
-                        }
-                    }
-
-                    // Simulated smooth token stream for UI responsiveness
-                    val words = fullResponse.split(" ")
+                    val prompt = conversationManager.buildInstructPrompt()
                     val accumulated = StringBuilder()
-                    for (i in words.indices) {
-                        accumulated.append(words[i]).append(" ")
+
+                    val genResult = llamaEngine.generateConversationResponse(prompt) { token ->
+                        accumulated.append(token)
                         val index = messages.indexOfFirst { it.id == assistantMsgId }
                         if (index != -1) {
-                            messages[index] = messages[index].copy(
-                                text = accumulated.toString().trim(),
-                                threatCategory = result.threatType,
-                                riskBand = result.severity,
-                                suggestedActions = result.recommendedActions,
-                                evidence = result.evidence
-                            )
+                            messages[index] = messages[index].copy(text = accumulated.toString().trim())
                         }
-                        delay(25)
                     }
 
                     val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                     if (finalIndex != -1) {
-                        messages[finalIndex] = messages[finalIndex].copy(isStreaming = false)
+                        if (genResult.isSuccess && accumulated.isNotBlank()) {
+                            val finalText = accumulated.toString().trim()
+                            messages[finalIndex] = messages[finalIndex].copy(
+                                text = finalText,
+                                isStreaming = false
+                            )
+                            conversationManager.addAssistantMessage(finalText)
+                        } else {
+                            val errText = genResult.error ?: "Unable to complete native token generation."
+                            messages[finalIndex] = messages[finalIndex].copy(
+                                text = errText,
+                                isStreaming = false
+                            )
+                        }
                     }
                 } catch (e: Exception) {
-                    val fallbackAnswer = generateDeterministicGuidance(trimmed, lastEvaluatedThreatContext)
-                    val index = messages.indexOfFirst { it.id == assistantMsgId }
-                    if (index != -1) {
-                        messages[index] = fallbackAnswer.copy(id = assistantMsgId, isStreaming = false)
+                    val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
+                    if (finalIndex != -1) {
+                        messages[finalIndex] = messages[finalIndex].copy(
+                            text = "Generation encountered an issue: ${e.message}",
+                            isStreaming = false
+                        )
                     }
                 }
             } else {
-                // Deterministic Security Guidance Mode (Truthful, immediate, no fake token delays)
-                val response = generateDeterministicGuidance(trimmed, lastEvaluatedThreatContext)
-                if (response.threatCategory != null) {
-                    lastEvaluatedThreatContext = "${response.threatCategory}: ${response.text}"
-                }
-
+                // Directive 46A Section 6: Honest Model Reporting
+                // If no generative model is installed, show the exact truthful notice:
+                // "Local AI conversation requires a compatible language model. Security Guidance remains available without a download."
+                // Do NOT substitute "No scam detected" or a fabricated general answer!
+                val honestNotice = AssistantMessage(
+                    id = assistantMsgId,
+                    isUser = false,
+                    text = "Local AI conversation requires a compatible language model. Security Guidance remains available without a download.",
+                    isMissingModelNotice = true,
+                    suggestedActions = listOf(
+                        "Manage AI Models",
+                        "🛡️ Analyze Message",
+                        "🔗 Inspect URL",
+                        "💳 Inspect UPI"
+                    ),
+                    isStreaming = false
+                )
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
-                    messages[finalIndex] = response.copy(id = assistantMsgId, isStreaming = false)
+                    messages[finalIndex] = honestNotice
                 }
             }
 
@@ -313,7 +630,7 @@ fun SuSagiAssistantScreen(
                                 )
                             }
                             Text(
-                                "Conversational Cybersecurity Advisor",
+                                "General Conversational AI & Cybersecurity Advisor",
                                 color = GxTextLo,
                                 fontSize = 11.sp
                             )
@@ -336,25 +653,29 @@ fun SuSagiAssistantScreen(
                         IconButton(
                             onClick = {
                                 stopGeneration()
+                                conversationManager.newChat()
                                 messages.clear()
                                 messages.add(
                                     AssistantMessage(
                                         isUser = false,
-                                        text = "Conversation reset. How can I help you stay safe today?",
+                                        text = "Conversation reset. You can ask any open-ended question or use specialized security tools.",
                                         suggestedActions = listOf(
-                                            "Check suspicious message",
-                                            "Is UPI cashback safe?",
-                                            "What to avoid sharing"
+                                            "Explain binary search in Java",
+                                            "Explain compound interest",
+                                            "🛡️ Analyze Message",
+                                            "🔗 Inspect URL",
+                                            "💳 Inspect UPI"
                                         )
                                     )
                                 )
-                                lastEvaluatedThreatContext = null
+                                lastThreatReport = null
+                                activeToolMode = ToolMode.CHAT
                             },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 Icons.Default.DeleteSweep,
-                                contentDescription = "Clear Chat",
+                                contentDescription = "New Chat",
                                 tint = GxTextMid,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -381,7 +702,7 @@ fun SuSagiAssistantScreen(
                         ) {}
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (isLlmReady) "Local AI Ready (ExecuTorch Arm)" else "Security Guidance Mode (Deterministic)",
+                            text = if (isLlmReady) "Local AI Active (ExecuTorch Arm64)" else "Security Guidance Ready (No Generative Model)",
                             color = if (isLlmReady) GxSafe else GxTextMid,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
@@ -389,7 +710,7 @@ fun SuSagiAssistantScreen(
                         if (!isLlmReady) {
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "• Manage AI Models",
+                                text = "• Manage Models",
                                 color = GxPrimary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -417,13 +738,23 @@ fun SuSagiAssistantScreen(
                 if (msg.isUser) {
                     UserChatBubble(msg)
                 } else {
-                    AssistantChatBubble(msg = msg, onActionClick = { submitUserQuery(it) })
+                    AssistantChatBubble(
+                        msg = msg,
+                        onActionClick = { action ->
+                            if (action == "Manage AI Models") {
+                                onOpenModelManager()
+                            } else {
+                                submitUserQuery(action)
+                            }
+                        },
+                        onOpenModelManager = onOpenModelManager
+                    )
                 }
             }
         }
 
         // ----------------------------------------------------
-        // Quick Action Chips Row
+        // Quick Action & Tool Mode Selector Bar
         // ----------------------------------------------------
         Column(
             modifier = Modifier
@@ -431,25 +762,52 @@ fun SuSagiAssistantScreen(
                 .background(GxSurface)
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
+            // Tool selector chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ToolSelectorChip(
+                    label = "💬 Chat",
+                    isSelected = activeToolMode == ToolMode.CHAT,
+                    onClick = { activeToolMode = ToolMode.CHAT }
+                )
+                ToolSelectorChip(
+                    label = "🛡️ Analyze Message",
+                    isSelected = activeToolMode == ToolMode.ANALYZE_MESSAGE,
+                    onClick = { activeToolMode = ToolMode.ANALYZE_MESSAGE }
+                )
+                ToolSelectorChip(
+                    label = "🔗 Inspect URL",
+                    isSelected = activeToolMode == ToolMode.INSPECT_URL,
+                    onClick = { activeToolMode = ToolMode.INSPECT_URL }
+                )
+                ToolSelectorChip(
+                    label = "💳 Inspect UPI",
+                    isSelected = activeToolMode == ToolMode.INSPECT_UPI,
+                    onClick = { activeToolMode = ToolMode.INSPECT_UPI }
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Conversational Prompt Chips (Directive 46A Examples)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                QuickPromptChip("🔍 Analyze SMS/Text") {
-                    inputText = "CBI officer calling: arrest warrant issued against your Aadhaar. Pay 50000 immediately to avoid digital arrest."
+                QuickPromptChip("Explain Binary Search in Java") {
+                    submitUserQuery("Explain binary search in Java with a code example and time complexity.")
                 }
-                QuickPromptChip("💳 Is UPI PIN for receiving money?") {
-                    submitUserQuery("Can I receive money by entering my UPI PIN?")
+                QuickPromptChip("Compound Interest") {
+                    submitUserQuery("Explain compound interest with a practical numerical example.")
                 }
-                QuickPromptChip("🚨 Why is Digital Arrest fake?") {
-                    submitUserQuery("Explain why digital arrest calls are fake and what law enforcement actually does.")
+                QuickPromptChip("What is Photosynthesis?") {
+                    submitUserQuery("Explain photosynthesis in simple terms.")
                 }
-                QuickPromptChip("🔒 What should I never share?") {
-                    submitUserQuery("What confidential credentials should I never share on calls or SMS?")
-                }
-                QuickPromptChip("📚 Educational Advisory Check") {
-                    inputText = "Cybersecurity researchers found an advisory explaining how to protect against digital arrest and phishing attacks."
+                QuickPromptChip("Draft an Email") {
+                    submitUserQuery("Help me write a professional follow-up email after an interview.")
                 }
             }
 
@@ -458,6 +816,13 @@ fun SuSagiAssistantScreen(
             // ----------------------------------------------------
             // Bottom Chat Input Bar
             // ----------------------------------------------------
+            val inputPlaceholder = when (activeToolMode) {
+                ToolMode.CHAT -> "Ask SuSagi AI anything (e.g. binary search, math, writing)..."
+                ToolMode.ANALYZE_MESSAGE -> "Paste suspicious SMS or message to inspect with SafetyBarrier..."
+                ToolMode.INSPECT_URL -> "Enter link or URL to inspect (e.g. https://...)..."
+                ToolMode.INSPECT_UPI -> "Enter UPI ID or collect request text to verify..."
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -465,7 +830,7 @@ fun SuSagiAssistantScreen(
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    placeholder = { Text("Ask SuSagi Security Assistant...", color = GxTextLo, fontSize = 13.sp) },
+                    placeholder = { Text(inputPlaceholder, color = GxTextLo, fontSize = 12.sp) },
                     modifier = Modifier
                         .weight(1f)
                         .height(52.dp),
@@ -473,7 +838,7 @@ fun SuSagiAssistantScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = GxSurfaceAlt,
                         unfocusedContainerColor = GxSurfaceAlt,
-                        focusedBorderColor = GxPrimary,
+                        focusedBorderColor = if (activeToolMode != ToolMode.CHAT) GxWarning else GxPrimary,
                         unfocusedBorderColor = GxBorder,
                         focusedTextColor = GxTextHi,
                         unfocusedTextColor = GxTextHi
@@ -497,7 +862,9 @@ fun SuSagiAssistantScreen(
                 } else {
                     Button(
                         onClick = { submitUserQuery(inputText) },
-                        colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (activeToolMode != ToolMode.CHAT) GxWarning else GxPrimary
+                        ),
                         shape = CircleShape,
                         modifier = Modifier.size(46.dp),
                         contentPadding = PaddingValues(0.dp),
@@ -508,6 +875,28 @@ fun SuSagiAssistantScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ToolSelectorChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (isSelected) GxPrimary.copy(alpha = 0.15f) else GxSurfaceAlt,
+        shape = GxShapePill,
+        border = BorderStroke(1.dp, if (isSelected) GxPrimary else GxBorder),
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Text(
+            text = label,
+            color = if (isSelected) GxPrimary else GxTextMid,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+        )
     }
 }
 
@@ -564,8 +953,11 @@ private fun UserChatBubble(msg: AssistantMessage) {
 @Composable
 private fun AssistantChatBubble(
     msg: AssistantMessage,
-    onActionClick: (String) -> Unit
+    onActionClick: (String) -> Unit,
+    onOpenModelManager: () -> Unit
 ) {
+    val ctx = LocalContext.current
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start
@@ -573,17 +965,66 @@ private fun AssistantChatBubble(
         Card(
             shape = RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
             colors = CardDefaults.cardColors(containerColor = GxSurface),
-            border = BorderStroke(1.dp, GxBorder),
+            border = BorderStroke(1.dp, if (msg.isToolResult) GxBorder.copy(alpha = 0.8f) else GxBorder),
             modifier = Modifier.fillMaxWidth(0.92f)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                // Header badge row if threat/risk info exists
-                if (msg.riskBand != null || msg.threatCategory != null) {
+                // 1. Missing Model Notice Card
+                if (msg.isMissingModelNotice) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = GxWarning,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Language Model Not Installed",
+                            color = GxWarning,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = msg.text,
+                        color = GxTextHi,
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = onOpenModelManager,
+                        colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
+                        shape = GxShapePill,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Extension, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Manage AI Models", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                } else if (msg.isToolResult) {
+                    // 2. Explicit Security Tool Result Card
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Surface(
+                            color = GxPrimary.copy(alpha = 0.12f),
+                            shape = GxShapePill,
+                            border = BorderStroke(1.dp, GxPrimary.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                text = "TOOL: ${msg.toolName ?: "SECURITY ENGINE"}",
+                                color = GxPrimary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+
                         if (msg.riskBand != null) {
                             val bandColor = when (msg.riskBand) {
                                 "HIGH" -> GxDanger
@@ -609,26 +1050,96 @@ private fun AssistantChatBubble(
                                 )
                             }
                         }
+                    }
 
-                        if (msg.threatCategory != null) {
-                            Text(
-                                text = msg.threatCategory,
-                                color = GxTextMid,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                    if (msg.threatCategory != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = msg.threatCategory,
+                            color = GxTextHi,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = msg.text,
+                        color = GxTextHi,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+
+                    // Grounded Evidence Points
+                    if (msg.evidence.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            color = GxSurfaceAlt,
+                            shape = GxShapeSm,
+                            border = BorderStroke(0.5.dp, GxBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = "Grounded Threat Indicators:",
+                                    color = GxTextHi,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                msg.evidence.forEach { ev ->
+                                    Text(
+                                        text = "• $ev",
+                                        color = GxTextMid,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
-                }
+                } else {
+                    // 3. Standard Generative Conversational Message
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Psychology,
+                                contentDescription = null,
+                                tint = GxPrimary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "SuSagi AI",
+                                color = GxPrimary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                // Main body text
-                Text(
-                    text = msg.text,
-                    color = GxTextHi,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp
-                )
+                        IconButton(
+                            onClick = {
+                                val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                cm.setPrimaryClip(ClipData.newPlainText("SuSagi AI Answer", msg.text))
+                                Toast.makeText(ctx, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = GxTextLo, modifier = Modifier.size(14.dp))
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = msg.text,
+                        color = GxTextHi,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
 
                 if (msg.isStreaming) {
                     Spacer(Modifier.height(6.dp))
@@ -640,7 +1151,7 @@ private fun AssistantChatBubble(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "Analyzing security signals...",
+                            text = "Generating response...",
                             color = GxTextLo,
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace
@@ -648,44 +1159,9 @@ private fun AssistantChatBubble(
                     }
                 }
 
-                // Evidence list
-                if (msg.evidence.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
-                    Surface(
-                        color = GxSurfaceAlt,
-                        shape = GxShapeSm,
-                        border = BorderStroke(0.5.dp, GxBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Text(
-                                text = "Grounded Threat Indicators:",
-                                color = GxTextHi,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            msg.evidence.forEach { ev ->
-                                Text(
-                                    text = "• $ev",
-                                    color = GxTextMid,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-                }
-
                 // Suggested Next Action Chips
                 if (msg.suggestedActions.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "Recommended Next Steps:",
-                        color = GxTextLo,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(6.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -735,7 +1211,8 @@ private fun AssistantChatBubble(
 
 /**
  * Deterministic cybersecurity advisory engine grounded in authoritative rules.
- * Provides complete, high-quality, truthful answers without requiring LLM weights.
+ * Provides complete, high-quality, truthful answers for explicit security queries
+ * without requiring LLM weights.
  */
 internal suspend fun generateDeterministicGuidance(query: String, context: String?): AssistantMessage {
     val lower = query.lowercase(Locale.ROOT)
