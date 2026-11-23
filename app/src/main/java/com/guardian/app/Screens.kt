@@ -1371,10 +1371,10 @@ fun HomeScreen(
         item {
             FeatureCardItem(
                 title = "Secure Two-Way VoIP Calling",
-                subtitle = "Encrypted Agora room-code calling with live scam radar and interactive test simulation",
+                subtitle = "Lab experimental Agora room-code calling with live scam radar and interactive test simulation (Requires LAN/Token backend)",
                 icon = Icons.Default.Phone,
                 accentColor = GxPrimary,
-                statusBadge = "E2EE READY",
+                statusBadge = "EXPERIMENTAL",
                 onClick = onOpenVoipCall
             )
         }

@@ -24,7 +24,7 @@ object FraudIntent {
     )
     private val acts = rules(
         Act.TRANSFER to """\b(?:transfer (?:money|funds|the balance)|wire money|paise bhejo)\b""",
-        Act.PAY_FEE to """\b(?:pay|remit|submit|deposit) (?:a |the |your )?(?:clearance|processing|verification|release) (?:charge|fee|deposit)\b|\b(?:task|registration|activation) (?:fee|deposit) (?:must be paid|is required)\b""",
+        Act.PAY_FEE to """\b(?:pay|remit|submit|deposit) (?:a |the |your |\d+|rupees |rs\.? )*(?:clearance|processing|verification|release|registration|activation|task|security) (?:charge|fee|deposit)\b|\b(?:task|registration|activation|security) (?:fee|deposit|charge) (?:must be paid|is required|to activate)\b""",
         Act.INSTALL to """\b(?:install|download) (?:our |the |this )?(?:apk|remote support app)\b""",
         Act.SCREEN to """\b(?:share your screen|enable remote access|screen share karo)\b""",
         Act.DISCLOSE to """\b(?:read back|dictate|send me) (?:your |the )?(?:pin|otp|verification code)\b""",
@@ -33,7 +33,7 @@ object FraudIntent {
         Act.KEEP_SECRET to """\b(?:keep this confidential|do not tell anyone|kisi ko mat batana)\b"""
     )
     private val pressures = rules(
-        Pressure.WORK_GATED to """\bbefore (?:you can |the next |your next )(?:start|work|task|assignment|merchant rating)\b""",
+        Pressure.WORK_GATED to """\b(?:before (?:you can |the next |your next )?(?:start|work|task|assignment|merchant rating)|to (?:activate|start|begin|unlock|enable|receive) (?:your )?(?:account|task|earnings|job|salary|withdrawal))\b""",
         Pressure.WITHHELD to """\b(?:salary|withdrawal|payout) (?:remains |is |will be )?(?:withheld|on hold|pending release)\b""",
         Pressure.SUSPENSION to """\b(?:account suspension|account will be blocked)\b""",
         Pressure.CASE to """\b(?:under investigation|avoid detention|avoid prosecution)\b""",

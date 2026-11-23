@@ -239,7 +239,9 @@ object KeywordScorer {
         "anydesk" to 32, "teamviewer" to 32, "rustdesk" to 30, "screen share" to 28,
         "download apk" to 28, "do not tell" to 22, "stay on the line" to 20, "स्क्रीन शेयर" to 28,
         // Lotteries & Fake Tasks
-        "lottery" to 20, "winner" to 18, "refund" to 18, "kbc" to 20, "लॉटरी" to 20
+        "lottery" to 20, "winner" to 18, "refund" to 18, "kbc" to 20, "लॉटरी" to 20,
+        "part-time job" to 22, "registration fee" to 28, "deposit fee" to 26, "task fee" to 26,
+        "deposit 2000" to 28, "earn daily" to 20, "activation fee" to 26, "security deposit" to 24
     )
 
     fun score(transcript: String): RiskReport {
@@ -292,7 +294,7 @@ object KeywordScorer {
         }
 
         val wantsOtp = lower.contains("otp") || lower.contains("pin") || lower.contains("password") || lower.contains("cvv") || lower.contains("ओटीपी")
-        val wantsMoney = lower.contains("transfer") || lower.contains("send money") || lower.contains("pay now") || lower.contains("upi") || lower.contains("पैसे")
+        val wantsMoney = lower.contains("transfer") || lower.contains("send money") || lower.contains("pay now") || lower.contains("upi") || lower.contains("पैसे") || lower.contains("deposit") || lower.contains("registration fee")
         val wantsRemote = lower.contains("anydesk") || lower.contains("teamviewer") || lower.contains("screen share") || lower.contains("download apk")
 
         val intentAction = when {

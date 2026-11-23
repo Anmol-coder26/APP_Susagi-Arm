@@ -153,7 +153,11 @@ object AstraSecurityBridge : SecurityAssessmentContract {
         }
 
         val lowerText = text.lowercase()
+        val isEdu = com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(text)
         val threatCategory = when {
+            status == RiskStatus.Low -> {
+                if (isEdu) "Educational / Security Advisory" else "No Known Scam Pattern"
+            }
             astra.evidence.any { it.id == Signal.ARREST } ||
                     allCategories.any { it.contains("digital_arrest", ignoreCase = true) } ||
                     lowerText.contains("digital arrest") ||

@@ -116,4 +116,82 @@ class Directive40VerificationTest {
         val finding = SecurityModel.analyze(benignFamilyMessage)
         assertEquals("BENIGN_NORMAL", finding.uncertaintyOrAbstentionStatus)
     }
+
+    @Test
+    fun testBenignA_technicalDevelopmentPrompt_evaluatesLowRisk() = runBlocking {
+        val technicalPrompt = """
+            # MASTER DIRECTIVE: OPERATION CYBERSECURITY APP
+            We are engineering an Android application for the Arm AI-SoC Bharat Challenge PS3.
+            The pipeline analyzes OTP theft, phishing URLs, digital arrest extortion schemes, and UPI traps.
+            Write a Kotlin class implementing the security detector and verify with unit tests.
+        """.trimIndent()
+
+        // Message Shield
+        val decision = AstraSecurityBridge.assessMessage(technicalPrompt)
+        assertEquals(RiskStatus.Low, decision.status)
+        assertTrue(decision.riskScore <= 15)
+        assertFalse(decision.threatCategory.contains("Digital Arrest", ignoreCase = true))
+
+        // Android Share
+        val payload = SharedPayload.SharedContent(rawText = technicalPrompt, urls = emptyList())
+        val assessment = LinkCheckActivity.assessPayloadAsync(payload)
+        assertEquals(RiskStatus.Low, assessment.status)
+        assertTrue(assessment.actualRiskScore <= 15)
+        assertFalse(assessment.categoryTitle.contains("DIGITAL ARREST", ignoreCase = true))
+
+        // Dedicated Security Model
+        val finding = SecurityModel.analyze(technicalPrompt)
+        assertEquals("EDUCATIONAL_ADVISORY", finding.uncertaintyOrAbstentionStatus)
+        assertTrue(finding.modelRawScore <= 15)
+    }
+
+    @Test
+    fun testBenignB_securityEducation_noDirectCredentialTheftAccusation() = runBlocking {
+        val advisory = "Security tip: Never share your bank OTP, password, or PIN with any caller. Banks never ask for OTP."
+        val decision = AstraSecurityBridge.assessMessage(advisory)
+        assertEquals(RiskStatus.Low, decision.status)
+        assertFalse(decision.threatCategory.contains("Credential", ignoreCase = true))
+
+        val finding = SecurityModel.analyze(advisory)
+        assertFalse(finding.credentialDemand)
+    }
+
+    @Test
+    fun testBenignC_quotedScamReport_handledAppropriately() = runBlocking {
+        val report = """User reported that scammers say: "Your electricity will be disconnected tonight, pay immediately." How do I report this?"""
+        val decision = AstraSecurityBridge.assessMessage(report)
+        assertTrue(decision.status == RiskStatus.Low || decision.status == RiskStatus.Suspicious)
+        assertNotEquals(RiskStatus.High, decision.status)
+    }
+
+    @Test
+    fun testMaliciousA_directOtpTheft_detectedHighRisk() = runBlocking {
+        val scam = "Dear customer, your SBI card is blocked. Share your 6-digit OTP immediately to verify account."
+        val decision = AstraSecurityBridge.assessMessage(scam)
+        assertEquals(RiskStatus.High, decision.status)
+        assertTrue(decision.riskScore >= 70)
+        assertTrue(decision.threatCategory.contains("OTP", ignoreCase = true) ||
+                decision.threatCategory.contains("Credential", ignoreCase = true) ||
+                decision.threatCategory.contains("KYC", ignoreCase = true))
+    }
+
+    @Test
+    fun testMaliciousB_taskDepositScam_detectedHighRisk() = runBlocking {
+        val scam = "Telegram Part-time job offer: Earn 5000 daily with YouTube likes. Deposit 2000 rupees registration fee to activate account."
+        val decision = AstraSecurityBridge.assessMessage(scam)
+        assertEquals(RiskStatus.High, decision.status)
+        assertTrue(decision.riskScore >= 70)
+        assertTrue(decision.threatCategory.contains("Advance Fee", ignoreCase = true) ||
+                decision.threatCategory.contains("Financial", ignoreCase = true))
+    }
+
+    @Test
+    fun testMixedB_harmlessTechnicalWithEmbeddedUrl_independentAnalysis() = runBlocking {
+        val techWithUrl = "Security research report on domain safety: review our open documentation at https://example.com/docs for guidance."
+        val payload = SharedPayload.SharedContent(rawText = techWithUrl, urls = listOf("https://example.com/docs"))
+        val assessment = LinkCheckActivity.assessPayloadAsync(payload)
+        assertEquals(RiskStatus.Low, assessment.status)
+        assertTrue(assessment.actualRiskScore <= 15)
+        assertFalse(assessment.categoryTitle.contains("EXTORTION", ignoreCase = true))
+    }
 }

@@ -1150,6 +1150,9 @@ class LinkCheckActivity : ComponentActivity() {
 
                     val lower = text.lowercase(Locale.ROOT)
                     val category = when {
+                        status == RiskStatus.Low -> {
+                            if (isEducational) "EDUCATIONAL / SECURITY ADVISORY" else "NO KNOWN LOCAL THREAT INDICATORS DETECTED"
+                        }
                         astra.evidence.any { it.id == Signal.SCREEN_CREDENTIAL } -> "SCREEN SHARING CREDENTIAL HARVESTING"
                         astra.evidence.any { it.id == Signal.REFUND_FEE } -> "REFUND & CASHBACK ADVANCE FEE FRAUD"
                         astra.evidence.any { it.id == Signal.ARREST } ||

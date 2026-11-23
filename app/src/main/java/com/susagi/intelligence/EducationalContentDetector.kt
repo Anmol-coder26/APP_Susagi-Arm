@@ -24,6 +24,12 @@ object EducationalContentDetector {
         "stay safe from", "how scammers operate", "beware of", "do not be fooled",
         "case study", "detection rule", "indicator of compromise", "iocs",
         "mitre att&ck", "poc", "proof of concept", "cyber crime awareness",
+        // Technical & Software Engineering Context (prevents development prompts from triggering false alarms)
+        "cybersecurity", "development", "engineering", "implementation", "architecture",
+        "source code", "master directive", "directive", "problem statement", "hackathon",
+        "challenge", "ps3", "arm ai-soc", "android application", "codebase", "software",
+        "algorithm", "pipeline", "detector", "kotlin", "gradle", "unit test", "regression test",
+        "false positive", "safebrowsing", "link shield",
         // Hindi / Hinglish phrases
         "जागरूकता", "बचने के उपाय", "सावधानी", "सलाह", "सुरक्षा उपाय",
         "धोखाधड़ी से कैसे बचें", "जागरूक रहें", "साइबर सुरक्षा टिप्स", "टिप्स",
@@ -31,7 +37,7 @@ object EducationalContentDetector {
     )
 
     private val quotedScamPatterns = listOf(
-        Regex("""(?i)\b(?:scammers? (?:say|claim|ask|write|use)|example(?: of)?(?: a)? scam)\s*:?\s*["'“][^"'”\n]+["'”]"""),
+        Regex("""(?i)\b(?:scammers? (?:say|claim|ask|write|use|told me)|example(?: of)?(?: a)? scam|user reported|received a message|reported that)\s*:?\s*["'“][^"'”\n]+["'”]"""),
         Regex("""(?i)\b(?:if (?:someone|a caller|an unknown person) (?:calls|asks|demands))\b"""),
         Regex("""(?i)\b(?:never (?:give|share|send|transfer))\b""")
     )
@@ -49,6 +55,8 @@ object EducationalContentDetector {
         "ओटीपी बताओ", "पिन दर्ज करो", "तुरंत भेजो", "transfer to safe account",
         "pay to avoid arrest", "call immediately", "call electricity officer",
         "transfer ₹", "transfer rs", "transfer 50000", "send 50000", "pay 50000",
+        "deposit 2000", "deposit fee", "deposit registration fee", "pay registration fee",
+        "registration fee to activate", "deposit to activate",
         "डिजिटल अरेस्ट में रहें", "तुरंत डिजिटल अरेस्ट", "stay in digital arrest"
     )
 
