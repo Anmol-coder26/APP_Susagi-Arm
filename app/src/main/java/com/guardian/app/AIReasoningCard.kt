@@ -154,15 +154,15 @@ fun AIReasoningCard(
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Dual-Engine AI",
+                            "On-Device Shield",
                             color = GxTextHi,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.width(8.dp))
                         GxChip(
-                            text = if (report.isOffline) "OFFLINE SCORER" else "GEMINI 1.5 FLASH",
-                            variant = if (report.isOffline) GxChipVariant.Warning else GxChipVariant.Brand,
+                            text = "ON-DEVICE ASTRA AI",
+                            variant = GxChipVariant.Brand,
                             height = 22.dp
                         )
                     }

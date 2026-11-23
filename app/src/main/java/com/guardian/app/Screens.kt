@@ -2145,9 +2145,9 @@ fun LinkCheckerModal(onDismiss: () -> Unit) {
                             ) {
                                 Text(
                                     when {
-                                        isDangerous -> "RISK SCORE: 95%"
-                                        isSuspicious -> "RISK SCORE: 65%"
-                                        else -> "RISK SCORE: 8%"
+                                        isDangerous -> "ASSESSMENT: HIGH RISK"
+                                        isSuspicious -> "ASSESSMENT: NEEDS REVIEW"
+                                        else -> "ASSESSMENT: LOW RISK"
                                     },
                                     color = accentColor,
                                     fontWeight = FontWeight.ExtraBold,
@@ -2331,7 +2331,11 @@ fun MessageCheckerModal(onDismiss: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "RISK SCORE: ${res.riskScore}%",
+                                    when {
+                                        isDangerous -> "ASSESSMENT: HIGH RISK"
+                                        isSuspicious -> "ASSESSMENT: NEEDS REVIEW"
+                                        else -> "ASSESSMENT: LOW RISK"
+                                    },
                                     color = accentColor,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 13.sp,

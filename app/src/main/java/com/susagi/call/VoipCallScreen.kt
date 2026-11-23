@@ -132,13 +132,9 @@ fun VoipCallScreen(
     val context = LocalContext.current
     var showDebugOverlay by remember { mutableStateOf(false) }
 
-    // Live Call Timer (Active only on connected channel or simulation)
+    // Live Call Timer (Active only on live bidirectional audio or simulation)
     var elapsedSeconds by remember { mutableIntStateOf(0) }
-    val isTimerActive = (uiState.callState in listOf(
-        CallConnectionState.JOINED,
-        CallConnectionState.PEER_CONNECTED,
-        CallConnectionState.AUDIO_ACTIVE
-    ) || uiState.isSimulatedCall) && uiState.callState != CallConnectionState.FAILED
+    val isTimerActive = (uiState.callState == CallConnectionState.AUDIO_ACTIVE || uiState.isSimulatedCall)
 
     LaunchedEffect(uiState.callState, uiState.isSimulatedCall) {
         if (isTimerActive) {
@@ -257,9 +253,9 @@ fun VoipCallScreen(
                                 val mins = elapsedSeconds / 60
                                 val secs = elapsedSeconds % 60
                                 Text(
-                                    if (uiState.callState == CallConnectionState.FAILED) "--:--"
-                                    else String.format("%02d:%02d", mins, secs),
-                                    color = if (uiState.callState == CallConnectionState.FAILED) GxDanger else GxTextHi,
+                                    if (isTimerActive) String.format("%02d:%02d", mins, secs)
+                                    else "--:--",
+                                    color = if (uiState.callState == CallConnectionState.FAILED) GxDanger else if (isTimerActive) GxTextHi else GxTextLo,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
@@ -304,45 +300,47 @@ fun VoipCallScreen(
             val radarTitle = when {
                 uiState.isSimulatedCall -> "DEMO — SYNTHETIC INPUT"
                 uiState.callState == CallConnectionState.FAILED -> "CALL FAILED"
+                uiState.callState == CallConnectionState.DISCONNECTED -> "CALL NOT CONNECTED"
                 uiState.callState == CallConnectionState.REQUESTING_TOKEN -> "REQUESTING TOKEN..."
                 uiState.callState == CallConnectionState.CONNECTING -> "CONNECTING TO ROOM..."
                 uiState.callState == CallConnectionState.JOINED -> "ROOM JOINED · WAITING FOR PEER"
-                isCallConnected -> {
+                uiState.callState == CallConnectionState.PEER_CONNECTED && !isAudioActive -> "PEER JOINED · CONNECTING AUDIO"
+                isAudioActive -> {
                     when {
                         uiState.riskScore >= 75 -> "CRITICAL EXTORTION THREAT"
                         uiState.riskScore >= 40 -> "SUSPICIOUS COERCIVE PATTERNS"
                         else -> "PROTECTED · NORMAL FLOW"
                     }
                 }
-                else -> "CALL STANDBY"
+                else -> "CALL NOT CONNECTED"
             }
 
             val radarAccent = when {
                 uiState.isSimulatedCall -> Color(0xFFF59E0B)
                 uiState.callState == CallConnectionState.FAILED -> GxDanger
                 uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> GxWarning
-                uiState.callState == CallConnectionState.JOINED -> GxPrimary
-                uiState.riskScore >= 75 -> GxDanger
-                uiState.riskScore >= 40 -> GxWarning
-                isCallConnected -> GxSafe
+                uiState.callState in listOf(CallConnectionState.JOINED, CallConnectionState.PEER_CONNECTED) -> GxPrimary
+                isAudioActive && uiState.riskScore >= 75 -> GxDanger
+                isAudioActive && uiState.riskScore >= 40 -> GxWarning
+                isAudioActive -> GxSafe
                 else -> GxTextLo
             }
 
             val radarSubtitle = when {
                 uiState.isSimulatedCall -> "Offline Simulated Dialogue • Synthetic Threat Scenario"
                 uiState.callState == CallConnectionState.FAILED -> "LIVE PROTECTION INACTIVE · TRANSCRIPTION NOT RUNNING"
+                uiState.callState == CallConnectionState.DISCONNECTED -> "LIVE PROTECTION INACTIVE · TRANSCRIPTION NOT RUNNING"
                 uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> "Authenticating with encrypted Agora RTC gateway..."
                 uiState.callState == CallConnectionState.JOINED -> "Connected to channel • Waiting for peer to enter room"
                 uiState.callState == CallConnectionState.PEER_CONNECTED && !isAudioActive -> "Peer joined room • Establishing bidirectional audio stream..."
                 isAudioActive -> "Two-way audio stream active • AI Coercion Guard monitoring"
-                else -> "Initiate a call or join a room to activate live security monitoring"
+                else -> "CALL NOT CONNECTED · PROTECTION INACTIVE"
             }
 
             val scoreBadgeText = when {
-                uiState.callState == CallConnectionState.FAILED -> "--"
+                isAudioActive || uiState.isSimulatedCall -> "${uiState.riskScore}%"
                 uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> "..."
-                uiState.callState == CallConnectionState.JOINED -> "WAIT"
-                isCallConnected || uiState.isSimulatedCall -> "${uiState.riskScore}%"
+                uiState.callState in listOf(CallConnectionState.JOINED, CallConnectionState.PEER_CONNECTED) -> "WAIT"
                 else -> "--"
             }
 
@@ -351,8 +349,8 @@ fun VoipCallScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = GxShapeMd,
-                colors = CardDefaults.cardColors(containerColor = if (uiState.riskScore > 65 || uiState.callState == CallConnectionState.FAILED) Color(0xFFFFFBEB) else GxSurface),
-                border = BorderStroke(2.dp, if (uiState.callState == CallConnectionState.FAILED) GxDanger.copy(alpha = 0.6f) else if (uiState.riskScore > 65) Color(0xFFFCD34D) else radarAccent.copy(alpha = 0.5f))
+                colors = CardDefaults.cardColors(containerColor = if ((isAudioActive && uiState.riskScore > 65) || uiState.callState == CallConnectionState.FAILED) Color(0xFFFFFBEB) else GxSurface),
+                border = BorderStroke(2.dp, if (uiState.callState == CallConnectionState.FAILED) GxDanger.copy(alpha = 0.6f) else if (isAudioActive && uiState.riskScore > 65) Color(0xFFFCD34D) else radarAccent.copy(alpha = 0.5f))
             ) {
                 Column(
                     modifier = Modifier

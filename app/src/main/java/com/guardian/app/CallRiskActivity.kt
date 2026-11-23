@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HeadsetMic
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
@@ -597,6 +599,35 @@ private fun CallRiskScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Experimental Gate Banner
+        item {
+            Surface(
+                color = GxWarningSoft,
+                shape = GxShapeMd,
+                border = BorderStroke(1.dp, GxWarning.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        androidx.compose.material.icons.Icons.Default.Info,
+                        contentDescription = "Experimental",
+                        tint = GxWarning,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        "EXPERIMENTAL — Requires compatible calling backend & physical device verification. Disconnected calls do not perform active speech surveillance.",
+                        color = GxTextHi,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                }
+            }
+        }
+
         // Overlay Header: Caller ID + Live Pulsing Monitor
         item {
             GxCard(
@@ -623,7 +654,7 @@ private fun CallRiskScreen(
                         }
 
                         GxChip(
-                            text = if (isAgoraMode) "⚡ AGORA RTC" else "🎙️ BHASHINI DUAL-AI",
+                            text = if (isAgoraMode) "⚡ AGORA RTC (EXP)" else "🎙️ LOCAL ASR (EXP)",
                             variant = GxChipVariant.Brand
                         )
                     }
