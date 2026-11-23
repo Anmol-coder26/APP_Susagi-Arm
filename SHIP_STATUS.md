@@ -1,4 +1,4 @@
-# SuSagi Guardian V2 — Shipping Status (Directive 55: AI Activation)
+# SuSagi Guardian V2 — Shipping Status (Directive 56: Real Voice Intelligence)
 
 | Work Item | Priority | Status | Entry Point / Component | Verification / Commit |
 |:---|:---:|:---:|:---|:---|
@@ -12,11 +12,11 @@
 | 4: Generative AI Assistant | P0 | READY | `SuSagiAssistantScreen`, `ConversationManager` | Native cancellation, resetContext, Category G prompt injection test |
 | 5: Model Manager & Matrix | P0 | READY | `ModelManagerScreen`, `PackState` | 8-state machine, in-app phone provisioning authorization |
 | 5B: SuSagi AI Health Check | P0 | READY | `SuSagiAiDiagnosticsScreen`, `DiagnosticsRunner` | 10-step native self-test, redacted export, error codes |
-| 6: Voice Safety Shield | P0 | READY | `VoiceClipScannerScreen`, `AudioRecord` | PCM->WAV->native Whisper STT (zero cloud API) |
+| 6: Voice Safety Shield | P0 | READY | `VoiceClipScannerScreen`, `AudioRecord` | Auto-pipeline: Mic->PCM->WAV->Whisper STT->Auto-Analysis, calibrated risk bands |
 | 7: Calling Protection | P1 | EXP | `CallRiskActivity`, `VoipCallActivity` | Honesty gate: --:-- timer, experimental banner |
-| 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 293/293 tests passed (47 suites, 0 failures) |
+| 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 299/299 tests passed (48 suites, 0 failures) |
 
-- **Current Branch / HEAD:** `feature/gravity-product-calling` (`6d5b429`)
-- **Debug APK SHA-256:** `515DD4AA730FE873B9D8EA4F50D501E3B689C631B278CE7E9AD4A23B428785EC`
-- **Debug APK Size:** 137,989,074 bytes (131.60 MB)
+- **Current Branch / HEAD:** `feature/gravity-product-calling` (`179d954`)
+- **Debug APK SHA-256:** `07CA8DF1C604CC60E7EAA37857EB6880025269698260778EC9F6AE5F5F3780BC`
+- **Debug APK Size:** 137,989,529 bytes (131.60 MB)
 - **Phase 1 Archive Integrity:** `D:\SUSAGI_PS3_CANDIDATES` and `GOLDEN_BACKUP` preserved bit-for-bit.
