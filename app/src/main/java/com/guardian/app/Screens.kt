@@ -39,10 +39,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
@@ -639,7 +641,24 @@ fun HomeScreen(
     var showApkRiskScreen by remember { mutableStateOf(false) }
     var showVoiceClipScreen by remember { mutableStateOf(false) }
     var showOfflineDemoScreen by remember { mutableStateOf(false) }
+    var showAssistantScreen by remember { mutableStateOf(false) }
+    var showModelManagerScreen by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
+
+    if (showAssistantScreen) {
+        com.susagi.ui.assistant.SuSagiAssistantScreen(
+            onBack = { showAssistantScreen = false },
+            onOpenModelManager = { showModelManagerScreen = true }
+        )
+        return
+    }
+
+    if (showModelManagerScreen) {
+        com.susagi.edgeai.ModelManagerScreen(
+            onBack = { showModelManagerScreen = false }
+        )
+        return
+    }
 
     if (showOfflineDemoScreen) {
         com.susagi.ui.demo.OfflineDemoScreen(
@@ -886,6 +905,122 @@ fun HomeScreen(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+                    }
+                }
+            }
+        }
+
+        // ----------------------------------------------------
+        // Prominent SuSagi AI Assistant Card
+        // ----------------------------------------------------
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showAssistantScreen = true },
+                shape = GxShapeLg,
+                colors = CardDefaults.cardColors(containerColor = GxSurface),
+                border = BorderStroke(1.dp, GxPrimary.copy(alpha = 0.35f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = GxPrimary.copy(alpha = 0.12f),
+                                shape = GxShapeSm,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = GxPrimary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "SuSagi AI Assistant",
+                                    color = GxTextHi,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Conversational threat explainer & safety advisor",
+                                    color = GxTextLo,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = GxSafeSoft,
+                            shape = GxShapePill,
+                            border = BorderStroke(0.5.dp, GxSafe.copy(alpha = 0.4f))
+                        ) {
+                            Text(
+                                "LOCAL AI",
+                                color = GxSafe,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        "Ask questions about suspicious SMS, analyze digital arrest claims, or verify if a UPI collect request is safe in real time.",
+                        color = GxTextMid,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { showAssistantScreen = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GxPrimary,
+                                contentColor = Color.White
+                            ),
+                            shape = GxShapeSm,
+                            modifier = Modifier
+                                .weight(1.4f)
+                                .height(40.dp)
+                        ) {
+                            Icon(Icons.Default.Psychology, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Open Assistant", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { showModelManagerScreen = true },
+                            border = BorderStroke(1.dp, GxBorder),
+                            shape = GxShapeSm,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                        ) {
+                            Icon(Icons.Default.Extension, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text("AI Packs", fontSize = 12.sp, color = GxTextHi, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }

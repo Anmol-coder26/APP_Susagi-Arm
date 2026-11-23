@@ -101,6 +101,22 @@ object AstraSecurityBridge : SecurityAssessmentContract {
             if (single.isNotBlank()) listOf(single) else emptyList()
         }
 
+        // Fast-path for educational / advisory / technical research content:
+        // Never allow harmless technical discussions to trigger false alarms.
+        if (com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(text) && astra.risk == Risk.LOW) {
+            return@withContext MessageSecurityDecision(
+                rawText = text,
+                sender = sender,
+                riskScore = 10,
+                status = RiskStatus.Low,
+                threatCategory = "Educational / Security Advisory",
+                matchedKeywords = emptyList(),
+                detectedTactics = listOf("educational_advisory"),
+                guidance = "This content discusses cybersecurity concepts, analysis, or defensive guidance rather than an active attack.",
+                extractedUrls = extractedUrls
+            )
+        }
+
         var highestLangScore = 0
         val allMatchedKeywords = mutableListOf<String>()
         val allCategories = mutableListOf<String>()

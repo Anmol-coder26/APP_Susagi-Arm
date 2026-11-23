@@ -127,4 +127,36 @@ class SemanticAnalyzerTest {
         assertFalse(report.engines.pretextLegitimacy.detected)
         assertFalse(report.engines.intentRisk.detected)
     }
+
+    @Test
+    fun testKeywordScorer_HarmlessTechnicalContent_ReceivesLowRisk() {
+        // Harmless technical advisory containing security keywords (vulnerability, advisory, protect against, money transfer)
+        val technicalAdvisory = "Security researchers found a new vulnerability in banking apps. In this advisory, we analyze threat reports and provide guidelines on how to avoid phishing and protect against unauthorized money transfer."
+        val report = KeywordScorer.score(technicalAdvisory)
+
+        assertEquals(RiskStatus.Low, report.status)
+        assertTrue("Risk score must be <= 15 on educational content but was ${report.riskScore}", report.riskScore <= 15)
+        assertFalse(report.engines.pretextLegitimacy.detected)
+    }
+
+    @Test
+    fun testKeywordScorer_EducationalAdvisoryWithPoliceMention_ReceivesLowRisk() {
+        // Educational awareness mentioning digital arrest, police, CBI, OTP
+        val awarenessArticle = "Cybersecurity training and scam awareness: Learn how to identify digital arrest scams where fraudsters pose as police or CBI officers asking for OTP. Always report incidents to 1930."
+        val report = KeywordScorer.score(awarenessArticle)
+
+        assertEquals(RiskStatus.Low, report.status)
+        assertTrue("Risk score must be <= 15 on awareness article but was ${report.riskScore}", report.riskScore <= 15)
+        assertFalse(report.engines.pretextLegitimacy.detected)
+    }
+
+    @Test
+    fun testKeywordScorer_HindiEducationalTips_ReceivesLowRisk() {
+        // Hindi cyber safety tips
+        val hindiAdvisory = "साइबर सुरक्षा टिप्स: धोखाधड़ी से कैसे बचें और बैंक से जुड़े सुरक्षा उपाय क्या हैं।"
+        val report = KeywordScorer.score(hindiAdvisory)
+
+        assertEquals(RiskStatus.Low, report.status)
+        assertTrue("Hindi educational advice must receive low risk but was ${report.riskScore}", report.riskScore <= 15)
+    }
 }

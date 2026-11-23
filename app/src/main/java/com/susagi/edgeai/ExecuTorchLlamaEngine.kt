@@ -236,6 +236,21 @@ class ExecuTorchLlamaEngine(
      * Operates completely offline with zero latency overhead.
      */
     private fun executeLocalHeuristicIntelligence(input: ThreatInput, startTime: Long): InferenceResult {
+        if (com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(input.rawContent)) {
+            return InferenceResult(
+                threatType = "educational_cybersecurity_content",
+                riskScore = 10,
+                severity = "LOW",
+                detectedTactics = listOf("educational_advisory"),
+                evidence = emptyList(),
+                explanation = "This input describes security analysis, research, or protective guidelines rather than an active attack execution.",
+                recommendedActions = listOf("Informational content. No defensive action required."),
+                analysisSource = "EDUCATIONAL_RULE_SHIELD",
+                inferenceLatencyMs = System.currentTimeMillis() - startTime,
+                tokensPerSecond = 0f
+            )
+        }
+
         val lower = input.rawContent.lowercase()
         val tactics = mutableListOf<String>()
         val actions = mutableListOf<String>()
@@ -295,7 +310,7 @@ class ExecuTorchLlamaEngine(
                 val hasParcelScam = rawParcel && (lower.contains("customs") || lower.contains("held") || lower.contains("duty") || lower.contains("fee") || lower.contains("unpaid") || lower.contains("seizure") || lower.contains("penalty") || lower.contains("http"))
 
                 if (hasArrest) {
-                    score = 95
+                    score = 88
                     threatType = "digital_arrest_extortion"
                     tactics.addAll(listOf("authority_impersonation", "psychological_intimidation", "forced_isolation"))
                     explanation = "This message uses fake law enforcement, police, or court claims to intimidate you into compliance ('Digital Arrest'). Real police officers never arrest people via video call or demand money."
@@ -303,7 +318,7 @@ class ExecuTorchLlamaEngine(
                     actions.add("Dial national cybercrime helpline 1930 or report on cybercrime.gov.in.")
                     actions.add("Inform family members or trusted contacts immediately.")
                 } else if (hasKyc) {
-                    score = 90
+                    score = 85
                     threatType = "fake_kyc_banking_fraud"
                     tactics.addAll(listOf("financial_impersonation", "urgency_manipulation"))
                     explanation = "This message falsely claims your bank account or PAN card is blocked to trick you into visiting a phishing site or calling a scammer."
@@ -346,7 +361,7 @@ class ExecuTorchLlamaEngine(
                 val hasUrgency = lower.contains("immediately") || lower.contains("disconnect") || lower.contains("urgent") || lower.contains("तुरंत")
 
                 if (hasPolice && (hasMoney || hasUrgency)) {
-                    score = 95
+                    score = 88
                     threatType = "digital_arrest_coercion"
                     tactics.addAll(listOf("authority_impersonation", "financial_coercion", "isolation_tactic"))
                     explanation = "The caller is impersonating cybercrime police or law enforcement, alleging criminal warrants and coercing immediate monetary transfer or secret compliance."

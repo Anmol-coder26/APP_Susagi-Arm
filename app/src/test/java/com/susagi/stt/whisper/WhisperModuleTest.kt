@@ -138,4 +138,75 @@ class WhisperModuleTest {
 
         controller.close()
     }
+
+    @Test
+    fun testAudioProcessor_zeroOrInvalidSampleRateGuards() {
+        val processor = WhisperAudioProcessor(tempDir = testTempDir)
+        val pcm = ByteArray(3200) { 1 }
+
+        // Sample rate 0 or negative must not throw or divide-by-zero
+        val wavZeroRate = processor.writeWavFile(pcm, sampleRate = 0, channels = 0)
+        assertTrue(wavZeroRate.exists())
+        assertEquals(3200L + 44L, wavZeroRate.length())
+
+        val bytes = wavZeroRate.readBytes()
+        val sampleRate = ByteBuffer.wrap(bytes, 24, 4).order(ByteOrder.LITTLE_ENDIAN).int
+        assertEquals("Zero sample rate must safely default to 16000", 16000, sampleRate)
+
+        val channels = ByteBuffer.wrap(bytes, 22, 2).order(ByteOrder.LITTLE_ENDIAN).short
+        assertEquals("Zero channels must safely default to 1", 1.toShort(), channels)
+        wavZeroRate.delete()
+    }
+
+    @Test
+    fun testAudioProcessor_speechTurnSegmentationAndSilenceHangover() {
+        val processor = WhisperAudioProcessor(
+            tempDir = testTempDir,
+            vadThresholdRms = 100.0,
+            minTurnBytes = 16_000, // 500ms
+            silenceHangoverFrames = 3
+        )
+
+        // Generate synthetic voice PCM (RMS ~ 500)
+        val voiceChunk = ByteBuffer.allocate(3200).order(ByteOrder.LITTLE_ENDIAN).apply {
+            for (i in 0 until 1600) putShort(if (i % 2 == 0) 500.toShort() else (-500).toShort())
+        }.array()
+
+        // Generate silence PCM (RMS = 0)
+        val silenceChunk = ByteArray(3200) { 0 }
+
+        // Feed 6 frames of voice audio (19,200 bytes > minTurnBytes)
+        for (i in 0 until 6) {
+            val intermediate = processor.processPcmChunk(voiceChunk)
+            // While speech is ongoing, no segment should flush
+            org.junit.Assert.assertNull(intermediate)
+        }
+
+        // Feed 1st and 2nd silence frames (below hangover threshold of 3)
+        org.junit.Assert.assertNull(processor.processPcmChunk(silenceChunk))
+        org.junit.Assert.assertNull(processor.processPcmChunk(silenceChunk))
+
+        // 3rd silence frame reaches hangover limit -> flushes WAV segment
+        val flushedSegment = processor.processPcmChunk(silenceChunk)
+        assertNotNull("Speech segment must flush upon silence hangover", flushedSegment)
+        assertTrue(flushedSegment!!.exists())
+        assertTrue(flushedSegment.length() > 16_000L)
+        flushedSegment.delete()
+    }
+
+    @Test
+    fun testAudioProcessor_oddBytePcmAlignmentGuard() {
+        val processor = WhisperAudioProcessor(tempDir = testTempDir)
+
+        // Odd number of bytes: 3199 bytes
+        val oddPcm = ByteArray(3199) { 2 }
+        val rms = processor.calculateRms(oddPcm)
+        assertTrue(rms >= 0.0)
+
+        // Writing odd-length PCM must align to 16-bit even boundary (3198 + 44 = 3242)
+        val wav = processor.writeWavFile(oddPcm)
+        assertTrue(wav.exists())
+        assertEquals(3198L + 44L, wav.length())
+        wav.delete()
+    }
 }

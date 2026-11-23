@@ -254,6 +254,21 @@ object KeywordScorer {
         }
 
         val lower = transcript.lowercase(Locale.ROOT)
+
+        // 1. Check for educational, advisory, or technical research content
+        if (com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(transcript)) {
+            return RiskReport(
+                riskScore = 5,
+                engines = EngineReports(),
+                explanationEn = "Text contains educational or technical cybersecurity references rather than an active attack.",
+                explanationHi = "टेक्स्ट में सक्रिय हमले के बजाय शैक्षिक या तकनीकी साइबर सुरक्षा संदर्भ शामिल हैं।",
+                highlightedPhrases = emptyList(),
+                isOffline = true,
+                latencyMs = 5L,
+                source = "offline"
+            )
+        }
+
         var totalScore = 0
         val detectedHits = mutableListOf<String>()
 
@@ -263,8 +278,6 @@ object KeywordScorer {
                 detectedHits.add(kw)
             }
         }
-
-        val cappedScore = totalScore.coerceIn(0, 98)
 
         // Identify Cognitive Vectors
         val isPolice = lower.contains("police") || lower.contains("cbi") || lower.contains("arrest") || lower.contains("digital arrest") || lower.contains("पुलिस")
@@ -296,6 +309,15 @@ object KeywordScorer {
             hasFear -> "fear"
             hasUrgency -> "urgency"
             else -> "none"
+        }
+
+        val hasAttackDirective = com.susagi.intelligence.EducationalContentDetector.hasActionableAttackDirective(transcript)
+
+        // Calibrated risk bounding: keywords alone without imperative demand cannot exceed LOW band (<= 25)
+        val cappedScore = if (!hasAttackDirective && intentAction == "none" && pressureTactic == "none") {
+            totalScore.coerceIn(0, 25)
+        } else {
+            totalScore.coerceIn(0, 88)
         }
 
         val zeroShotName = when {

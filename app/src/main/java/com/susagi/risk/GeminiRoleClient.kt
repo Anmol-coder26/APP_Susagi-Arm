@@ -280,6 +280,19 @@ class GeminiRoleClient(
         isFallback: Boolean = false,
         failureReason: String = ""
     ): RiskResult {
+        if (com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(transcript)) {
+            return RiskResult(
+                riskScore = 5,
+                victimRole = "none",
+                scammerRole = "none",
+                roleConfidence = 0.95,
+                tactics = listOf("educational_advisory"),
+                explanation = "[On-Device Shield] Educational or technical cybersecurity analysis detected.",
+                source = "LOCAL_HEURISTIC",
+                analyzedAtMs = System.currentTimeMillis()
+            )
+        }
+
         val lower = transcript.lowercase()
 
         // Keywords indicating caller authority impersonation & extortion
@@ -330,7 +343,12 @@ class GeminiRoleClient(
             detectedTactics.add("financial_coercion")
         }
 
-        val finalScore = scamScore.coerceIn(0, 95)
+        val hasActionable = com.susagi.intelligence.EducationalContentDetector.hasActionableAttackDirective(textToCheck)
+        val finalScore = if (!hasActionable && foundScamWords.size < 2 && foundFinancialWords.isEmpty()) {
+            scamScore.coerceIn(0, 25)
+        } else {
+            scamScore.coerceIn(0, 88)
+        }
 
         val (scammer, victim, confidence, explanation) = when {
             finalScore >= 60 -> {

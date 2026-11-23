@@ -82,24 +82,36 @@ fun GxRiskRing(
             }
         }
 
+        val qualitativeBand = when {
+            riskScore >= 70 -> "HIGH"
+            riskScore >= 40 -> "REVIEW"
+            else -> "LOW"
+        }
+
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${animatedScore.toInt()}%",
-                color = GxTextHi,
-                fontSize = if (size >= 120.dp) 30.sp else 20.sp,
+                text = qualitativeBand,
+                color = animatedColor,
+                fontSize = if (size >= 120.dp) 24.sp else 16.sp,
                 fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.SansSerif
+            )
+            Text(
+                text = "${animatedScore.toInt()}/100",
+                color = GxTextLo,
+                fontSize = if (size >= 120.dp) 12.sp else 10.sp,
                 fontFamily = FontFamily.Monospace
             )
             if (showLabel && size >= 120.dp) {
                 Text(
                     text = when {
-                        riskScore >= 70 -> "HIGH RISK"
-                        riskScore >= 40 -> "CAUTION"
-                        else -> "NORMAL"
+                        riskScore >= 70 -> "THREAT DETECTED"
+                        riskScore >= 40 -> "NEEDS CAUTION"
+                        else -> "SAFE / NORMAL"
                     },
-                    color = animatedColor,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
+                    color = animatedColor.copy(alpha = 0.85f),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp
                 )
             }

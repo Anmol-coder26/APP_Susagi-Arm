@@ -178,8 +178,21 @@ object RegionalScamKeywords {
         transcript: String,
         language: String
     ): Int {
+        if (com.susagi.intelligence.EducationalContentDetector.isEducationalOrAnalysis(transcript)) {
+            return 5
+        }
         val matches = match(transcript, language)
-        return matches.sumOf { it.weight }.coerceAtMost(98)
+        if (matches.isEmpty()) return 0
+
+        val hasActionableDirective = com.susagi.intelligence.EducationalContentDetector.hasActionableAttackDirective(transcript)
+        val hasHighRiskCategory = matches.any { it.category == "otp_request" || it.category == "authority_impersonation" || it.category == "money_transfer" }
+
+        val rawScore = matches.sumOf { it.weight }
+        return if (!hasActionableDirective && !hasHighRiskCategory) {
+            rawScore.coerceAtMost(25)
+        } else {
+            rawScore.coerceAtMost(88)
+        }
     }
 
     fun categories(
