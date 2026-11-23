@@ -118,6 +118,14 @@ fun OfflineDemoScreen(
             expectedOutcome = "LOW (Verified clean, 0 False Positives)"
         ),
         DemoScenario(
+            id = "demo_benign_dev_prompt",
+            title = "Demo C2: Benign cybersecurity engineering prompt",
+            description = "Lengthy developer instructions discussing OTP theft, digital arrest, and UPI fraud. Demonstrates false-positive resistance (0% false alarm).",
+            inputSnippet = "# MASTER DIRECTIVE: OPERATION CYBERSECURITY APP\nWe are engineering an Android application for the Arm AI-SoC Bharat Challenge PS3. The pipeline analyzes OTP theft, phishing URLs, digital arrest extortion schemes, and UPI traps. Verify with unit tests.",
+            channel = "MESSAGE",
+            expectedOutcome = "LOW (Educational / Security Advisory, 0% False Alarm)"
+        ),
+        DemoScenario(
             id = "demo_d_multi_link",
             title = "Demo D: Multi-link phishing inspection",
             description = "Message containing multiple links: authentic bank portal alongside malicious APK download trap.",
