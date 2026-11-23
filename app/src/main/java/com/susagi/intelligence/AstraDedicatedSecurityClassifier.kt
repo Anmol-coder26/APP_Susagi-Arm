@@ -112,8 +112,13 @@ object AstraDedicatedSecurityClassifier {
                 lower.contains("fine") || lower.contains("fee") || lower.contains("रुपये") || lower.contains("पैसे") ||
                 lower.contains("upi://") || lower.contains("collect request")
 
+        val hasDigitalArrest = lower.contains("digital arrest") || lower.contains("डिजिटल अरेस्ट") ||
+                (hasPolice && (lower.contains("arrest") || lower.contains("गिरफ्तार") || lower.contains("अरेस्ट")))
+
         // 6. Requested Action
         val requestedAction = when {
+            hasDigitalArrest ->
+                "Remain in unlawful isolation / video confinement under false digital arrest"
             hasOtp && (lower.contains("share") || lower.contains("tell") || lower.contains("send") || lower.contains("बताओ")) ->
                 "Disclose confidential OTP or authentication credential"
             lower.contains("upi pin") || (lower.contains("collect") && lower.contains("receive")) ->
@@ -147,6 +152,9 @@ object AstraDedicatedSecurityClassifier {
         val isAstraReview = barrier.risk == Risk.REVIEW
 
         val (score, status, category) = when {
+            hasDigitalArrest -> {
+                Triple(88, "CONFIRMED_HIGH", "Digital Arrest Law Enforcement Extortion")
+            }
             isAstraHigh || (coercionIndicators.isNotEmpty() && (hasPayment || hasOtp || hasAttackDirective)) -> {
                 val cat = when {
                     hasPolice -> "Digital Arrest Law Enforcement Extortion"

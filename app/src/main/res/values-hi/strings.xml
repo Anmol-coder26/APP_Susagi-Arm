@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">गार्डियन</string>
+    <string name="app_name">सुसागी गार्डियन V2</string>
     <string name="accessibility_description">गार्डियन व्हाट्सएप, एसएमएस और ब्राउज़र में क्लिक किए गए लिंक को फ़िशिंग, फर्जी बैंक पोर्टल और मैलवेयर के लिए खुलने से पहले जांचता है।</string>
     <string name="secure_call">सुरक्षित कॉल</string>
     <string name="end_call">कॉल समाप्त करें</string>

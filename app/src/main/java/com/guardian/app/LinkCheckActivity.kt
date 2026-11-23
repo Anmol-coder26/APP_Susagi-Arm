@@ -272,6 +272,10 @@ class LinkCheckActivity : ComponentActivity() {
     private fun processIntent(incomingIntent: Intent?) {
         // Anti-recursion check: prevent recursive intent bouncing if SuSagi opened an external browser
         if (incomingIntent?.getBooleanExtra(EXTRA_PROCESSED_BY_GUARDIAN, false) == true) {
+            val url = extractUrlFromIntent(incomingIntent)
+            if (url.isNotBlank()) {
+                startActivity(com.susagi.browser.SafeBrowsingActivity.createIntent(this, url))
+            }
             finish()
             return
         }
@@ -365,6 +369,10 @@ class LinkCheckActivity : ComponentActivity() {
                             llamaFailureReason = llamaFailureReason.value,
                             onInvokeLlama = {
                                 triggerLlamaExplanation(currentAssessment)
+                            },
+                            onOpenInSafeBrowser = { urlToOpen ->
+                                startActivity(com.susagi.browser.SafeBrowsingActivity.createIntent(this@LinkCheckActivity, urlToOpen))
+                                finish()
                             },
                             onProceedToUrl = { urlToOpen ->
                                 // Guard against stale callbacks: Verify destination belongs to active assessment
@@ -470,14 +478,11 @@ class LinkCheckActivity : ComponentActivity() {
             }
         }
 
-        // Fallback browser chooser
+        // If no external browser is available or launch failed, fall back safely to SuSagi Safe Browser
         try {
-            val chooser = Intent.createChooser(browserIntent, "Open destination with safe browser").apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            startActivity(chooser)
+            startActivity(com.susagi.browser.SafeBrowsingActivity.createIntent(this, url))
         } catch (e: Exception) {
-            Log.e(TAG, "Cannot launch browser chooser: ${e.message}")
+            Log.e(TAG, "Cannot launch safe browser fallback: ${e.message}")
         }
     }
 
@@ -1245,6 +1250,7 @@ fun UnifiedSecurityDialog(
     llamaNativeOutput: String? = null,
     llamaFailureReason: String? = null,
     onInvokeLlama: () -> Unit = {},
+    onOpenInSafeBrowser: (String) -> Unit = {},
     onProceedToUrl: (String) -> Unit,
     onDismiss: () -> Unit,
     onCopyReport: () -> Unit,
@@ -1775,10 +1781,33 @@ fun UnifiedSecurityDialog(
                 }
             }
 
-            // Secondary Unsafe Action with Explicit Confirmation Step
+            // Destination Actions (Safe Browsing vs External Browser)
             if (assessment.evaluatedUrls.isNotEmpty()) {
                 val chosenUrl = assessment.evaluatedUrls.getOrNull(selectedUrlIndex)?.url ?: assessment.evaluatedUrls.first().url
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
+
+                // Primary Action: In-App Sandboxed Safe Browser
+                Button(
+                    onClick = { onOpenInSafeBrowser(chosenUrl) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (assessment.status == RiskStatus.Low) GxSafe else GxPrimary,
+                        contentColor = Color.White
+                    ),
+                    shape = GxShapeSm,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                ) {
+                    Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (assessment.status == RiskStatus.Low) "Open in SuSagi Safe Browser" else "Open in Sandboxed Safe Browser",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
 
                 if (!showNavigationConfirmation) {
                     OutlinedButton(
@@ -1787,13 +1816,13 @@ fun UnifiedSecurityDialog(
                         shape = GxShapeSm,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(36.dp)
+                            .height(34.dp)
                     ) {
-                        Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = GxTextLo, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = GxTextMid, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "Proceed to Selected Destination (Unsafe)",
-                            color = GxTextLo,
+                            "Open in External Browser...",
+                            color = GxTextMid,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Normal
                         )

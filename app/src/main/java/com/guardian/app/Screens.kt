@@ -693,12 +693,9 @@ fun HomeScreen(
             onBack = { showLinkBarrierScreen = false },
             onOpenUrl = { url ->
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    ctx.startActivity(intent)
+                    ctx.startActivity(com.susagi.browser.SafeBrowsingActivity.createIntent(ctx, url))
                 } catch (e: Exception) {
-                    android.widget.Toast.makeText(ctx, "No compatible browser found to open link", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(ctx, "Could not open safe browser: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -1020,6 +1017,176 @@ fun HomeScreen(
                             Icon(Icons.Default.Extension, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(5.dp))
                             Text("AI Packs", fontSize = 12.sp, color = GxTextHi, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // ----------------------------------------------------
+        // Default Browser & Safe Browsing Hub Card (Directive 37 Part C)
+        // ----------------------------------------------------
+        item {
+            val isDefaultBrowser = remember { com.susagi.browser.BrowserRoleManager.isDefaultBrowser(ctx) }
+            var showRoutingDetails by remember { mutableStateOf(false) }
+
+            val browserRoleLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.StartActivityForResult()
+            ) {
+                // Re-evaluate on return
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = GxShapeLg,
+                colors = CardDefaults.cardColors(containerColor = GxSurface),
+                border = BorderStroke(1.dp, if (isDefaultBrowser) GxSafe.copy(alpha = 0.4f) else GxWarning.copy(alpha = 0.4f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                color = (if (isDefaultBrowser) GxSafe else GxWarning).copy(alpha = 0.12f),
+                                shape = GxShapeSm,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Language,
+                                        contentDescription = null,
+                                        tint = if (isDefaultBrowser) GxSafe else GxWarning,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "Default Browser & Link Shield",
+                                    color = GxTextHi,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    if (isDefaultBrowser) "SuSagi intercepts clicked links before loading" else "Set as default browser for auto-intercept",
+                                    color = GxTextLo,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Surface(
+                            color = if (isDefaultBrowser) GxSafeSoft else GxWarningSoft,
+                            shape = GxShapePill,
+                            border = BorderStroke(0.5.dp, if (isDefaultBrowser) GxSafe else GxWarning)
+                        ) {
+                            Text(
+                                if (isDefaultBrowser) "ACTIVE ROLE" else "NOT DEFAULT",
+                                color = if (isDefaultBrowser) GxSafe else GxWarning,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        if (isDefaultBrowser)
+                            "External links clicked in WhatsApp, SMS, or emails open SuSagi's Zero-Trust Link Shield first. Permitted navigation loads safely in the sandboxed browser."
+                        else
+                            "To protect you from phishing and fake bank portals, set SuSagi Guardian V2 as your default browser so clicked links are intercepted offline.",
+                        color = GxTextMid,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!isDefaultBrowser) {
+                            val activity = ctx as? android.app.Activity
+                            Button(
+                                onClick = {
+                                    if (activity != null) {
+                                        com.susagi.browser.BrowserRoleManager.requestDefaultBrowserRole(activity, browserRoleLauncher)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GxPrimary,
+                                    contentColor = Color.White
+                                ),
+                                shape = GxShapeSm,
+                                modifier = Modifier.weight(1.3f).height(40.dp)
+                            ) {
+                                Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Set Default Browser", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                ctx.startActivity(com.susagi.browser.SafeBrowsingActivity.createIntent(ctx, "https://duckduckgo.com"))
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isDefaultBrowser) GxSafe else GxSurfaceAlt,
+                                contentColor = if (isDefaultBrowser) Color.White else GxTextHi
+                            ),
+                            shape = GxShapeSm,
+                            border = if (!isDefaultBrowser) BorderStroke(1.dp, GxBorder) else null,
+                            modifier = Modifier.weight(1f).height(40.dp)
+                        ) {
+                            Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Safe Browser", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Expander for App Links vs Browser Routing Explanation
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showRoutingDetails = !showRoutingDetails }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (showRoutingDetails) "Hide Routing & App Link Info ▲" else "How Link Interception & App Links Work ▼",
+                            color = GxPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (showRoutingDetails) {
+                        Surface(
+                            color = GxSurfaceAlt,
+                            shape = GxShapeSm,
+                            border = BorderStroke(0.5.dp, GxBorder),
+                            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                        ) {
+                            Text(
+                                text = com.susagi.browser.BrowserRoleManager.getPlatformRoutingExplanation(),
+                                color = GxTextMid,
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
+                                modifier = Modifier.padding(10.dp)
+                            )
                         }
                     }
                 }

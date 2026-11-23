@@ -246,34 +246,15 @@ fun SuSagiAssistantScreen(
                     }
                 }
             } else {
-                // Deterministic Security Guidance Mode (Ground truth SafetyBarrier & Semantic Intelligence)
-                delay(120) // Natural cadence
+                // Deterministic Security Guidance Mode (Truthful, immediate, no fake token delays)
                 val response = generateDeterministicGuidance(trimmed, lastEvaluatedThreatContext)
                 if (response.threatCategory != null) {
                     lastEvaluatedThreatContext = "${response.threatCategory}: ${response.text}"
                 }
 
-                // Stream response smoothly
-                val words = response.text.split(" ")
-                val accumulated = StringBuilder()
-                for (i in words.indices) {
-                    accumulated.append(words[i]).append(" ")
-                    val index = messages.indexOfFirst { it.id == assistantMsgId }
-                    if (index != -1) {
-                        messages[index] = messages[index].copy(
-                            text = accumulated.toString().trim(),
-                            threatCategory = response.threatCategory,
-                            riskBand = response.riskBand,
-                            suggestedActions = response.suggestedActions,
-                            evidence = response.evidence
-                        )
-                    }
-                    delay(15)
-                }
-
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
-                    messages[finalIndex] = messages[finalIndex].copy(isStreaming = false)
+                    messages[finalIndex] = response.copy(id = assistantMsgId, isStreaming = false)
                 }
             }
 
@@ -847,12 +828,13 @@ internal suspend fun generateDeterministicGuidance(query: String, context: Strin
         )
     }
 
-    // 5. Evaluate an explicit input text using SafetyBarrier and KeywordScorer
+    // 5. Evaluate with Astra Dedicated Security Classifier & SafetyBarrier
+    val finding = com.susagi.intelligence.AstraDedicatedSecurityClassifier.classify(query)
     val barrier = SafetyBarrier.analyze(null, query)
     val keywordReport = KeywordScorer.score(query)
 
-    val isScam = barrier.risk == Risk.HIGH || keywordReport.riskScore >= 60
-    val isCaution = barrier.risk == Risk.REVIEW || keywordReport.riskScore in 30..59
+    val isScam = finding.confidenceStatus == "CONFIRMED_HIGH" || barrier.risk == Risk.HIGH || keywordReport.riskScore >= 60
+    val isCaution = finding.confidenceStatus == "CAUTION_REVIEW" || barrier.risk == Risk.REVIEW || keywordReport.riskScore in 30..59
 
     val band = when {
         isScam -> "HIGH"
@@ -861,16 +843,44 @@ internal suspend fun generateDeterministicGuidance(query: String, context: Strin
     }
 
     val explanation = when {
-        isScam -> "🚨 Potential Threat Detected!\n\n" +
-                "This message exhibits characteristics of social engineering fraud:\n" +
-                "• Category: ${keywordReport.engines.zeroShotVariant.variantName}\n" +
-                "• Deceptive Intent: ${keywordReport.engines.intentRisk.summary}\n" +
-                "• Pressure Tactic: ${keywordReport.engines.psychologicalPressure.summary}\n\n" +
-                "Safety Recommendation: Do NOT click links, do NOT dial phone numbers listed in the message, and do NOT send money or OTPs."
-        isCaution -> "⚠️ Caution Advised.\n\n" +
-                "This message contains keywords that are sometimes used in phishing or coercive communication. While no definitive fraud directive was confirmed, verify the sender independently before proceeding."
+        isScam -> buildString {
+            appendLine("🚨 High Risk Cybersecurity Threat Detected!")
+            appendLine()
+            appendLine("• Category: ${finding.threatCategory}")
+            if (finding.claimedAuthority != "None" && finding.claimedAuthority != "Unverified Senders") {
+                appendLine("• Claimed Authority: ${finding.claimedAuthority}")
+            }
+            if (finding.coercionIndicators.isNotEmpty()) {
+                appendLine("• Coercion Tactics: ${finding.coercionIndicators.joinToString("; ")}")
+            }
+            appendLine("• Requested Action: ${finding.requestedAction}")
+            if (finding.credentialRequest) {
+                appendLine("• Credential Demand: Flagged (Requests sensitive OTP/PIN/Password)")
+            }
+            if (finding.paymentRequest) {
+                appendLine("• Payment Demand: Flagged (Urgent monetary transfer requested)")
+            }
+            appendLine()
+            appendLine("🛡️ What You Must Avoid:")
+            appendLine("1. DO NOT transfer funds or approve UPI collect requests.")
+            appendLine("2. DO NOT disclose OTPs, card numbers, or passwords.")
+            appendLine("3. DO NOT install remote desktop apps (AnyDesk, TeamViewer).")
+            appendLine()
+            appendLine("📞 Safe Next Steps: Disconnect immediately. File a complaint by dialing 1930 (National Cybercrime Reporting Helpline) or report at cybercrime.gov.in.")
+        }
+        isCaution -> buildString {
+            appendLine("⚠️ Caution Advised: Needs Review")
+            appendLine()
+            appendLine("This message contains keywords often used in high-pressure solicitations or unverified alerts.")
+            if (finding.coercionIndicators.isNotEmpty()) {
+                appendLine("• Noted signals: ${finding.coercionIndicators.joinToString("; ")}")
+            }
+            appendLine("• Action Requested: ${finding.requestedAction}")
+            appendLine()
+            appendLine("Recommendation: Verify the sender through official channels before sharing information or taking action.")
+        }
         else -> "✅ Analysis Complete: No Active Threats Identified.\n\n" +
-                "This input does not match known digital arrest, electricity cutoff, fake KYC, or UPI collect trap patterns. However, always exercise caution with unexpected communication."
+                "This input does not match known digital arrest, electricity cutoff, fake KYC, or UPI collect trap patterns. However, always verify unexpected senders before taking action."
     }
 
     val actions = when {
@@ -879,12 +889,14 @@ internal suspend fun generateDeterministicGuidance(query: String, context: Strin
         else -> listOf("Check another message", "What to avoid sharing", "Is UPI PIN safe?")
     }
 
+    val combinedEvidence = (finding.evidence + barrier.evidence.map { it.id.explanation } + keywordReport.highlightedPhrases).distinct()
+
     return AssistantMessage(
         isUser = false,
         text = explanation,
-        threatCategory = if (isScam) keywordReport.engines.zeroShotVariant.variantName else null,
+        threatCategory = if (isScam) finding.threatCategory else null,
         riskBand = band,
-        evidence = barrier.evidence.map { it.id.explanation }.ifEmpty { keywordReport.highlightedPhrases },
+        evidence = combinedEvidence.ifEmpty { listOf("No anomalous indicators detected") },
         suggestedActions = actions
     )
 }
