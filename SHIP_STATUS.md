@@ -11,10 +11,10 @@
 | 2G: V2 Branding & Identity | P0 | READY | Adaptive cyber shield icon, `SuSagi Guardian V2` label | Vector foreground, background, monochrome |
 | 3: Dedicated Security AI | P0 | READY | `SecurityModel`, `AstraDedicatedSecurityClassifier` | Structured finding contract, 266 tests |
 | 4: SuSagi AI Assistant | P0 | READY | `SuSagiAssistantScreen`, `ModelManagerScreen` | Dual-mode guidance, 4 modular packs |
-| 5: Voice & Call Shields | P1 | READY (VoIP EXP) | `VoiceClipScannerScreen`, `CallRiskActivity`, `VoipCallActivity` | Whisper audio pipeline ready; VoIP experimental |
-| 6: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 266/266 tests passed, 0 failures |
+| 5: Voice & Call Shields | P1 | READY (VoIP EXP) | `VoiceClipScannerScreen`, `CallRiskActivity`, `VoipCallActivity` | Explicit state machine, Agora diagnostics, demo segregated |
+| 6: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 267/267 tests passed, 0 failures |
 
-- **Current HEAD:** `5717b75` | **Branch:** `feature/gravity-product-calling`
-- **Debug APK SHA-256:** `22C0032B84D96D558C1A0C7351CFCFCD36C755A396C02922E6F25A84247A01EF`
-- **Debug APK Size:** 137,816,130 bytes (`app-debug.apk`)
+- **Current HEAD:** `1974e71` | **Branch:** `feature/gravity-product-calling`
+- **Debug APK SHA-256:** `365B76FEB49E4A5D3CFC38DF9DDD933EEC7F298F0D0F4BEF36C76C62E919F4B5`
+- **Debug APK Size:** 137,816,132 bytes (`app-debug.apk`)
 - **Blockers:** USB debugging / ADB execution and model weights download to laptop strictly blocked per user safety policy.
