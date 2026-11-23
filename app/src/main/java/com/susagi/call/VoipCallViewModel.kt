@@ -7,6 +7,7 @@ import com.guardian.app.BuildConfig
 import com.guardian.app.voip.CallDiagnostics
 import com.guardian.app.voip.DiagnosticEntry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,16 +61,18 @@ class VoipCallViewModel @JvmOverloads constructor(
         agoraAppId = agoraAppId,
         geminiApiKey = geminiApiKey,
         bhashiniEndpointUrl = bhashiniEndpointUrl,
-        bhashiniAuthToken = bhashiniAuthToken
+        bhashiniAuthToken = bhashiniAuthToken,
+        enableAiPipeline = true
     )
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(2, TimeUnit.SECONDS)
-        .readTimeout(3, TimeUnit.SECONDS)
+        .connectTimeout(1, TimeUnit.SECONDS)
+        .readTimeout(1, TimeUnit.SECONDS)
         .build()
     private val rawTranscriptLines = mutableListOf<TranscriptLine>()
     private var peerNumber: String = ""
     private var familyAlertSent: Boolean = false
+    private var simulationJob: Job? = null
 
     private val _uiState = MutableStateFlow(VoipUiState())
     val uiState: StateFlow<VoipUiState> = _uiState.asStateFlow()
@@ -248,9 +251,87 @@ class VoipCallViewModel @JvmOverloads constructor(
     }
 
     fun endCall() {
+        stopSimulation()
         familyAlertSent = false
         manager.endCall()
-        _uiState.value = _uiState.value.copy(isCallActive = false)
+        _uiState.value = _uiState.value.copy(isCallActive = false, isConnected = false)
+    }
+
+    fun simulateScamCall() {
+        simulationJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            isConnected = true,
+            isCallActive = true,
+            connectionBanner = "SIMULATION ACTIVE: Demonstrating real-time VoIP extortion defense"
+        )
+        viewModelScope.launch {
+            val script = listOf(
+                Pair(Speaker.REMOTE, "This is Officer Rathore from CBI Cyber Crime Cell Mumbai."),
+                Pair(Speaker.LOCAL, "Hello? Officer, why are you calling me?"),
+                Pair(Speaker.REMOTE, "A parcel shipped in your name to Cambodia containing illegal narcotics was seized at customs."),
+                Pair(Speaker.LOCAL, "I never sent any parcel, this must be a mistake!"),
+                Pair(Speaker.REMOTE, "Your Aadhaar number is linked. A non-bailable arrest warrant has been issued. You are placed under digital arrest right now."),
+                Pair(Speaker.LOCAL, "Sir please help me, I am innocent, what should I do?"),
+                Pair(Speaker.REMOTE, "Do not disconnect this line. Transfer Rs 45,000 verification clearance fee to RBI Treasury account or police will arrive at your home in 30 minutes.")
+            )
+
+            rawTranscriptLines.clear()
+            for ((speaker, text) in script) {
+                kotlinx.coroutines.delay(1600)
+                rawTranscriptLines.add(TranscriptLine(speaker, text, isFinal = true))
+                val currentRisk = when (rawTranscriptLines.size) {
+                    1 -> 25
+                    2 -> 25
+                    3 -> 55
+                    4 -> 55
+                    5 -> 78
+                    6 -> 78
+                    7 -> 92
+                    else -> _uiState.value.riskScore
+                }
+                val tactics = mutableListOf<String>()
+                if (rawTranscriptLines.size >= 1) tactics.add("Authority Impersonation (CBI / Police)")
+                if (rawTranscriptLines.size >= 3) tactics.add("Illegal Parcel Narcotics Pretext")
+                if (rawTranscriptLines.size >= 5) tactics.add("Digital Arrest & Isolation")
+                if (rawTranscriptLines.size >= 7) tactics.add("Urgent Treasury Verification Fee Extortion")
+
+                _uiState.value = _uiState.value.copy(
+                    riskScore = currentRisk,
+                    victimRole = "You",
+                    scammerRole = "Caller (Flagged)",
+                    roleConfidence = 0.94f,
+                    topSignals = tactics,
+                    psychologicalPressure = if (currentRisk >= 75) "Digital Arrest & Police Seclusion" else null,
+                    pills = DiagnosticsPillsState(
+                        rtcJoined = PillStatus.GREEN,
+                        peerPresent = PillStatus.GREEN,
+                        localPcmFlowing = PillStatus.GREEN,
+                        remotePcmFlowing = PillStatus.GREEN,
+                        sttLocalStatus = PillStatus.GREEN,
+                        sttRemoteStatus = PillStatus.GREEN
+                    )
+                )
+                rebuildTranscriptUi()
+
+                if (currentRisk >= 75 && !familyAlertSent) {
+                    familyAlertSent = true
+                    sendFamilyAlert(
+                        riskScore = currentRisk,
+                        callerNumber = peerNumber.ifBlank { "+91 98765 43210 (Scam Simulation)" },
+                        scamType = "Digital Arrest Extortion",
+                        transcriptSummary = text
+                    )
+                }
+            }
+        }
+    }
+
+    fun stopSimulation() {
+        simulationJob?.cancel()
+        simulationJob = null
+        _uiState.value = _uiState.value.copy(
+            connectionBanner = if (_uiState.value.isConnected) null else "Call connection standby"
+        )
     }
 
     private fun sendFamilyAlert(

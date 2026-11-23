@@ -84,6 +84,8 @@ class VoipCallActivity : ComponentActivity() {
                     uiState = uiState,
                     onToggleMute = { viewModel.toggleMute() },
                     onToggleSpeaker = { viewModel.toggleSpeakerphone() },
+                    onSimulateScam = { viewModel.simulateScamCall() },
+                    onStopSimulation = { viewModel.stopSimulation() },
                     onEndCall = {
                         endVoipCall()
                         finish()

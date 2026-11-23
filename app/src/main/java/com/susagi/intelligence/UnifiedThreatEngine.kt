@@ -184,7 +184,8 @@ class UnifiedThreatEngine(
             structuredEvidence = evidenceList
         )
 
-        return llamaEngine.analyzeThreat(input)
+        val barrierAssessment = SafetyBarrier.analyzeMessage(trimmed)
+        return llamaEngine.analyzeThreat(input).withBarrier(barrierAssessment)
     }
 
     /**

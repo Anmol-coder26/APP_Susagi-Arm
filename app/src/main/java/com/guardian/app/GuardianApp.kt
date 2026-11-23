@@ -79,6 +79,7 @@ data class GuardianState(
 @Composable
 fun GuardianApp(
     onOpenCallRisk: () -> Unit = {},
+    onOpenVoipCall: () -> Unit = {},
     onOpenQrScanner: () -> Unit = {},
     onPhoneProtectionToggle: (Boolean) -> Unit = {},
     onMessageProtectionToggle: (Boolean) -> Unit = {}
@@ -196,6 +197,7 @@ fun GuardianApp(
                         state = state,
                         contentPadding = contentPadding,
                         onOpenCallRisk = onOpenCallRisk,
+                        onOpenVoipCall = onOpenVoipCall,
                         onOpenQrScanner = onOpenQrScanner,
                         onOpenCallHistory = { showCallHistory = true },
                         onProtectionChange = { enabled ->

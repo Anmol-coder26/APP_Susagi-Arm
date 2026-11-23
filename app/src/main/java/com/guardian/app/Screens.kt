@@ -622,6 +622,7 @@ fun HomeScreen(
     onOpenCallRisk: () -> Unit,
     onOpenQrScanner: () -> Unit = {},
     onOpenCallHistory: () -> Unit = {},
+    onOpenVoipCall: () -> Unit = {},
     onProtectionChange: (Boolean) -> Unit,
     onAddIncident: (GuardianIncident) -> Unit
 ) {
@@ -1057,11 +1058,22 @@ fun HomeScreen(
         item {
             FeatureCardItem(
                 title = "Live Call Speaker Guard",
-                subtitle = "Continuous 16kHz Bhashini STT + Gemini reasoning with tone & TTS warning",
+                subtitle = "Continuous 16kHz microphone speech recognition & live scam threat reasoning",
                 icon = Icons.Default.PhoneInTalk,
                 accentColor = GxPrimary,
                 statusBadge = "MONITORING",
                 onClick = onOpenCallRisk
+            )
+        }
+
+        item {
+            FeatureCardItem(
+                title = "Secure Two-Way VoIP Calling",
+                subtitle = "Encrypted Agora room-code calling with live scam radar and interactive test simulation",
+                icon = Icons.Default.Phone,
+                accentColor = GxPrimary,
+                statusBadge = "E2EE READY",
+                onClick = onOpenVoipCall
             )
         }
 

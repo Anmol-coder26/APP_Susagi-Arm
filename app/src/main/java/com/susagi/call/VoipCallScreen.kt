@@ -50,8 +50,10 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneInTalk
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -120,6 +122,8 @@ fun VoipCallScreen(
     uiState: VoipUiState,
     onToggleMute: () -> Unit = {},
     onToggleSpeaker: () -> Unit = {},
+    onSimulateScam: () -> Unit = {},
+    onStopSimulation: () -> Unit = {},
     onEndCall: () -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -394,6 +398,37 @@ fun VoipCallScreen(
                             }
                         }
                     }
+
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (uiState.connectionBanner?.contains("SIMULATION") == true) {
+                            OutlinedButton(
+                                onClick = onStopSimulation,
+                                shape = GxShapeSm,
+                                border = BorderStroke(1.dp, GxDanger),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(14.dp), tint = GxDanger)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Stop Simulation", fontSize = 11.sp, color = GxDanger, fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = onSimulateScam,
+                                shape = GxShapeSm,
+                                border = BorderStroke(1.dp, GxPrimary),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp), tint = GxPrimary)
+                                Spacer(Modifier.width(4.dp))
+                                Text("Simulate Scammer Voice Stream", fontSize = 11.sp, color = GxPrimary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -492,6 +527,17 @@ fun VoipCallScreen(
                             modifier = Modifier.widthIn(max = 280.dp),
                             lineHeight = 16.sp
                         )
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = onSimulateScam,
+                            colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
+                            shape = GxShapeSm,
+                            modifier = Modifier.height(40.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Simulate Scammer Voice Call", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             } else {

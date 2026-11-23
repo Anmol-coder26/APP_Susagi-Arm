@@ -66,6 +66,9 @@ class MainActivity : ComponentActivity() {
             GuardianTheme {
                 GuardianApp(
                     onOpenCallRisk = {
+                        startActivity(Intent(this, com.guardian.app.CallRiskActivity::class.java))
+                    },
+                    onOpenVoipCall = {
                         startActivity(Intent(this, com.guardian.app.voip.RoomCodeActivity::class.java))
                     },
                     onOpenQrScanner = {
