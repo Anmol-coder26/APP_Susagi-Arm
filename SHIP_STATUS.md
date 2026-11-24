@@ -17,6 +17,6 @@
 | 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 315/315 tests passed (50 suites, 0 failures) |
 
 - **Current Branch / HEAD:** `feature/gravity-product-calling` (`b566b68`)
-- **Debug APK SHA-256:** `301B7C1E3D82F37D4625B5C2763D0E6C8170F53011047D401AFA603B4E7FA40E`
+- **Debug APK SHA-256:** `7EBF38B21BEE75771A6A6710CAF57A520009673B7102F02CF39BC0528DE22BA9`
 - **Debug APK Size:** 137,989,587 bytes (131.60 MB)
 - **Phase 1 Archive Integrity:** `D:\SUSAGI_PS3_CANDIDATES` and `GOLDEN_BACKUP` preserved bit-for-bit.

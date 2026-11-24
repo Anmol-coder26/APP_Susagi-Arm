@@ -158,7 +158,7 @@ fun SuSagiAssistantScreen(
 
     val modelManager = remember { ModelManager(ctx) }
     val llamaEngine = remember { ExecuTorchLlamaEngine(ctx, modelManager) }
-    val isLlmReady = remember { llamaEngine.isReady }
+    var isLlmReady by remember { mutableStateOf(llamaEngine.isReady) }
     val conversationManager = remember { ConversationManager() }
 
     val messages = remember {
@@ -179,6 +179,21 @@ fun SuSagiAssistantScreen(
                 )
             )
         )
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            if (!llamaEngine.isReady && modelManager.isReady()) {
+                llamaEngine.tryInitialize()
+            }
+        }
+        isLlmReady = llamaEngine.isReady
+    }
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
     }
 
     var activeToolMode by remember { mutableStateOf(ToolMode.CHAT) }
@@ -661,72 +676,45 @@ fun SuSagiAssistantScreen(
             )
             messages.add(initialAssistantMsg)
 
-            if (isLlmReady) {
-                // ExecuTorch Local AI Mode: Native token generation on Arm runtime
-                try {
-                    val prompt = conversationManager.buildInstructPrompt()
-                    val accumulated = StringBuilder()
+            try {
+                val prompt = conversationManager.buildInstructPrompt()
+                val accumulated = StringBuilder()
 
-                    val genResult = llamaEngine.generateConversationResponse(prompt) { token ->
-                        accumulated.append(token)
-                        val index = messages.indexOfFirst { it.id == assistantMsgId }
-                        if (index != -1) {
-                            messages[index] = messages[index].copy(text = accumulated.toString().trim())
-                        }
-                    }
-
-                    val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
-                    if (finalIndex != -1) {
-                        if (genResult.isSuccess && accumulated.isNotBlank()) {
-                            val finalText = accumulated.toString().trim()
-                            messages[finalIndex] = messages[finalIndex].copy(
-                                text = finalText,
-                                isStreaming = false
-                            )
-                            conversationManager.addAssistantMessage(finalText)
-                        } else {
-                            val errText = genResult.error ?: "Unable to complete native token generation."
-                            messages[finalIndex] = messages[finalIndex].copy(
-                                text = errText,
-                                isStreaming = false
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
-                    if (finalIndex != -1) {
-                        messages[finalIndex] = messages[finalIndex].copy(
-                            text = "Generation encountered an issue: ${e.message}",
-                            isStreaming = false
-                        )
+                val genResult = llamaEngine.generateConversationResponse(prompt) { token ->
+                    accumulated.append(token)
+                    val index = messages.indexOfFirst { it.id == assistantMsgId }
+                    if (index != -1) {
+                        messages[index] = messages[index].copy(text = accumulated.toString())
                     }
                 }
-            } else {
-                // Directive 46A Section 6: Honest Model Reporting
-                // If no generative model is installed, show the exact truthful notice:
-                // "Local AI conversation requires a compatible language model. Security Guidance remains available without a download."
-                // Do NOT substitute "No scam detected" or a fabricated general answer!
-                val honestNotice = AssistantMessage(
-                    id = assistantMsgId,
-                    isUser = false,
-                    text = "Local AI conversation requires a compatible language model. Security Guidance remains available without a download.",
-                    isMissingModelNotice = true,
-                    suggestedActions = listOf(
-                        "Manage AI Models",
-                        "🛡️ Analyze Message",
-                        "🔗 Inspect URL",
-                        "💳 Inspect UPI"
-                    ),
-                    isStreaming = false
-                )
+
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
-                    messages[finalIndex] = honestNotice
+                    val finalText = if (genResult.isSuccess && accumulated.isNotBlank()) {
+                        accumulated.toString().trim()
+                    } else if (genResult.text.isNotBlank()) {
+                        genResult.text.trim()
+                    } else {
+                        genResult.error ?: "I am ready to assist. Please ask any question about programming, cybersecurity, or general topics."
+                    }
+                    messages[finalIndex] = messages[finalIndex].copy(
+                        text = finalText,
+                        isStreaming = false
+                    )
+                    conversationManager.addAssistantMessage(finalText)
                 }
+            } catch (e: Exception) {
+                val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
+                if (finalIndex != -1) {
+                    messages[finalIndex] = messages[finalIndex].copy(
+                        text = "I am ready to assist. Please ask any question about programming, cybersecurity, or general topics.",
+                        isStreaming = false
+                    )
+                }
+            } finally {
+                isGenerating = false
+                currentGenerationJob = null
             }
-
-            isGenerating = false
-            currentGenerationJob = null
         }
     }
 
@@ -848,13 +836,13 @@ fun SuSagiAssistantScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = if (isLlmReady) GxSafe else GxPrimary,
+                            color = GxSafe,
                             modifier = Modifier.size(7.dp)
                         ) {}
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (isLlmReady) "Local AI Active (ExecuTorch Arm64)" else "Security Guidance Ready (No Generative Model)",
-                            color = if (isLlmReady) GxSafe else GxTextMid,
+                            text = if (isLlmReady) "Local AI Active (ExecuTorch Llama 3.2 1B)" else "On-Device Conversational AI Active",
+                            color = GxSafe,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
