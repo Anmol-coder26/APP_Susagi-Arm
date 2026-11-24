@@ -2,16 +2,20 @@
 
 > **On-Device Real-Time Cyber & Scam Defense Platform for Android**
 
+[![Direct APK Download](https://img.shields.io/badge/Download%20APK-v2.0%20Latest-success?style=for-the-badge&logo=android)](https://gofile.io/d/rzFD5zrP)
+[![Filebin Mirror](https://img.shields.io/badge/Direct%20Mirror-Filebin-blue?style=for-the-badge&logo=android)](https://filebin.net/susagi-v2-latest/susagi-guardian-v2.apk)
+
 ---
 
-### 📥 Direct Pre-built APK Download
+### 📥 Direct Pre-built APK Downloads
 
-Anyone on any device or network can download and test the latest Android APK directly:
+Download and test the latest production Android APK directly on any Android device:
 
-* **Direct Download Link:** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
+* **Primary Download Link (GoFile):** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
+* **Alternative Direct Mirror (Filebin):** [https://filebin.net/susagi-v2-latest/susagi-guardian-v2.apk](https://filebin.net/susagi-v2-latest/susagi-guardian-v2.apk)
 * **File Name:** `susagi-guardian-v2.apk`
 * **File Size:** `131.60 MB` (137,989,585 bytes)
-* **APK SHA-256:** `7EBF38B21BEE75771A6A6710CAF57A520009673B7102F02CF39BC0528DE22BA9`
+* **APK SHA-256:** `028E77B94FB45FEE1E6E82048DB10F1075D4429FD2A1A8D1830F096C7FC21CC9`
 
 ---
 
