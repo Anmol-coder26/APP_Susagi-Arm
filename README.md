@@ -3,7 +3,7 @@
 > **On-Device Real-Time Cyber & Scam Defense Platform for Android**
 
 [![Direct APK Download](https://img.shields.io/badge/Download%20APK-v2.0%20Latest-success?style=for-the-badge&logo=android)](https://gofile.io/d/rzFD5zrP)
-[![Filebin Mirror](https://img.shields.io/badge/Direct%20Mirror-Filebin-blue?style=for-the-badge&logo=android)](https://filebin.net/susagi-v2-latest/susagi-guardian-v2.apk)
+[![GitHub Release](https://img.shields.io/badge/GitHub-Release%20v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/Anmol-coder26/APP_Susagi-Arm/releases/tag/v2.0.0-release)
 
 ---
 
@@ -11,8 +11,9 @@
 
 Download and test the latest production Android APK directly on any Android device:
 
-* **Primary Download Link (GoFile):** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
-* **Alternative Direct Mirror (Filebin):** [https://filebin.net/susagi-v2-latest/susagi-guardian-v2.apk](https://filebin.net/susagi-v2-latest/susagi-guardian-v2.apk)
+* **Direct Cloud Download (Any Network / 4G / Wi-Fi):** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
+* **Local LAN High-Speed Download (Wi-Fi):** `http://192.168.29.62:8080/susagi-guardian-v2.apk`
+* **GitHub Release Tag:** [v2.0.0-release](https://github.com/Anmol-coder26/APP_Susagi-Arm/releases/tag/v2.0.0-release)
 * **File Name:** `susagi-guardian-v2.apk`
 * **File Size:** `131.60 MB` (137,989,585 bytes)
 * **APK SHA-256:** `028E77B94FB45FEE1E6E82048DB10F1075D4429FD2A1A8D1830F096C7FC21CC9`
