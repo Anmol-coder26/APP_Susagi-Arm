@@ -1,54 +1,41 @@
-# SuSagi Guardian V2 — Release Manifest & Build Inventory
-**Project:** SuSagi Guardian V2 (PS3 On-Device Threat, Phishing & Scam Detection)  
-**Author & Contributor:** Anmol Singh (`Anmol-coder26`)  
+# SuSagi Guardian V2 — Release Manifest & Build Specification
+**Project:** SuSagi Guardian V2 (Problem Statement PS3: On-Device Threat, Phishing & Scam Detection)  
+**Lead Contributor:** Anmol Singh (`Anmol-coder26`)  
 **Build Date:** 24 November 2026
 
 ---
 
-## 1. Primary Artifact Inventory
+## 1. Verified Binary Specification
 
-| Item | Details |
-| :--- | :--- |
-| **Package Name** | `com.guardian.app` |
-| **Application Name** | SuSagi Guardian V2 |
-| **Build Variant** | `debug` (pre-configured for challenge evaluation and testing) |
-| **Release Artifact** | `susagi-guardian-v2.apk` |
-| **Artifact Byte Size** | 137,989,585 bytes (131.60 MB) |
-| **SHA-256 Checksum** | `028E77B94FB45FEE1E6E82048DB10F1075D4429FD2A1A8D1830F096C7FC21CC9` |
-| **Min SDK** | 28 (Android 9.0 Pie) |
-| **Target / Compile SDK**| 34 (Android 14) |
-| **Source Commit SHA** | `5058a609b139477cf3ca39f97674e7d95cac9656` |
-| **Git Release Tag** | `v2.0.0-final-release` |
-
----
-
-## 2. Packaged Native Libraries & ABIs
-
-The APK contains pre-compiled native runtimes targeting ARM64 mobile hardware:
-
-* `lib/arm64-v8a/libexecutorch.so` (ExecuTorch Core Runtime with Arm NEON optimizations)
-* `lib/arm64-v8a/libextension_data_loader.so` (ExecuTorch Memory-Mapped Asset Loader)
-* `lib/arm64-v8a/libagora-rtc-sdk.so` (Real-Time Communication engine for VoIP audio capture)
+| Metadata Field | Value | Verification Source |
+| :--- | :--- | :--- |
+| **Application ID** | `com.susagi.guardian2` | `app/build.gradle.kts` |
+| **Namespace** | `com.guardian.app` | `app/build.gradle.kts` |
+| **Version Code** | `3` | `app/build.gradle.kts` |
+| **Version Name** | `3.0.0` | `app/build.gradle.kts` |
+| **Min SDK** | `26` (Android 8.0 Oreo) | `app/build.gradle.kts` |
+| **Target SDK** | `35` (Android 15) | `app/build.gradle.kts` |
+| **Compile SDK** | `35` (Android 15) | `app/build.gradle.kts` |
+| **ExecuTorch Runtime** | `org.pytorch:executorch-android:1.5.1` | `app/build.gradle.kts` |
+| **Native Library (ARM64)** | `lib/arm64-v8a/libexecutorch.so` | Verified inside APK package |
+| **Release Artifact** | `susagi-guardian-v2.apk` | Release candidate build |
+| **Artifact Byte Size** | `137,989,585 bytes` (131.60 MB) | Physical file inspection |
+| **SHA-256 Checksum** | `028E77B94FB45FEE1E6E82048DB10F1075D4429FD2A1A8D1830F096C7FC21CC9` | SHA-256 verification |
+| **Verified Test Count** | **315 tests passed / 0 failures** | Gradle `testDebugUnitTest` |
 
 ---
 
-## 3. Verified Functional Capabilities
+## 2. Public Distribution Mirrors
 
-| Subsystem | Execution Mode | Verification Status | Device Latency |
-| :--- | :--- | :--- | :--- |
-| **Message Shield** | 100% On-Device Heuristic + Regex | Verified on Android 14 Handset | < 3ms |
-| **Link Shield** | 100% On-Device SafeBrowsing + Homoglyph | Verified on Android 14 Handset | < 2ms |
-| **Payment Inspector**| 100% On-Device Reverse-Debit Guard | Verified on Android 14 Handset | < 1ms |
-| **QR Shield** | 100% On-Device ZXing + Payload Analyzer | Verified on Android 14 Handset | < 15ms |
-| **Incident History** | Encrypted Room DB on Handset | Verified on Android 14 Handset | < 5ms |
-| **Voice Scam Radar** | Offline Synthetic Simulation Harness | Verified on Android 14 Handset | Real-time (100ms ticks) |
-| **AI Assistant** | Hybrid: ExecuTorch Llama + On-Device Engine | Verified on Android 14 Handset | Streaming / 150ms |
-| **VoIP Live Calling** | Agora RTC + LAN Token Server (Port 3001) | Experimental (Requires LAN Wi-Fi host) | Network dependent |
+* **Primary Cloud Link:** [https://gofile.io/d/0oZ6NJXm](https://gofile.io/d/0oZ6NJXm)
+* **Secondary Mirror:** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
+* **Source Repository:** [https://github.com/Anmol-coder26/APP_Susagi-Arm](https://github.com/Anmol-coder26/APP_Susagi-Arm)
+* **Git Release Tag:** `v2.0.0-final-release`
 
 ---
 
-## 4. Known Boundaries & Limitations
+## 3. Verified Native Libraries in APK
 
-1. **Live Agora VoIP Calling:** Requires the handset and token server to reside on the same Wi-Fi subnet (`192.168.29.x:3001`). If accessed via 4G cellular data, the integrated `Simulate Scammer Dialogue (Demo)` offline harness must be used.
-2. **Generative LLM Weights:** Native ExecuTorch Llama 3.2 1B execution requires downloading the model weights via the in-app **Manage Models** interface. When weights are unprovisioned, the built-in on-device conversational engine provides instant answers.
-3. **Debug Key Signing:** The APK is signed with the Android development debug key to allow frictionless sideloading on evaluators' test devices without Play Protect blocks.
+* `lib/arm64-v8a/libexecutorch.so` (ExecuTorch Core Runtime with Arm NEON acceleration)
+* `lib/arm64-v8a/libagora-rtc-sdk.so` (Real-Time Communication engine for audio capture)
+* `lib/arm64-v8a/libbarhopper_v3.so` (Google ML Kit Barcode / QR recognition library)
