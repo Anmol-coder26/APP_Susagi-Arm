@@ -8,10 +8,10 @@
 
 Anyone on any device or network can download and test the latest Android APK directly:
 
-* **Direct Download Link:** [https://gofile.io/d/PSEVJeIJ](https://gofile.io/d/PSEVJeIJ)
+* **Direct Download Link:** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
 * **File Name:** `susagi-guardian-v2.apk`
-* **File Size:** `131.60 MB` (137,989,587 bytes)
-* **APK SHA-256:** `301B7C1E3D82F37D4625B5C2763D0E6C8170F53011047D401AFA603B4E7FA40E`
+* **File Size:** `131.60 MB` (137,989,585 bytes)
+* **APK SHA-256:** `7EBF38B21BEE75771A6A6710CAF57A520009673B7102F02CF39BC0528DE22BA9`
 
 ---
 
