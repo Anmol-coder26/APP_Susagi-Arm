@@ -165,12 +165,12 @@ fun SuSagiAssistantScreen(
         mutableStateListOf(
             AssistantMessage(
                 isUser = false,
-                text = "Hello! I am SuSagi AI, your on-device conversational assistant and cybersecurity advisor. " +
-                        "You can ask me open-ended questions across programming, science, mathematics, and writing, " +
-                        "or use specialized security tools below to inspect suspicious messages, links, and UPI requests.",
+                text = "Hello! I am SuSagi AI, your on-device cybersecurity advisor and threat analyst. " +
+                        "Ask me anything about scam detection, suspicious messages, phishing links, payment fraud, or digital safety.",
                 suggestedActions = listOf(
-                    "Explain binary search in Java",
-                    "Explain compound interest",
+                    "🚨 Digital Arrest Scams",
+                    "💳 UPI Reverse-Debit Traps",
+                    "🔗 Identify Phishing Links",
                     "🛡️ Analyze Message",
                     "🔗 Inspect URL",
                     "💳 Inspect UPI",
@@ -797,10 +797,11 @@ fun SuSagiAssistantScreen(
                                 messages.add(
                                     AssistantMessage(
                                         isUser = false,
-                                        text = "Conversation reset. You can ask any open-ended question or use specialized security tools.",
+                                        text = "Session reset. Ask any cybersecurity question or use specialized inspection tools.",
                                         suggestedActions = listOf(
-                                            "Explain binary search in Java",
-                                            "Explain compound interest",
+                                            "🚨 Digital Arrest Scams",
+                                            "💳 UPI Reverse-Debit Traps",
+                                            "🔗 Identify Phishing Links",
                                             "🛡️ Analyze Message",
                                             "🔗 Inspect URL",
                                             "💳 Inspect UPI"
@@ -841,7 +842,7 @@ fun SuSagiAssistantScreen(
                         ) {}
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (isLlmReady) "Local AI Active (ExecuTorch Llama 3.2 1B)" else "On-Device Conversational AI Active",
+                            text = if (isLlmReady) "Local AI Active (ExecuTorch Llama 3.2 1B)" else "SuSagi AI Active (On-Device Intelligence)",
                             color = GxSafe,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
@@ -945,23 +946,23 @@ fun SuSagiAssistantScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Conversational Prompt Chips (Directive 46A Examples)
+            // Conversational Threat Guidance Chips
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                QuickPromptChip("Explain Binary Search in Java") {
-                    submitUserQuery("Explain binary search in Java with a code example and time complexity.")
+                QuickPromptChip("🚨 Digital Arrest Scam") {
+                    submitUserQuery("Explain how Digital Arrest scams operate and how to protect myself.")
                 }
-                QuickPromptChip("Compound Interest") {
-                    submitUserQuery("Explain compound interest with a practical numerical example.")
+                QuickPromptChip("💳 UPI QR Reverse Debit") {
+                    submitUserQuery("How do scammers use UPI QR codes and collect requests to steal money?")
                 }
-                QuickPromptChip("What is Photosynthesis?") {
-                    submitUserQuery("Explain photosynthesis in simple terms.")
+                QuickPromptChip("🔗 Spot Fake Bank Link") {
+                    submitUserQuery("How can I detect fake banking and electricity bill phishing links?")
                 }
-                QuickPromptChip("Draft an Email") {
-                    submitUserQuery("Help me write a professional follow-up email after an interview.")
+                QuickPromptChip("⚖️ What to do if Debited") {
+                    submitUserQuery("What immediate steps should I take if money was fraudulently debited from my account?")
                 }
             }
 
@@ -971,7 +972,7 @@ fun SuSagiAssistantScreen(
             // Bottom Chat Input Bar
             // ----------------------------------------------------
             val inputPlaceholder = when (activeToolMode) {
-                ToolMode.CHAT -> "Ask SuSagi AI anything (e.g. binary search, math, writing)..."
+                ToolMode.CHAT -> "Ask SuSagi AI about scams, threats, or security guidance..."
                 ToolMode.ANALYZE_MESSAGE -> "Paste suspicious SMS or message to inspect with SafetyBarrier..."
                 ToolMode.INSPECT_URL -> "Enter link or URL to inspect (e.g. https://...)..."
                 ToolMode.INSPECT_UPI -> "Enter UPI ID or collect request text to verify..."

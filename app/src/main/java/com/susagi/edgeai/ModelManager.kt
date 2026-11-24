@@ -91,29 +91,80 @@ class ModelManager(
         }
 
     /**
+     * Resolves all candidate directories where model assets might be located.
+     * Includes app-internal storage, device Downloads folder, external files, and adb tmp.
+     */
+    fun getCandidateDirectories(): List<File> {
+        val dirs = mutableListOf<File>()
+        dirs.add(modelsDir)
+
+        // 1. Android public Download directory
+        try {
+            val pubDownload = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            if (pubDownload != null && pubDownload.exists() && pubDownload.canRead()) {
+                dirs.add(pubDownload)
+                dirs.add(File(pubDownload, "llama"))
+                dirs.add(File(pubDownload, "susagi"))
+            }
+        } catch (_: Throwable) {}
+
+        // 2. App-specific external storage
+        try {
+            context?.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)?.let {
+                if (it.exists() && it.canRead()) dirs.add(it)
+            }
+            context?.getExternalFilesDir(null)?.let {
+                if (it.exists() && it.canRead()) {
+                    dirs.add(it)
+                    dirs.add(File(it, "models"))
+                    dirs.add(File(it, "Download"))
+                }
+            }
+        } catch (_: Throwable) {}
+
+        // 3. Well-known Android filesystem locations
+        val wellKnownPaths = listOf(
+            "/sdcard/Download",
+            "/sdcard/Download/llama",
+            "/sdcard/Download/susagi",
+            "/storage/emulated/0/Download",
+            "/storage/emulated/0/Download/llama",
+            "/storage/emulated/0/Download/susagi",
+            "/data/local/tmp/llama"
+        )
+        for (p in wellKnownPaths) {
+            val d = File(p)
+            if (d.exists() && d.canRead() && !dirs.any { it.absolutePath == d.absolutePath }) {
+                dirs.add(d)
+            }
+        }
+        return dirs
+    }
+
+    /**
      * Resolves the active model file by checking known candidates or any valid .pte > 50MB.
      */
     val modelFile: File
         get() {
-            // 1. Check preferred candidates in app-private storage
-            for (name in CANDIDATE_MODEL_NAMES) {
-                val f = File(modelsDir, name)
-                if (f.exists() && f.length() > 50_000_000L) return f
-            }
-            // 2. Check any .pte file in modelsDir
-            val anyPte = modelsDir.listFiles { _, n -> n.endsWith(".pte") }?.firstOrNull { it.length() > 50_000_000L }
-            if (anyPte != null) return anyPte
+            val searchDirs = getCandidateDirectories()
 
-            // 3. Check /data/local/tmp/llama (standard adb push location)
-            val tmpDir = File("/data/local/tmp/llama")
-            if (tmpDir.exists() && tmpDir.canRead()) {
+            // 1. Check preferred candidate names across search directories
+            for (dir in searchDirs) {
                 for (name in CANDIDATE_MODEL_NAMES) {
-                    val f = File(tmpDir, name)
+                    val f = File(dir, name)
                     if (f.exists() && f.length() > 50_000_000L) return f
                 }
             }
 
-            // Default fallback pointer
+            // 2. Check any .pte file > 50MB across search directories
+            for (dir in searchDirs) {
+                try {
+                    val anyPte = dir.listFiles { _, n -> n.endsWith(".pte") }?.firstOrNull { it.length() > 50_000_000L }
+                    if (anyPte != null) return anyPte
+                } catch (_: Throwable) {}
+            }
+
+            // Default fallback pointer in app-private storage
             return File(modelsDir, DEFAULT_MODEL_NAME)
         }
 
@@ -122,23 +173,48 @@ class ModelManager(
      */
     val tokenizerFile: File
         get() {
-            for (name in CANDIDATE_TOKENIZER_NAMES) {
-                val f = File(modelsDir, name)
-                if (f.exists() && f.length() > 1024L) return f
-            }
-            val anyTok = modelsDir.listFiles { _, n -> n.contains("tokenizer") }?.firstOrNull { it.length() > 1024L }
-            if (anyTok != null) return anyTok
+            val searchDirs = getCandidateDirectories()
 
-            val tmpDir = File("/data/local/tmp/llama")
-            if (tmpDir.exists() && tmpDir.canRead()) {
+            // 1. Check preferred candidate names across search directories
+            for (dir in searchDirs) {
                 for (name in CANDIDATE_TOKENIZER_NAMES) {
-                    val f = File(tmpDir, name)
+                    val f = File(dir, name)
                     if (f.exists() && f.length() > 1024L) return f
                 }
             }
 
+            // 2. Check any tokenizer file across search directories
+            for (dir in searchDirs) {
+                try {
+                    val anyTok = dir.listFiles { _, n -> n.contains("tokenizer") }?.firstOrNull { it.length() > 1024L }
+                    if (anyTok != null) return anyTok
+                } catch (_: Throwable) {}
+            }
+
             return File(modelsDir, DEFAULT_TOKENIZER_NAME)
         }
+
+    /**
+     * Copies a user-selected file from a content URI (e.g. from file picker) into modelsDir.
+     */
+    fun importFileFromUri(
+        contentResolver: android.content.ContentResolver,
+        uri: android.net.Uri,
+        targetFilename: String
+    ): Boolean {
+        return try {
+            val target = File(modelsDir, targetFilename)
+            contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            target.exists() && target.length() > 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Error importing file from URI: ${e.message}", e)
+            false
+        }
+    }
 
     fun validateModelAsset(file: File, verifySha256: Boolean = false): ModelValidationResult {
         if (!file.exists() || !file.canRead()) return ModelValidationResult.NotFound

@@ -1,8 +1,11 @@
 package com.susagi.edgeai
 
+import android.net.Uri
 import android.os.Build
 import android.os.StatFs
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -172,6 +175,43 @@ fun ModelManagerScreen(
     var pack4Progress by remember { mutableStateOf(0f) }
     var pack4Ready by remember {
         mutableStateOf(modelManager.isReady())
+    }
+
+    // Pickers for importing model and tokenizer files directly from device storage (e.g. Downloads)
+    val modelPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                Toast.makeText(ctx, "Importing model file into SuSagi...", Toast.LENGTH_SHORT).show()
+                val ok = modelManager.importFromUri(uri, isTokenizer = false)
+                if (ok) {
+                    pack4Ready = modelManager.isReady()
+                    val feedback = if (pack4Ready) "Llama 3.2 1B imported & verified! Ready." else "Model imported. Please also import tokenizer.json if missing."
+                    Toast.makeText(ctx, feedback, Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(ctx, "Failed to import model file.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val tokenizerPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                Toast.makeText(ctx, "Importing tokenizer into SuSagi...", Toast.LENGTH_SHORT).show()
+                val ok = modelManager.importFromUri(uri, isTokenizer = true)
+                if (ok) {
+                    pack4Ready = modelManager.isReady()
+                    val feedback = if (pack4Ready) "Tokenizer verified! Llama 3.2 1B is READY." else "Tokenizer imported successfully."
+                    Toast.makeText(ctx, feedback, Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(ctx, "Failed to import tokenizer.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     var packToDownload by remember { mutableStateOf<CapabilityPack?>(null) }
@@ -354,6 +394,91 @@ fun ModelManagerScreen(
                 selectedScenario = selectedComparisonScenario,
                 onSelectScenario = { selectedComparisonScenario = it }
             )
+        }
+
+        // ----------------------------------------------------
+        // Device Storage & Sideloaded Models Card
+        // ----------------------------------------------------
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = GxShapeMd,
+                colors = CardDefaults.cardColors(containerColor = GxSurface),
+                border = BorderStroke(1.dp, GxBorder)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Device Storage & Sideloaded Models",
+                            color = GxTextHi,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            color = if (pack4Ready) GxSafeSoft else GxSurfaceAlt,
+                            shape = GxShapeSm
+                        ) {
+                            Text(
+                                text = if (pack4Ready) "Llama Ready" else "Model Not Found",
+                                color = if (pack4Ready) GxSafe else GxTextLo,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "If you already downloaded Llama (.pte) or tokenizer.json on your phone (e.g. via browser into Downloads), tap below to re-scan or select them directly.",
+                        color = GxTextLo,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                pack4Ready = modelManager.isReady()
+                                pack2Installed = whisperMgr.isReady()
+                                val msg = if (pack4Ready) "✅ Llama 3.2 1B detected and ready!" else "Model not detected in default directories. Tap 'Import .pte' to select."
+                                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+                            },
+                            shape = GxShapeSm,
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Text("🔄 Re-Scan Storage", fontSize = 11.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                modelPicker.launch("*/*")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
+                            shape = GxShapeSm,
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Text("📂 Import .pte Model", fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedButton(
+                        onClick = {
+                            tokenizerPicker.launch("*/*")
+                        },
+                        shape = GxShapeSm,
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Text("📄 Import tokenizer.json", fontSize = 11.sp)
+                    }
+                }
+            }
         }
 
         // ----------------------------------------------------

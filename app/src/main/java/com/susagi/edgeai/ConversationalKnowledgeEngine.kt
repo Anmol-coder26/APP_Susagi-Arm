@@ -88,18 +88,18 @@ object ConversationalKnowledgeEngine {
 
     private fun buildGreetingResponse(): String {
         return """
-Hello! I am SuSagi AI, your on-device conversational assistant and cybersecurity advisor.
+Hello! I am SuSagi AI, your on-device cybersecurity advisor and digital threat analyst.
 
-I can help you with:
-• **Programming & Computer Science:** Explaining algorithms (like Binary Search in Java, Quicksort), data structures, and debugging code.
-• **Science & Mathematics:** Explaining complex concepts like Compound Interest, Photosynthesis, and Physics principles.
-• **Writing & Productivity:** Drafting professional emails, summarizing notes, and structuring technical content.
-• **Cybersecurity Defense:** Inspecting suspicious messages, identifying phishing URLs, and explaining UPI payment security.
+I provide real-time protection and intelligence on:
+• **Scam & Fraud Analysis:** Digital Arrest scams, fake police/CBI calls, courier/customs seizures, and electricity cut-off threats.
+• **Payment Safety:** UPI reverse-debit traps, deceptive QR code payloads, and collect request manipulation.
+• **Phishing & Malware:** Malicious APK sideload links, credential-harvesting pages, and homoglyph domain spoofing.
+• **Incident Response:** Immediate triage guidance and national cybercrime reporting (Helpline 1930 / cybercrime.gov.in).
 
-What would you like to explore today? You can try asking:
-- *"Explain binary search in Java with a code example"*
-- *"How does compound interest work over 10 years?"*
-- *"Draft a professional sick leave email"*
+How can I assist your digital defense today? You can tap any tool below or ask directly:
+- *"How do scammers use UPI QR codes to steal money?"*
+- *"What should I do if I receive a fake police call?"*
+- *"How can I detect fake banking and electricity bill phishing links?"*
         """.trimIndent()
     }
 
@@ -425,14 +425,14 @@ public class CodeHelper {
         return """
 I am ready to assist you!
 
-As your SuSagi on-device AI assistant, I can help you with:
+As your SuSagi on-device cybersecurity advisor and AI assistant, I can help you with:
 
-1. **Programming & Algorithms:** Binary search, sorting algorithms, recursion, data structures, and code debugging in Java, Python, or Kotlin.
-2. **Mathematics & Science:** Explaining formulas (Compound Interest, Physics laws, Photosynthesis, Prime Numbers).
-3. **Cybersecurity Shield:** Inspecting messages, checking URLs, and explaining UPI payment security.
-4. **Writing:** Drafting professional emails, summarizing notes, and structuring text.
+1. **Threat & Scam Analysis:** Explaining Digital Arrest scams, fake parcel/customs seizures, electricity bill threats, and KYC banking fraud.
+2. **Payment Safety:** Checking UPI collect requests, analyzing QR code payloads, and preventing reverse-debit traps.
+3. **Link & Message Inspection:** Identifying credential-harvesting phishing links, malicious APK sideloads, and deceptive routing.
+4. **Immediate Incident Response:** Step-by-step guidance on reporting fraud to the national 1930 helpline and freezing transactions.
 
-Feel free to ask any specific question!
+Feel free to paste a suspicious message or ask any question!
         """.trimIndent()
     }
 }
