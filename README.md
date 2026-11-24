@@ -1,6 +1,17 @@
-# Guardian AI Defense (FINAL_APP)
+# SuSagi Guardian V2 (Arm AI-SoC Bharat Challenge 2026–27)
 
-Guardian is a real-time scam and fraud protection platform for Android, featuring dual-speaker VoIP audio analysis, Bhashini streaming speech-to-text in 10+ Indian languages, intelligent threat reasoning, zero-trust contact consistency checking, notification/SMS scam interception, and trusted contact alert dispatching.
+> **On-Device Real-Time Cyber & Scam Defense Platform for Android**
+
+---
+
+### 📥 Direct Pre-built APK Download
+
+Anyone on any device or network can download and test the latest Android APK directly:
+
+* **Direct Download Link:** [https://gofile.io/d/PSEVJeIJ](https://gofile.io/d/PSEVJeIJ)
+* **File Name:** `susagi-guardian-v2.apk`
+* **File Size:** `131.60 MB` (137,989,587 bytes)
+* **APK SHA-256:** `301B7C1E3D82F37D4625B5C2763D0E6C8170F53011047D401AFA603B4E7FA40E`
 
 ---
 
