@@ -2,7 +2,7 @@
 
 > **On-Device Real-Time Cyber & Scam Defense Platform for Android**
 
-[![Direct APK Download](https://img.shields.io/badge/Download%20APK-v2.0%20Latest-success?style=for-the-badge&logo=android)](https://gofile.io/d/rzFD5zrP)
+[![Direct APK Download](https://img.shields.io/badge/Download%20APK-v2.0%20Latest-success?style=for-the-badge&logo=android)](https://gofile.io/d/0oZ6NJXm)
 [![GitHub Release](https://img.shields.io/badge/GitHub-Release%20v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/Anmol-coder26/APP_Susagi-Arm/releases/tag/v2.0.0-release)
 
 ---
@@ -11,7 +11,7 @@
 
 Download and test the latest production Android APK directly on any Android device:
 
-* **Direct Cloud Download (Any Network / 4G / Wi-Fi):** [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP)
+* **Direct Cloud Download (Any Network / 4G / Wi-Fi):** [https://gofile.io/d/0oZ6NJXm](https://gofile.io/d/0oZ6NJXm)
 * **Local LAN High-Speed Download (Wi-Fi):** `http://192.168.29.62:8080/susagi-guardian-v2.apk`
 * **GitHub Release Tag:** [v2.0.0-release](https://github.com/Anmol-coder26/APP_Susagi-Arm/releases/tag/v2.0.0-release)
 * **File Name:** `susagi-guardian-v2.apk`
