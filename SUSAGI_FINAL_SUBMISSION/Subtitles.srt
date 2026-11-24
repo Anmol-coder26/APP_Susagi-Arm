@@ -1,0 +1,31 @@
+1
+00:00:01,000 --> 00:00:08,800
+Every suspicious message, unfamiliar link, and deceptive payment request forces someone to make a decision. But recognizing digital fraud is not always easy.
+
+2
+00:00:09,500 --> 00:00:18,500
+Meet SuSagi Guardian, a privacy-conscious cybersecurity assistant designed to help people understand threats and make safer decisions.
+
+3
+00:00:19,200 --> 00:00:38,500
+SuSagi examines not just suspicious keywords, but context, requested actions, and supporting evidence. An unverified prize announcement is fundamentally different from a demand for money or banking credentials.
+
+4
+00:00:39,200 --> 00:00:52,800
+Dedicated security modules examine deceptive URLs, suspicious payment requests, and other digital threat indicators, translating technical findings into understandable protective guidance.
+
+5
+00:00:53,500 --> 00:01:12,500
+Activating compatible local AI models unlocks conversational intelligence and speech understanding. SuSagi uses Llama for contextual explanations and Whisper to transform supported speech into analyzable text.
+
+6
+00:01:13,200 --> 00:01:32,500
+At its core, SuSagi couples a deterministic Contextual Security Engine with Meta's ExecuTorch runtime on Arm64. Messages decompose into structured intent and requested actions, delivering sub-four-millisecond risk evaluation entirely within the local device boundary.
+
+7
+00:01:33,200 --> 00:01:46,800
+SuSagi combines dedicated security logic with an edge AI architecture, prioritizing understandable evidence, responsible risk assessment, and privacy-conscious processing across 318 verified unit tests.
+
+8
+00:01:47,500 --> 00:01:58,000
+SuSagi Guardian is designed to make cybersecurity more accessible, intelligent, and understandable. Think before you click. Know before you trust.

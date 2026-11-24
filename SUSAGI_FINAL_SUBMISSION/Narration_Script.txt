@@ -1,0 +1,33 @@
+================================================================================
+SUSAGI GUARDIAN — MASTER NARRATION SCRIPT
+Author & Contributor: Anmol Singh (Anmol-coder26)
+Duration: 01:54 (114 seconds) | Target: <= 120 seconds
+Tone: Confident, Authoritative, Technical, Measured Pace (~120 WPM)
+================================================================================
+
+[00:00 - 00:09] SCENE 1: THE PROBLEM
+"Every suspicious message, unfamiliar link, and deceptive payment request forces someone to make a decision. But recognizing digital fraud is not always easy."
+
+[00:09 - 00:19] SCENE 2: PRODUCT INTRODUCTION
+"Meet SuSagi Guardian, a privacy-conscious cybersecurity assistant designed to help people understand threats and make safer decisions."
+
+[00:19 - 00:39] SCENE 3: CONTEXTUAL SCAM INTELLIGENCE
+"SuSagi examines not just suspicious keywords, but context, requested actions, and supporting evidence. An unverified prize announcement is fundamentally different from a demand for money or banking credentials."
+
+[00:39 - 00:53] SCENE 4: MULTIPLE PROTECTION CHANNELS
+"Dedicated security modules examine deceptive URLs, suspicious payment requests, and other digital threat indicators, translating technical findings into understandable protective guidance."
+
+[00:53 - 01:13] SCENE 5: THE INTELLIGENCE TRANSFORMATION
+"Activating compatible local AI models unlocks conversational intelligence and speech understanding. SuSagi uses Llama for contextual explanations and Whisper to transform supported speech into analyzable text."
+
+[01:13 - 01:33] SCENE 6: TECHNICAL ARCHITECTURE
+"At its core, SuSagi couples a deterministic Contextual Security Engine with Meta's ExecuTorch runtime on Arm64. Messages decompose into structured intent and requested actions, delivering sub-four-millisecond risk evaluation entirely within the local device boundary."
+
+[01:33 - 01:47] SCENE 7: ENGINEERING & EVALUATION
+"SuSagi combines dedicated security logic with an edge AI architecture, prioritizing understandable evidence, responsible risk assessment, and privacy-conscious processing across 318 verified unit tests."
+
+[01:47 - 02:00] SCENE 8: CLOSING
+"SuSagi Guardian is designed to make cybersecurity more accessible, intelligent, and understandable. Think before you click. Know before you trust."
+
+TAGLINE:
+"SUSAGI GUARDIAN — Intelligent cybersecurity for everyday digital life."

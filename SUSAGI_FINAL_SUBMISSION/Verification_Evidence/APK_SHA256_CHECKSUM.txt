@@ -1,0 +1,5 @@
+E5597FB7DF4A3A7A6439C6BF547409D9268E72394B073A784C0B2236360BCADD  susagi-guardian-v2.apk
+Size: 137,990,789 bytes
+Package: com.susagi
+Commit: 7700248
+Tag: v2.0.0-final-release
