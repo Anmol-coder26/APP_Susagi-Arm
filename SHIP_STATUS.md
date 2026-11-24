@@ -16,7 +16,9 @@
 | 7: Calling Protection | P1 | EXP | `CallRiskActivity`, `VoipCallActivity` | Honesty gate: --:-- timer, experimental banner |
 | 8: Build & Test Artifacts | P0 | READY | `app-debug.apk` | 315/315 tests passed (50 suites, 0 failures) |
 
-- **Current Branch / HEAD:** `main` (`11c7191`)
-- **Debug APK SHA-256:** `D2E9E475F10BEAF20903F5F62FA8B6800333435C8D4AC2BD9CC461330123681D`
-- **Debug APK Size:** 137,989,584 bytes (131.60 MB)
+- **Current Branch / HEAD:** `main` (`9eb3e2e`)
+- **Debug APK SHA-256:** `68C226FA02265C8929D9AE5AA1F37BCCDECCE9C0252831A630AF103EC239CE30`
+- **Debug APK Size:** 137,990,797 bytes (131.60 MB)
+- **Public Mirror (GoFile):** `https://gofile.io/d/rnezehsp`
+- **Lead Contributor:** Anmol Singh (`Anmol-coder26`)
 - **Phase 1 Archive Integrity:** `D:\SUSAGI_PS3_CANDIDATES` and `GOLDEN_BACKUP` preserved bit-for-bit.
