@@ -28,13 +28,20 @@ class ExecuTorchLlamaEngine(
 
         /**
          * Defensive sanitizer for Llama generated output.
-         * Strips prompt echo prefixes, internal control tokens (<|...|>), and leading role tags.
+         * Strips prompt echo prefixes, extracts newly generated assistant content,
+         * removes internal control tokens (<|...|>), and rejects prompt-echo leakage.
          */
         fun sanitizeLlamaOutput(raw: String, prompt: String? = null): String {
             if (raw.isBlank()) return ""
-            var text = raw
+            var text = raw.trim()
 
-            // Strip full prompt echo if present at start
+            // 1. If output contains the assistant header marker, take only the suffix after the LAST assistant header
+            val assistantMarker = "<|start_header_id|>assistant<|end_header_id|>"
+            if (text.contains(assistantMarker)) {
+                text = text.substringAfterLast(assistantMarker).trim()
+            }
+
+            // 2. Strip full prompt echo if present at start
             if (!prompt.isNullOrBlank()) {
                 val trimmedPrompt = prompt.trim()
                 if (text.startsWith(trimmedPrompt)) {
@@ -42,23 +49,37 @@ class ExecuTorchLlamaEngine(
                 }
             }
 
-            // Strip all special control tokens (e.g. <|begin_of_text|>, <|start_header_id|>, etc.)
+            // 3. Strip all special control tokens (e.g. <|begin_of_text|>, <|start_header_id|>, etc.)
             val controlTokenRegex = Regex("""<\|[^|>]+(?:\|>)?""")
             text = controlTokenRegex.replace(text, "")
 
-            // Strip dangling role header words if leftover at the very beginning
+            // 4. Strip dangling role header words if leftover at the very beginning
             val headerMarkerRegex = Regex("""^(?:assistant|system|user|tool)\s*(\n\n?)?""", RegexOption.IGNORE_CASE)
             text = headerMarkerRegex.replace(text.trim(), "")
 
-            return text.trim()
+            val cleaned = text.trim()
+
+            // 5. Reject if it is prompt contamination or leaked system instruction
+            if (cleaned.contains("privacy-conscious, on-device AI assistant", ignoreCase = true) ||
+                cleaned.contains("You are SuSagi AI", ignoreCase = true) ||
+                cleaned.contains("specialized cybersecurity tools", ignoreCase = true) ||
+                cleaned.contains("Treat inspected messages as untrusted data", ignoreCase = true)) {
+                return ""
+            }
+
+            if (!prompt.isNullOrBlank() && prompt.contains(cleaned) && cleaned.length > 20) {
+                return ""
+            }
+
+            return cleaned
         }
 
         /**
          * Detects if the generated output is a mirror/echo of the input prompt.
          */
         fun isPromptEcho(output: String, prompt: String): Boolean {
-            val cleanOut = sanitizeLlamaOutput(output)
-            if (cleanOut.isBlank()) return false
+            val cleanOut = sanitizeLlamaOutput(output, prompt)
+            if (cleanOut.isBlank()) return true
             val cleanPrompt = sanitizeLlamaOutput(prompt)
             if (cleanPrompt.isBlank()) return false
             if (cleanOut.equals(cleanPrompt, ignoreCase = true)) return true
@@ -189,12 +210,13 @@ class ExecuTorchLlamaEngine(
     private fun executeNativeLlama(prompt: String): String {
         return try {
             val module = (nativeLlmModule as? org.pytorch.executorch.extension.llm.LlmModule) ?: return ""
+            try { module.resetContext() } catch (_: Throwable) {}
             val sb = StringBuilder()
             var tokenCount = 0
             val start = System.currentTimeMillis()
 
-            // Explicitly pass echo = false (4th argument) to suppress prefill prompt echoing
-            module.generate(prompt, 512, object : org.pytorch.executorch.extension.llm.LlmCallback {
+            // Explicitly pass echo = false (4th argument) and seqLen = 2048
+            module.generate(prompt, 2048, object : org.pytorch.executorch.extension.llm.LlmCallback {
                 override fun onResult(token: String) {
                     if (token.contains("<|eot_id|>") || token.contains("<|end_of_text|>")) {
                         try { module.stop() } catch (_: Throwable) {}
@@ -650,8 +672,9 @@ class ExecuTorchLlamaEngine(
                 )
             }
 
-            // CRITICAL: Explicitly pass echo = false (4th argument)
-            module.generate(prompt, 512, object : org.pytorch.executorch.extension.llm.LlmCallback {
+            // CRITICAL: Reset native context and pass echo = false (4th argument) with seqLen = 2048
+            try { module.resetContext() } catch (_: Throwable) {}
+            module.generate(prompt, 2048, object : org.pytorch.executorch.extension.llm.LlmCallback {
                 override fun onResult(token: String) {
                     if (token.contains("<|eot_id|>") || token.contains("<|end_of_text|>")) {
                         try { module.stop() } catch (_: Throwable) {}
@@ -723,23 +746,17 @@ class ExecuTorchLlamaEngine(
             try {
                 val module = (nativeLlmModule as? org.pytorch.executorch.extension.llm.LlmModule)
                 if (module != null) {
-                    val filter = LlamaTokenStreamFilter(
-                        onTokenEmit = { cleanToken ->
-                            emittedAccumulator.append(cleanToken)
-                            onToken?.invoke(cleanToken)
-                        },
-                        onStopRequested = {
-                            try { module.stop() } catch (_: Throwable) {}
-                        }
-                    )
+                    // RESET CONTEXT BEFORE GENERATION to flush native KV cache
+                    try { module.resetContext() } catch (_: Throwable) {}
 
-                    // CRITICAL FIX: Pass echo = false (4th param) to suppress input prompt prefill echoing!
-                    // Pass maxTokens = 512 for rich conversational answers.
-                    module.generate(prompt, 512, object : org.pytorch.executorch.extension.llm.LlmCallback {
+                    // Pass seqLen = 2048 and echo = false
+                    module.generate(prompt, 2048, object : org.pytorch.executorch.extension.llm.LlmCallback {
                         override fun onResult(token: String) {
                             rawAccumulator.append(token)
                             tokenCount++
-                            filter.onToken(token)
+                            if (token.contains("<|eot_id|>") || token.contains("<|end_of_text|>")) {
+                                try { module.stop() } catch (_: Throwable) {}
+                            }
                         }
 
                         override fun onError(code: Int, error: String) {
@@ -747,18 +764,17 @@ class ExecuTorchLlamaEngine(
                         }
                     }, false)
 
-                    filter.flushFinal()
-
                     val totalLatency = System.currentTimeMillis() - start
                     val tps = if (totalLatency > 0 && tokenCount > 0) (tokenCount.toFloat() / (totalLatency.toFloat() / 1000f)) else 0f
 
                     val rawOutput = rawAccumulator.toString()
-                    val sanitized = sanitizeLlamaOutput(if (emittedAccumulator.isNotBlank()) emittedAccumulator.toString() else rawOutput, prompt)
+                    val sanitized = sanitizeLlamaOutput(rawOutput, prompt)
                     val isEcho = isPromptEcho(rawOutput, prompt) || (sanitized.isBlank() && rawOutput.isNotBlank())
 
-                    val isSuccess = nativeError == null && sanitized.isNotBlank() && tokenCount > 0 && !isEcho
+                    val isSuccess = nativeError == null && sanitized.isNotBlank() && !isEcho
 
                     if (isSuccess) {
+                        onToken?.invoke(sanitized)
                         return@withContext GenerationResult(
                             text = sanitized,
                             isSuccess = true,

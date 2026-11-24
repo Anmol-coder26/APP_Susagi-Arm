@@ -590,8 +590,8 @@ fun SuSagiAssistantScreen(
                     AssistantMessage(
                         id = assistantMsgId,
                         isUser = false,
-                        text = "",
-                        isStreaming = true
+                        text = "Analyzing on-device...",
+                        isStreaming = false
                     )
                 )
 
@@ -603,23 +603,17 @@ fun SuSagiAssistantScreen(
                             "Report Summary: ${report.text.take(400)}"
                 )
 
-                val accumulated = StringBuilder()
-                val genResult = llamaEngine.generateConversationResponse(prompt) { token ->
-                    accumulated.append(token)
-                    val idx = messages.indexOfFirst { it.id == assistantMsgId }
-                    if (idx != -1) {
-                        messages[idx] = messages[idx].copy(text = accumulated.toString().trim())
-                    }
-                }
+                val genResult = llamaEngine.generateConversationResponse(prompt, onToken = null)
 
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
-                    if (genResult.isSuccess && accumulated.isNotBlank()) {
+                    if (genResult.isSuccess && genResult.text.isNotBlank()) {
+                        val cleanText = genResult.text.trim()
                         messages[finalIndex] = messages[finalIndex].copy(
-                            text = accumulated.toString().trim(),
+                            text = cleanText,
                             isStreaming = false
                         )
-                        conversationManager.addAssistantMessage(accumulated.toString().trim())
+                        conversationManager.addAssistantMessage(cleanText)
                     } else {
                         val fallbackExplanation = "Here is a breakdown of why this was flagged:\n\n" +
                                 "• ${report.evidence.joinToString("\n• ")}\n\n" +
@@ -730,27 +724,21 @@ fun SuSagiAssistantScreen(
             val initialAssistantMsg = AssistantMessage(
                 id = assistantMsgId,
                 isUser = false,
-                text = "",
-                isStreaming = true
+                text = "Thinking...",
+                isStreaming = false
             )
             messages.add(initialAssistantMsg)
 
             try {
                 val prompt = conversationManager.buildInstructPrompt()
-                val accumulated = StringBuilder()
 
-                val genResult = llamaEngine.generateConversationResponse(prompt) { token ->
-                    accumulated.append(token)
-                    val index = messages.indexOfFirst { it.id == assistantMsgId }
-                    if (index != -1) {
-                        messages[index] = messages[index].copy(text = accumulated.toString())
-                    }
-                }
+                // Non-streaming execution: collect output internally to prevent prompt echo leakage
+                val genResult = llamaEngine.generateConversationResponse(prompt, onToken = null)
 
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
-                    if (genResult.isSuccess && accumulated.isNotBlank()) {
-                        val cleanText = accumulated.toString().trim()
+                    if (genResult.isSuccess && genResult.text.isNotBlank()) {
+                        val cleanText = genResult.text.trim()
                         messages[finalIndex] = messages[finalIndex].copy(
                             text = cleanText,
                             isStreaming = false
@@ -837,8 +825,8 @@ fun SuSagiAssistantScreen(
                                 )
                             }
                             Text(
-                                if (isIntelligenceActive) "⚡ On-Device Llama 3.2 1B • Verified Offline Security Reasoning"
-                                else "Deterministic Cybersecurity & Threat Protection (SuSagi Core)",
+                                if (isIntelligenceActive) "⚡ On-Device Llama 3.2 1B • Build D74"
+                                else "General Conversational AI & Cybersecurity Advisor • Build D74",
                                 color = if (isIntelligenceActive) GxSafe else GxTextLo,
                                 fontSize = 11.sp,
                                 fontWeight = if (isIntelligenceActive) FontWeight.Medium else FontWeight.Normal
