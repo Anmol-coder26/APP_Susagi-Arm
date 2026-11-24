@@ -1,8 +1,12 @@
+import os
 import urllib.request
 import urllib.error
 import json
 
-key = "AIzaSyCABJUA9KjCD1apHbnozky9VHfxqywU4EY"
+key = os.getenv("GEMINI_API_KEY", "")
+if not key:
+    print("Notice: GEMINI_API_KEY environment variable not set. Skipping live test.")
+    exit(0)
 url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
 
 try:

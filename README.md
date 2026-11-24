@@ -48,44 +48,26 @@ Watch our two-minute technical demonstration showcasing genuine application inte
 
 ## 3. One Product, Multiple Protection Channels
 
-All screens shown below reflect actual Jetpack Compose UI execution from the installed application on physical ARM64 hardware:
+All visual evidence shown below originates exclusively from verified physical handset execution and authentic architectural specifications:
+
+<div align="center">
 
 <table>
   <tr>
-    <td width="33%" align="center">
-      <b>Home Security Hub</b><br>
-      <i>Real-time shield telemetry, system status, and rapid security tools.</i><br><br>
-      <img src="assets/screenshots/01_home_security_hub.png" width="100%" alt="Home Security Hub">
+    <td width="40%" align="center">
+      <b>Authentic Physical Handset Capture</b><br>
+      <i>Clean system status bar (12:02, VoLTE, 94% battery) • Jetpack Compose UI</i><br><br>
+      <img src="assets/screenshots/02_authentic_handset_assistant.jpg" width="85%" alt="Authentic Handset Assistant">
     </td>
-    <td width="33%" align="center">
-      <b>Link & Sideload Shield</b><br>
-      <i>Phishing URL inspection, homoglyph unmasking, and APK download blocks.</i><br><br>
-      <img src="assets/screenshots/02_link_shield.png" width="100%" alt="Link Shield">
-    </td>
-    <td width="33%" align="center">
-      <b>Voice Defense & Extortion Radar</b><br>
-      <i>Offline CBI digital arrest simulation with live waveform analysis.</i><br><br>
-      <img src="assets/screenshots/03_voip_defense.jpg" width="100%" alt="Voice Defense Radar">
-    </td>
-  </tr>
-  <tr>
-    <td width="33%" align="center">
-      <b>SuSagi AI Assistant</b><br>
-      <i>On-device conversational reasoning, algorithm advice, and safety tools.</i><br><br>
-      <img src="assets/screenshots/04_ai_assistant.jpg" width="100%" alt="SuSagi AI Assistant">
-    </td>
-    <td width="33%" align="center">
-      <b>Reverse-Debit Payment Guard</b><br>
-      <i>Enforces that entering a UPI PIN always debits funds from your bank.</i><br><br>
-      <img src="assets/screenshots/06_qr_card.png" width="100%" alt="Payment Guard">
-    </td>
-    <td width="33%" align="center">
-      <b>Incident Telemetry & Audit Log</b><br>
-      <i>Private, encrypted on-device SQLite storage with automated PII masking.</i><br><br>
-      <img src="assets/screenshots/05_download_qr.png" width="100%" alt="Incident Audit Log">
+    <td width="60%" align="center">
+      <b>Contextual Fraud Detection Pipeline</b><br>
+      <i>Dynamic action extraction differentiating unverified claims from extortion traps</i><br><br>
+      <img src="assets/screenshots/01_contextual_pipeline_showcase.png" width="100%" alt="Contextual Pipeline Showcase">
     </td>
   </tr>
 </table>
+
+</div>
 
 ---
 

@@ -5,7 +5,7 @@
 **Lead Contributor & Author:** Anmol Singh ([@Anmol-coder26](https://github.com/Anmol-coder26))  
 **Repository:** [https://github.com/Anmol-coder26/APP_Susagi-Arm](https://github.com/Anmol-coder26/APP_Susagi-Arm)  
 **Latest Production Release Tag:** [`v2.0.0-final-release`](https://github.com/Anmol-coder26/APP_Susagi-Arm/releases/tag/v2.0.0-final-release)  
-**Verified Source Commit:** [`7700248`](https://github.com/Anmol-coder26/APP_Susagi-Arm/commit/7700248)
+**Verified Source Commit:** [`9da84d5`](https://github.com/Anmol-coder26/APP_Susagi-Arm/commit/9da84d5)
 
 ---
 
@@ -26,9 +26,9 @@
 * **Package ID:** `com.susagi`
 * **Filename:** `susagi-guardian-v2.apk`
 * **Size:** `137,990,789 bytes` (131.6 MB)
-* **SHA-256 Checksum:** `E5597FB7DF4A3A7A6439C6BF547409D9268E72394B073A784C0B2236360BCADD`
+* **SHA-256 Checksum:** `395474996BD0119A086F5BE0BA96CE5EB7C71F3CAE13E8712A77A78DB710C00A`
 * **Local Direct Wi-Fi Download:** `http://192.168.29.62:8080/susagi-guardian-v2.apk`
-* **Cloud Mirror Download:** [https://gofile.io/d/oEaeksuo](https://gofile.io/d/oEaeksuo)
+* **Cloud Mirror Download:** [https://gofile.io/d/cZLOaa2X](https://gofile.io/d/cZLOaa2X)
 * **Automated Unit Tests:** **318 / 318 passing** (0 failures, 0 errors, 51 test suites)
 
 ---
