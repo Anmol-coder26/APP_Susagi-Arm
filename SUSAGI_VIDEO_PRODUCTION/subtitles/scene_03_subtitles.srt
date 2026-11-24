@@ -1,0 +1,11 @@
+1
+00:00:02,000 --> 00:00:06,800
+SuSagi examines context, requested actions and supporting evidence.
+
+2
+00:00:06,800 --> 00:00:10,500
+An unverified prize announcement deserves caution,
+
+3
+00:00:10,500 --> 00:00:15,200
+while an advance-payment demand provides stronger evidence of fraud.
