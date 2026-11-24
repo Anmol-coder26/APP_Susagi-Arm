@@ -253,7 +253,7 @@ class SuSagiAssistantQualityEvaluationTest {
         assertTrue(prompt.contains("<|start_header_id|>system<|end_header_id|>\n\nYou are SuSagi Guardian, an on-device cybersecurity assistant.<|eot_id|>"))
         assertTrue(prompt.contains("<|start_header_id|>user<|end_header_id|>\n\nExplain UPI PIN security.<|eot_id|>"))
         assertTrue(prompt.contains("<|start_header_id|>assistant<|end_header_id|>\n\nEntering a UPI PIN always authorizes an outgoing debit from your bank account.<|eot_id|>"))
-        assertTrue(prompt.contains("<|start_header_id|>tool<|end_header_id|>\n\n[Tool: SafetyBarrier] Inspected UPI collect intent | Threat Category: REVERSE_DEBIT_TRAP | Risk: HIGH\nVerified Evidence: Incoming collect request requires PIN entry to debit ₹5000<|eot_id|>"))
+        assertTrue(prompt.contains("<|start_header_id|>user<|end_header_id|>\n\n[Verified Local Security Inspection: SafetyBarrier] Inspected UPI collect intent | Threat Category: REVERSE_DEBIT_TRAP | Risk: HIGH\nVerified Evidence: Incoming collect request requires PIN entry to debit ₹5000<|eot_id|>"))
         assertTrue(prompt.contains("<|start_header_id|>user<|end_header_id|>\n\nWhat should I do if I already clicked approve?<|eot_id|>"))
         assertTrue(prompt.endsWith("<|start_header_id|>assistant<|end_header_id|>\n\n"))
     }

@@ -193,7 +193,17 @@ class IntelligenceCapabilityController private constructor(
 
                 val testResult = llamaEngine.generateConversationResponse(testPrompt)
 
-                if (testResult.isSuccess && testResult.tokensGenerated > 0 && testResult.text.isNotBlank()) {
+                // Strict validation: Reject prompt-echo, internal control tokens, or empty generation
+                val isGenuineOutput = testResult.isSuccess &&
+                        testResult.tokensGenerated > 0 &&
+                        testResult.text.isNotBlank() &&
+                        !testResult.text.contains("<|") &&
+                        !testResult.text.contains("system") &&
+                        !testResult.text.contains("user") &&
+                        !testResult.text.contains("You are SuSagi Guardian") &&
+                        testResult.text.trim() != testPrompt.trim()
+
+                if (isGenuineOutput) {
                     val newMode = resolveMode(llamaActive = true, whisperActive = _state.value.isWhisperVerified)
                     _state.value = _state.value.copy(
                         mode = newMode,
@@ -211,9 +221,10 @@ class IntelligenceCapabilityController private constructor(
                         onComplete?.invoke(true, "Llama verified! Generated: ${testResult.text.take(50)}")
                     }
                 } else {
-                    val err = "Native Llama test generation failed: ${testResult.error ?: "Zero tokens returned"}"
+                    val err = "Native Llama test generation failed: ${testResult.error ?: if (testResult.text.contains("<|")) "Control tokens in output" else "Zero valid tokens returned"}"
                     _state.value = _state.value.copy(
                         isVerifyingLlama = false,
+                        isLlamaVerified = false,
                         lastHealthCheckError = err
                     )
                     withContext(Dispatchers.Main) { onComplete?.invoke(false, err) }

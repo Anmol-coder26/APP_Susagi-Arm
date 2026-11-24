@@ -65,6 +65,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -163,6 +164,9 @@ fun SuSagiAssistantScreen(
 
     val modelManager = remember { ModelManager(ctx) }
     val llamaEngine = remember { ExecuTorchLlamaEngine(ctx, modelManager) }
+    val capabilityController = remember { com.susagi.intelligence.IntelligenceCapabilityController.getInstance(ctx) }
+    val capState by capabilityController.state.collectAsState()
+    val isIntelligenceActive = capState.isLlamaVerified
     var isLlmReady by remember { mutableStateOf(llamaEngine.isReady) }
     val conversationManager = remember { ConversationManager() }
 
@@ -188,8 +192,12 @@ fun SuSagiAssistantScreen(
 
     LaunchedEffect(Unit) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            capabilityController.refreshCapabilityState()
             if (!llamaEngine.isReady && modelManager.isReady()) {
                 llamaEngine.tryInitialize()
+            }
+            if (llamaEngine.isReady && !capState.isLlamaVerified && !capState.isVerifyingLlama) {
+                capabilityController.verifyAndActivateLlama()
             }
         }
         isLlmReady = llamaEngine.isReady
@@ -741,24 +749,34 @@ fun SuSagiAssistantScreen(
 
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
-                    val finalText = if (genResult.isSuccess && accumulated.isNotBlank()) {
-                        accumulated.toString().trim()
-                    } else if (genResult.text.isNotBlank()) {
-                        genResult.text.trim()
+                    if (genResult.isSuccess && accumulated.isNotBlank()) {
+                        val cleanText = accumulated.toString().trim()
+                        messages[finalIndex] = messages[finalIndex].copy(
+                            text = cleanText,
+                            isStreaming = false
+                        )
+                        conversationManager.addAssistantMessage(cleanText)
                     } else {
-                        genResult.error ?: "I am ready to assist. Please ask any question about programming, cybersecurity, or general topics."
+                        val failureNotice = if (!llamaEngine.isReady) {
+                            "SuSagi Core Mode: The on-device Llama 3.2 1B model is not active. " +
+                            "In Core Mode, general-purpose generative AI conversation is disabled to guarantee zero hallucination. " +
+                            "You can inspect suspicious messages, links, UPI requests, and QR codes using the dedicated security tools below, " +
+                            "or activate Llama in the Model Manager."
+                        } else {
+                            "⚠️ Native Generation Notice: ${genResult.error ?: "Model returned empty or invalid output."}"
+                        }
+                        messages[finalIndex] = messages[finalIndex].copy(
+                            text = failureNotice,
+                            isStreaming = false
+                        )
+                        // Defensively avoid adding failure/error notices into conversation history!
                     }
-                    messages[finalIndex] = messages[finalIndex].copy(
-                        text = finalText,
-                        isStreaming = false
-                    )
-                    conversationManager.addAssistantMessage(finalText)
                 }
             } catch (e: Exception) {
                 val finalIndex = messages.indexOfFirst { it.id == assistantMsgId }
                 if (finalIndex != -1) {
                     messages[finalIndex] = messages[finalIndex].copy(
-                        text = "I am ready to assist. Please ask any question about programming, cybersecurity, or general topics.",
+                        text = "Native ExecuTorch inference error: ${e.message ?: "Execution failed"}",
                         isStreaming = false
                     )
                 }
@@ -814,14 +832,16 @@ fun SuSagiAssistantScreen(
                                 Icon(
                                     Icons.Default.AutoAwesome,
                                     contentDescription = null,
-                                    tint = GxPrimary,
+                                    tint = if (isIntelligenceActive) GxSafe else GxPrimary,
                                     modifier = Modifier.size(15.dp)
                                 )
                             }
                             Text(
-                                "General Conversational AI & Cybersecurity Advisor",
-                                color = GxTextLo,
-                                fontSize = 11.sp
+                                if (isIntelligenceActive) "⚡ On-Device Llama 3.2 1B • Verified Offline Security Reasoning"
+                                else "Deterministic Cybersecurity & Threat Protection (SuSagi Core)",
+                                color = if (isIntelligenceActive) GxSafe else GxTextLo,
+                                fontSize = 11.sp,
+                                fontWeight = if (isIntelligenceActive) FontWeight.Medium else FontWeight.Normal
                             )
                         }
                     }
@@ -834,7 +854,7 @@ fun SuSagiAssistantScreen(
                             Icon(
                                 Icons.Default.Extension,
                                 contentDescription = "Model Manager",
-                                tint = GxPrimary,
+                                tint = if (isIntelligenceActive) GxSafe else GxPrimary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -848,8 +868,16 @@ fun SuSagiAssistantScreen(
                                 messages.add(
                                     AssistantMessage(
                                         isUser = false,
-                                        text = "Session reset. Ask any cybersecurity question or use specialized inspection tools.",
-                                        suggestedActions = listOf(
+                                        text = if (isIntelligenceActive)
+                                            "Session reset. I am SuSagi AI, powered by on-device Llama 3.2 1B. Ask any question about general knowledge, coding, math, or cybersecurity."
+                                        else
+                                            "Session reset. SuSagi is running in Core Mode with deterministic security tools. Ask any cybersecurity question or use specialized inspection tools.",
+                                        suggestedActions = if (isIntelligenceActive) listOf(
+                                            "Explain why the sky is blue",
+                                            "Java binary search",
+                                            "What is 17 × 23?",
+                                            "🚨 Digital Arrest Scam"
+                                        ) else listOf(
                                             "🚨 Digital Arrest Scams",
                                             "💳 UPI Reverse-Debit Traps",
                                             "🔗 Identify Phishing Links",
@@ -876,11 +904,43 @@ fun SuSagiAssistantScreen(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Mode Indicator Badge
+                // Mode Indicator Badge (Strict Truthful State Mapping)
+                val badgeColor = when {
+                    capState.isLlamaVerified -> GxSafeSoft
+                    capState.isVerifyingLlama -> GxPrimarySoft
+                    llamaEngine.isReady -> GxWarningSoft
+                    else -> GxSurfaceAlt
+                }
+                val badgeBorderColor = when {
+                    capState.isLlamaVerified -> GxSafe.copy(alpha = 0.5f)
+                    capState.isVerifyingLlama -> GxPrimary.copy(alpha = 0.5f)
+                    llamaEngine.isReady -> GxWarning.copy(alpha = 0.5f)
+                    else -> GxBorder
+                }
+                val dotColor = when {
+                    capState.isLlamaVerified -> GxSafe
+                    capState.isVerifyingLlama -> GxPrimary
+                    llamaEngine.isReady -> GxWarning
+                    else -> GxTextLo
+                }
+                val badgeText = when {
+                    capState.isLlamaVerified -> "⚡ SuSagi Intelligence Active (Llama 3.2 1B)"
+                    capState.isVerifyingLlama -> "⏳ Validating On-Device Llama Execution..."
+                    llamaEngine.isReady && !capState.isLlamaVerified && capState.lastHealthCheckError != null -> "⚠️ Llama Verification Failed"
+                    llamaEngine.isReady -> "● Llama Model Loaded (Tap to Verify)"
+                    else -> "SuSagi Core (No LLM Active)"
+                }
+                val badgeActionText = when {
+                    capState.isLlamaVerified -> "• Manage"
+                    capState.isVerifyingLlama -> ""
+                    llamaEngine.isReady -> "• Verify Now"
+                    else -> "• Connect Models"
+                }
+
                 Surface(
-                    color = if (isLlmReady) GxSafeSoft else GxSurfaceAlt,
+                    color = badgeColor,
                     shape = GxShapePill,
-                    border = BorderStroke(1.dp, if (isLlmReady) GxSafe.copy(alpha = 0.4f) else GxBorder)
+                    border = BorderStroke(1.dp, badgeBorderColor)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -888,24 +948,69 @@ fun SuSagiAssistantScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = if (isLlmReady) GxSafe else GxWarning,
+                            color = dotColor,
                             modifier = Modifier.size(7.dp)
                         ) {}
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (isLlmReady) "⚡ SuSagi Intelligence Active (Llama 3.2 1B)" else "SuSagi Core (No LLM Active)",
-                            color = if (isLlmReady) GxSafe else GxTextHi,
+                            text = badgeText,
+                            color = if (capState.isLlamaVerified) GxSafe else GxTextHi,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = if (isLlmReady) "• Manage" else "• Connect Models",
-                            color = GxPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { onOpenModelManager() }
-                        )
+                        if (badgeActionText.isNotBlank()) {
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = badgeActionText,
+                                color = if (capState.isLlamaVerified) GxSafe else GxPrimary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickable {
+                                    if (llamaEngine.isReady && !capState.isLlamaVerified) {
+                                        capabilityController.verifyAndActivateLlama()
+                                    } else {
+                                        onOpenModelManager()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (capState.showActivationCelebration) {
+                    Surface(
+                        color = Color(0xFF064E3B),
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxSafe.copy(alpha = 0.7f)),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = GxSafe, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    capState.activationTitle.ifBlank { "Your Guardian Just Got Smarter." },
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    capState.activationDescription.ifBlank { "SuSagi Intelligence is now active. Native Llama 3.2 1B reasoning is verified on Arm hardware." },
+                                    color = Color(0xFFA7F3D0),
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Text(
+                                "✕",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickable { capabilityController.dismissActivationBanner() }.padding(horizontal = 6.dp)
+                            )
+                        }
                     }
                 }
 
@@ -1039,23 +1144,44 @@ fun SuSagiAssistantScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Conversational Threat Guidance Chips
+            // Conversational Guidance & Reasoning Chips
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                QuickPromptChip("🚨 Digital Arrest Scam") {
-                    submitUserQuery("Explain how Digital Arrest scams operate and how to protect myself.")
-                }
-                QuickPromptChip("💳 UPI QR Reverse Debit") {
-                    submitUserQuery("How do scammers use UPI QR codes and collect requests to steal money?")
-                }
-                QuickPromptChip("🔗 Spot Fake Bank Link") {
-                    submitUserQuery("How can I detect fake banking and electricity bill phishing links?")
-                }
-                QuickPromptChip("⚖️ What to do if Debited") {
-                    submitUserQuery("What immediate steps should I take if money was fraudulently debited from my account?")
+                if (isIntelligenceActive) {
+                    QuickPromptChip("💡 Why is the sky blue?") {
+                        submitUserQuery("Explain why the sky is blue.")
+                    }
+                    QuickPromptChip("💻 Java Binary Search") {
+                        submitUserQuery("Write a Java implementation of binary search.")
+                    }
+                    QuickPromptChip("🔢 17 × 23") {
+                        submitUserQuery("What is 17 multiplied by 23?")
+                    }
+                    QuickPromptChip("🚨 Digital Arrest Scam") {
+                        submitUserQuery("Explain how Digital Arrest scams operate and how to protect myself.")
+                    }
+                    QuickPromptChip("💳 UPI QR Reverse Debit") {
+                        submitUserQuery("How do scammers use UPI QR codes and collect requests to steal money?")
+                    }
+                    QuickPromptChip("🔗 Spot Fake Link") {
+                        submitUserQuery("How can I detect fake banking and electricity bill phishing links?")
+                    }
+                } else {
+                    QuickPromptChip("🚨 Digital Arrest Scam") {
+                        submitUserQuery("Explain how Digital Arrest scams operate and how to protect myself.")
+                    }
+                    QuickPromptChip("💳 UPI QR Reverse Debit") {
+                        submitUserQuery("How do scammers use UPI QR codes and collect requests to steal money?")
+                    }
+                    QuickPromptChip("🔗 Spot Fake Bank Link") {
+                        submitUserQuery("How can I detect fake banking and electricity bill phishing links?")
+                    }
+                    QuickPromptChip("⚖️ What to do if Debited") {
+                        submitUserQuery("What immediate steps should I take if money was fraudulently debited from my account?")
+                    }
                 }
             }
 
@@ -1065,7 +1191,7 @@ fun SuSagiAssistantScreen(
             // Bottom Chat Input Bar
             // ----------------------------------------------------
             val inputPlaceholder = when (activeToolMode) {
-                ToolMode.CHAT -> "Ask SuSagi AI about scams, threats, or security guidance..."
+                ToolMode.CHAT -> if (isIntelligenceActive) "Ask SuSagi anything..." else "Ask SuSagi AI about scams, threats, or security guidance..."
                 ToolMode.ANALYZE_MESSAGE -> "Paste suspicious SMS or message to inspect with SafetyBarrier..."
                 ToolMode.INSPECT_URL -> "Enter link or URL to inspect (e.g. https://...)..."
                 ToolMode.INSPECT_UPI -> "Enter UPI ID or collect request text to verify..."

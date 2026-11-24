@@ -25,6 +25,46 @@ class ExecuTorchLlamaEngine(
         private fun logI(msg: String) { try { Log.i(TAG, msg) } catch (_: Throwable) { println("[$TAG] $msg") } }
         private fun logW(msg: String) { try { Log.w(TAG, msg) } catch (_: Throwable) { println("[$TAG] $msg") } }
         private fun logE(msg: String, t: Throwable? = null) { try { Log.e(TAG, msg, t) } catch (_: Throwable) { println("[$TAG] $msg ${t?.message ?: ""}") } }
+
+        /**
+         * Defensive sanitizer for Llama generated output.
+         * Strips prompt echo prefixes, internal control tokens (<|...|>), and leading role tags.
+         */
+        fun sanitizeLlamaOutput(raw: String, prompt: String? = null): String {
+            if (raw.isBlank()) return ""
+            var text = raw
+
+            // Strip full prompt echo if present at start
+            if (!prompt.isNullOrBlank()) {
+                val trimmedPrompt = prompt.trim()
+                if (text.startsWith(trimmedPrompt)) {
+                    text = text.removePrefix(trimmedPrompt).trim()
+                }
+            }
+
+            // Strip all special control tokens (e.g. <|begin_of_text|>, <|start_header_id|>, etc.)
+            val controlTokenRegex = Regex("""<\|[^|>]+(?:\|>)?""")
+            text = controlTokenRegex.replace(text, "")
+
+            // Strip dangling role header words if leftover at the very beginning
+            val headerMarkerRegex = Regex("""^(?:assistant|system|user|tool)\s*(\n\n?)?""", RegexOption.IGNORE_CASE)
+            text = headerMarkerRegex.replace(text.trim(), "")
+
+            return text.trim()
+        }
+
+        /**
+         * Detects if the generated output is a mirror/echo of the input prompt.
+         */
+        fun isPromptEcho(output: String, prompt: String): Boolean {
+            val cleanOut = sanitizeLlamaOutput(output)
+            if (cleanOut.isBlank()) return false
+            val cleanPrompt = sanitizeLlamaOutput(prompt)
+            if (cleanPrompt.isBlank()) return false
+            if (cleanOut.equals(cleanPrompt, ignoreCase = true)) return true
+            if (cleanPrompt.startsWith(cleanOut, ignoreCase = true) && cleanOut.length > 25) return true
+            return false
+        }
     }
 
     override val name: String = ENGINE_NAME
@@ -153,16 +193,21 @@ class ExecuTorchLlamaEngine(
             var tokenCount = 0
             val start = System.currentTimeMillis()
 
-            module.generate(prompt, object : org.pytorch.executorch.extension.llm.LlmCallback {
+            // Explicitly pass echo = false (4th argument) to suppress prefill prompt echoing
+            module.generate(prompt, 512, object : org.pytorch.executorch.extension.llm.LlmCallback {
                 override fun onResult(token: String) {
+                    if (token.contains("<|eot_id|>") || token.contains("<|end_of_text|>")) {
+                        try { module.stop() } catch (_: Throwable) {}
+                        return
+                    }
                     sb.append(token)
                     tokenCount++
                 }
-            })
+            }, false)
 
             val totalTime = System.currentTimeMillis() - start
             lastTokensPerSec = if (totalTime > 0) (tokenCount.toFloat() / (totalTime.toFloat() / 1000f)) else 0f
-            sb.toString()
+            sanitizeLlamaOutput(sb.toString(), prompt)
         } catch (e: Exception) {
             logW("Native Llama inference execution notice: ${e.message}")
             ""
@@ -605,8 +650,13 @@ class ExecuTorchLlamaEngine(
                 )
             }
 
-            module.generate(prompt, object : org.pytorch.executorch.extension.llm.LlmCallback {
+            // CRITICAL: Explicitly pass echo = false (4th argument)
+            module.generate(prompt, 512, object : org.pytorch.executorch.extension.llm.LlmCallback {
                 override fun onResult(token: String) {
+                    if (token.contains("<|eot_id|>") || token.contains("<|end_of_text|>")) {
+                        try { module.stop() } catch (_: Throwable) {}
+                        return
+                    }
                     if (firstTokenTime == 0L) {
                         firstTokenTime = System.currentTimeMillis() - start
                     }
@@ -617,22 +667,24 @@ class ExecuTorchLlamaEngine(
                 override fun onError(code: Int, error: String) {
                     nativeError = "ExecuTorch runtime error ($code): $error"
                 }
-            })
+            }, false)
 
             val totalLatency = System.currentTimeMillis() - start
             val tps = if (totalLatency > 0 && tokenCount > 0) (tokenCount.toFloat() / (totalLatency.toFloat() / 1000f)) else 0f
-            val output = sb.toString().trim()
-            val isSuccess = nativeError == null && output.isNotBlank() && tokenCount > 0
+            val rawOutput = sb.toString()
+            val sanitized = sanitizeLlamaOutput(rawOutput, prompt)
+            val isEcho = isPromptEcho(rawOutput, prompt)
+            val isSuccess = nativeError == null && sanitized.isNotBlank() && tokenCount > 0 && !isEcho
 
             NativeInferenceBenchmark(
                 prompt = prompt,
-                generatedText = output,
+                generatedText = if (isSuccess) sanitized else "",
                 timeToFirstTokenMs = firstTokenTime,
                 totalLatencyMs = totalLatency,
                 tokensPerSecond = tps,
                 isModelLoaded = isSuccess,
                 analysisSource = if (isSuccess) "LLAMA_EXECUTORCH" else "LOCAL_HEURISTIC_FALLBACK",
-                error = nativeError ?: if (output.isBlank()) "No tokens generated by native engine" else null
+                error = nativeError ?: if (isEcho) "Prompt echo detected - generation suppressed" else if (sanitized.isBlank()) "No tokens generated by native engine" else null
             )
         } catch (t: Throwable) {
             NativeInferenceBenchmark(
@@ -663,33 +715,52 @@ class ExecuTorchLlamaEngine(
 
         if (isReady && nativeLlmModule != null) {
             val start = System.currentTimeMillis()
-            val sb = StringBuilder()
+            val rawAccumulator = StringBuilder()
+            val emittedAccumulator = StringBuilder()
             var tokenCount = 0
             var nativeError: String? = null
 
             try {
                 val module = (nativeLlmModule as? org.pytorch.executorch.extension.llm.LlmModule)
                 if (module != null) {
-                    module.generate(prompt, object : org.pytorch.executorch.extension.llm.LlmCallback {
+                    val filter = LlamaTokenStreamFilter(
+                        onTokenEmit = { cleanToken ->
+                            emittedAccumulator.append(cleanToken)
+                            onToken?.invoke(cleanToken)
+                        },
+                        onStopRequested = {
+                            try { module.stop() } catch (_: Throwable) {}
+                        }
+                    )
+
+                    // CRITICAL FIX: Pass echo = false (4th param) to suppress input prompt prefill echoing!
+                    // Pass maxTokens = 512 for rich conversational answers.
+                    module.generate(prompt, 512, object : org.pytorch.executorch.extension.llm.LlmCallback {
                         override fun onResult(token: String) {
-                            sb.append(token)
+                            rawAccumulator.append(token)
                             tokenCount++
-                            onToken?.invoke(token)
+                            filter.onToken(token)
                         }
 
                         override fun onError(code: Int, error: String) {
                             nativeError = "ExecuTorch runtime error ($code): $error"
                         }
-                    })
+                    }, false)
+
+                    filter.flushFinal()
 
                     val totalLatency = System.currentTimeMillis() - start
                     val tps = if (totalLatency > 0 && tokenCount > 0) (tokenCount.toFloat() / (totalLatency.toFloat() / 1000f)) else 0f
-                    val output = sb.toString().trim()
-                    val isSuccess = nativeError == null && output.isNotBlank() && tokenCount > 0
+
+                    val rawOutput = rawAccumulator.toString()
+                    val sanitized = sanitizeLlamaOutput(if (emittedAccumulator.isNotBlank()) emittedAccumulator.toString() else rawOutput, prompt)
+                    val isEcho = isPromptEcho(rawOutput, prompt) || (sanitized.isBlank() && rawOutput.isNotBlank())
+
+                    val isSuccess = nativeError == null && sanitized.isNotBlank() && tokenCount > 0 && !isEcho
 
                     if (isSuccess) {
                         return@withContext GenerationResult(
-                            text = output,
+                            text = sanitized,
                             isSuccess = true,
                             tokensGenerated = tokenCount,
                             latencyMs = totalLatency,
@@ -698,13 +769,14 @@ class ExecuTorchLlamaEngine(
                             analysisSource = "LLAMA_EXECUTORCH_NATIVE"
                         )
                     } else {
+                        val failReason = nativeError ?: if (isEcho) "Prompt echo detected - generation suppressed" else "Empty output from native model"
                         return@withContext GenerationResult(
-                            text = "Native generation completed with no tokens. Native error: ${nativeError ?: "Empty output from model"}",
+                            text = "Native generation completed without valid tokens. Notice: $failReason",
                             isSuccess = false,
                             tokensGenerated = tokenCount,
                             latencyMs = totalLatency,
                             tokensPerSecond = tps,
-                            error = nativeError ?: "Empty output",
+                            error = failReason,
                             analysisSource = "GENERATION_ERROR"
                         )
                     }
@@ -784,3 +856,81 @@ data class GenerationResult(
     val error: String? = null,
     val analysisSource: String = "LLAMA_EXECUTORCH_NATIVE"
 )
+
+/**
+ * Defensive streaming token buffer for Llama token generation.
+ * Buffers partial control tokens (like "<|" and "<|eot_id|>") so that internal
+ * Llama control sequences are never emitted to onToken or the chat UI.
+ * Automatically signals stop when an end-of-turn or end-of-text marker is encountered.
+ */
+class LlamaTokenStreamFilter(
+    private val onTokenEmit: (String) -> Unit,
+    private val onStopRequested: () -> Unit
+) {
+    private val buffer = StringBuilder()
+
+    fun onToken(token: String) {
+        // Immediate stop on explicit EOT tokens
+        if (token.contains("<|eot_id|>") || token.contains("<|end_of_text|>")) {
+            val cleanPrefix = token
+                .replace("<|eot_id|>", "")
+                .replace("<|end_of_text|>", "")
+            if (cleanPrefix.isNotBlank()) {
+                buffer.append(cleanPrefix)
+                flush(isFinal = true)
+            }
+            onStopRequested()
+            return
+        }
+
+        buffer.append(token)
+        flush(isFinal = false)
+    }
+
+    fun flushFinal() {
+        flush(isFinal = true)
+    }
+
+    private fun flush(isFinal: Boolean) {
+        var str = buffer.toString()
+
+        // Strip completed control tokens e.g. <|...|>
+        var tagMatch = Regex("""<\|[^|>]*\|>""").find(str)
+        while (tagMatch != null) {
+            val before = str.substring(0, tagMatch.range.first)
+            val after = str.substring(tagMatch.range.last + 1)
+            if (before.isNotEmpty()) onTokenEmit(before)
+            if (tagMatch.value.contains("eot_id") || tagMatch.value.contains("end_of_text")) {
+                onStopRequested()
+            }
+            str = after
+            tagMatch = Regex("""<\|[^|>]*\|>""").find(str)
+        }
+
+        if (isFinal) {
+            // Strip any trailing partial tag like "<|" or "<"
+            val clean = Regex("""<\|?[^>]*$""").replace(str, "")
+            if (clean.isNotEmpty()) {
+                onTokenEmit(clean)
+            }
+            buffer.clear()
+        } else {
+            // If str ends with a partial control token prefix like "<" or "<|" or "<|xyz",
+            // hold that suffix in buffer and emit everything before it
+            val partialTagMatch = Regex("""<\|?[a-zA-Z0-9_-]*$""").find(str)
+            if (partialTagMatch != null) {
+                if (partialTagMatch.range.first > 0) {
+                    val ready = str.substring(0, partialTagMatch.range.first)
+                    onTokenEmit(ready)
+                    buffer.clear()
+                    buffer.append(str.substring(partialTagMatch.range.first))
+                }
+            } else {
+                if (str.isNotEmpty()) {
+                    onTokenEmit(str)
+                    buffer.clear()
+                }
+            }
+        }
+    }
+}

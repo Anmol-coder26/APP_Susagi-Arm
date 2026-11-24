@@ -67,10 +67,10 @@ class ConversationManager(
      * Appends a user message to the conversational history.
      */
     fun addUserMessage(text: String): ChatTurn {
-        val trimmed = text.trim().take(maxCharsPerTurn)
+        val sanitized = ExecuTorchLlamaEngine.sanitizeLlamaOutput(text.trim()).take(maxCharsPerTurn)
         val turn = ChatTurn(
             role = MessageRole.USER,
-            content = trimmed
+            content = sanitized.ifBlank { text.trim().take(maxCharsPerTurn) }
         )
         synchronized(turns) {
             turns.add(turn)
@@ -81,6 +81,7 @@ class ConversationManager(
 
     /**
      * Appends an assistant response to the conversational history.
+     * Defensively prevents storing echoed prompts, internal control tokens, or runtime errors in history.
      */
     fun addAssistantMessage(
         text: String,
@@ -89,16 +90,39 @@ class ConversationManager(
         riskBand: String? = null
     ): ChatTurn {
         val trimmed = text.trim()
+
+        // Defensive contamination barrier:
+        // 1. Detect if text contains raw control tokens
+        val hasControlTokens = trimmed.contains(BOS_TOKEN) || trimmed.contains(START_HEADER) || trimmed.contains(EOT_TOKEN)
+
+        // 2. Detect if text is a known runtime error or core fallback notice
+        val isErrorNotice = trimmed.startsWith("SuSagi Core Mode:", ignoreCase = true) ||
+                trimmed.startsWith("Native ExecuTorch execution error", ignoreCase = true) ||
+                trimmed.startsWith("ExecuTorch runtime error", ignoreCase = true) ||
+                trimmed.startsWith("Native generation completed with no tokens", ignoreCase = true) ||
+                trimmed.startsWith("Native generation completed without valid tokens", ignoreCase = true) ||
+                trimmed.startsWith("⚠️ Native Generation Notice:", ignoreCase = true)
+
+        // 3. Detect if text is an exact mirror of recent user turns (prompt echo)
+        val recentUserTurns = synchronized(turns) { turns.filter { it.role == MessageRole.USER }.takeLast(2) }
+        val isEcho = recentUserTurns.any { it.content.equals(trimmed, ignoreCase = true) }
+
+        val sanitized = ExecuTorchLlamaEngine.sanitizeLlamaOutput(trimmed).take(maxCharsPerTurn)
+
         val turn = ChatTurn(
             role = MessageRole.ASSISTANT,
-            content = trimmed,
+            content = sanitized.ifBlank { trimmed.take(maxCharsPerTurn) },
             structuredEvidence = structuredEvidence,
             threatCategory = threatCategory,
             riskBand = riskBand
         )
-        synchronized(turns) {
-            turns.add(turn)
-            pruneHistory()
+
+        // Only commit to conversational memory if clean, valid, and not contaminated
+        if (trimmed.isNotBlank() && !hasControlTokens && !isErrorNotice && !isEcho && sanitized.isNotBlank()) {
+            synchronized(turns) {
+                turns.add(turn)
+                pruneHistory()
+            }
         }
         return turn
     }
@@ -180,8 +204,9 @@ class ConversationManager(
                     sb.append(EOT_TOKEN)
                 }
                 MessageRole.TOOL -> {
-                    sb.append("\n").append(START_HEADER).append("tool").append(END_HEADER).append("\n\n")
-                    sb.append("[Tool: ").append(turn.toolName ?: "SecurityEngine").append("] ")
+                    // Official Llama 3.2 Instruct format: serialize verified tool findings under 'user' role
+                    sb.append("\n").append(START_HEADER).append("user").append(END_HEADER).append("\n\n")
+                    sb.append("[Verified Local Security Inspection: ").append(turn.toolName ?: "SecurityEngine").append("] ")
                     sb.append(turn.content)
                     if (turn.threatCategory != null) {
                         sb.append(" | Threat Category: ").append(turn.threatCategory)

@@ -113,9 +113,61 @@ class ConversationManagerTest {
 
         val prompt = manager.buildInstructPrompt("Explain why this link is dangerous.")
 
-        assertTrue(prompt.contains("<|start_header_id|>tool<|end_header_id|>"))
-        assertTrue(prompt.contains("[Tool: LinkShield] Phishing URL targeting bank login."))
+        // Llama 3.2 Instruct compliant serialization: tool findings are under user role
+        assertFalse(prompt.contains("<|start_header_id|>tool<|end_header_id|>"))
+        assertTrue(prompt.contains("[Verified Local Security Inspection: LinkShield] Phishing URL targeting bank login."))
         assertTrue(prompt.contains("Verified Evidence: Punycode homoglyph spoofing; Direct APK download"))
         assertTrue(prompt.contains("<|start_header_id|>user<|end_header_id|>\n\nExplain why this link is dangerous.<|eot_id|>"))
+    }
+
+    @Test
+    fun testAddAssistantMessage_rejectsPromptEchoAndControlTokens() {
+        val manager = ConversationManager()
+        manager.addUserMessage("Explain Digital Arrest scams.")
+
+        // Attempt to store raw prompt / control tokens / errors as assistant message
+        val rejectedEcho = manager.addAssistantMessage("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\nA privacy-conscious...")
+        val rejectedEot = manager.addAssistantMessage("Some text with <|eot_id|>")
+        val rejectedError = manager.addAssistantMessage("Native ExecuTorch execution error: timeout")
+        val rejectedMirror = manager.addAssistantMessage("Explain Digital Arrest scams.")
+
+        // Confirms none of the contaminated or echoed messages were admitted into conversational memory
+        assertEquals(1, manager.turnCount)
+        assertEquals("Explain Digital Arrest scams.", manager.history[0].content)
+    }
+
+    @Test
+    fun testSanitizeLlamaOutput_stripsControlTokensAndPromptPrefixes() {
+        val prompt = "<|start_header_id|>user<|end_header_id|>\n\nExplain Digital Arrest.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+        val rawEchoOutput = "$prompt Digital Arrest is an extortion scam where fraudsters impersonate police."
+        val clean = ExecuTorchLlamaEngine.sanitizeLlamaOutput(rawEchoOutput, prompt)
+        assertEquals("Digital Arrest is an extortion scam where fraudsters impersonate police.", clean)
+
+        // Verify standalone control tokens are stripped
+        val controlTokenSample = "<|begin_of_text|><|start_header_id|>assistant<|end_header_id|>\n\nHere is your answer.<|eot_id|>"
+        val sanitized = ExecuTorchLlamaEngine.sanitizeLlamaOutput(controlTokenSample)
+        assertEquals("Here is your answer.", sanitized)
+    }
+
+    @Test
+    fun testLlamaTokenStreamFilter_buffersAndFiltersSplitTokens() {
+        val emitted = StringBuilder()
+        var stopped = false
+        val filter = LlamaTokenStreamFilter(
+            onTokenEmit = { emitted.append(it) },
+            onStopRequested = { stopped = true }
+        )
+
+        filter.onToken("Digital Arrest is ")
+        filter.onToken("a scam. <|")
+        // At this point "<|" is buffered and not emitted
+        assertEquals("Digital Arrest is a scam. ", emitted.toString())
+
+        // Next chunk completes the tag
+        filter.onToken("eot_id|>")
+        assertTrue(stopped)
+        filter.flushFinal()
+        // Control token must never be emitted to output
+        assertEquals("Digital Arrest is a scam. ", emitted.toString())
     }
 }
