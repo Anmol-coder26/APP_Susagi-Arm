@@ -97,12 +97,17 @@ object RoomCode {
 
     fun generate(): String = (100000..999999).random().toString()
 
-    fun isValid(code: String): Boolean = code.length == 6 && code.all { it.isDigit() }
+    fun sanitize(code: String): String = code.replace("\\s+".toRegex(), "").trim()
 
-    fun toChannel(code: String): String = PREFIX + code
+    fun isValid(code: String): Boolean {
+        val clean = sanitize(code)
+        return clean.length == 6 && clean.all { it.isDigit() }
+    }
+
+    fun toChannel(code: String): String = PREFIX + sanitize(code)
 
     /** Recovers the display code from a channel name, for UI and call history. */
-    fun fromChannel(channel: String): String = channel.removePrefix(PREFIX)
+    fun fromChannel(channel: String): String = sanitize(channel.removePrefix(PREFIX))
 }
 
 class RoomCodeActivity : ComponentActivity() {
@@ -133,15 +138,16 @@ class RoomCodeActivity : ComponentActivity() {
     }
 
     private fun startCall(code: String) {
-        if (!RoomCode.isValid(code)) {
+        val cleanCode = RoomCode.sanitize(code)
+        if (!RoomCode.isValid(cleanCode)) {
             Toast.makeText(this, "Enter a valid 6-digit code", Toast.LENGTH_SHORT).show()
             return
         }
         val hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (hasMic) {
-            launchCall(code)
+            launchCall(cleanCode)
         } else {
-            pendingCode = code
+            pendingCode = cleanCode
             val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
             } else {
@@ -152,10 +158,11 @@ class RoomCodeActivity : ComponentActivity() {
     }
 
     private fun launchCall(code: String) {
+        val cleanCode = RoomCode.sanitize(code)
         startActivity(
             Intent(this, VoipCallActivity::class.java)
-                .putExtra("channel_name", RoomCode.toChannel(code))
-                .putExtra("room_code", code)
+                .putExtra("channel_name", RoomCode.toChannel(cleanCode))
+                .putExtra("room_code", cleanCode)
         )
     }
 }

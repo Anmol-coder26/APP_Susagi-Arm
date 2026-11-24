@@ -298,7 +298,13 @@ fun VoipCallScreen(
             val isAudioActive = uiState.callState == CallConnectionState.AUDIO_ACTIVE
 
             val radarTitle = when {
-                uiState.isSimulatedCall -> "DEMO — SYNTHETIC INPUT"
+                uiState.isSimulatedCall -> {
+                    when {
+                        uiState.riskScore >= 75 -> "CRITICAL EXTORTION DETECTED (DEMO)"
+                        uiState.riskScore >= 40 -> "SUSPICIOUS SCAM PATTERNS (DEMO)"
+                        else -> "SYNTHETIC SCAM RADAR ACTIVE (DEMO)"
+                    }
+                }
                 uiState.callState == CallConnectionState.FAILED -> "CALL FAILED"
                 uiState.callState == CallConnectionState.DISCONNECTED -> "CALL NOT CONNECTED"
                 uiState.callState == CallConnectionState.REQUESTING_TOKEN -> "REQUESTING TOKEN..."
@@ -316,6 +322,8 @@ fun VoipCallScreen(
             }
 
             val radarAccent = when {
+                uiState.isSimulatedCall && uiState.riskScore >= 75 -> GxDanger
+                uiState.isSimulatedCall && uiState.riskScore >= 40 -> GxWarning
                 uiState.isSimulatedCall -> Color(0xFFF59E0B)
                 uiState.callState == CallConnectionState.FAILED -> GxDanger
                 uiState.callState in listOf(CallConnectionState.REQUESTING_TOKEN, CallConnectionState.CONNECTING) -> GxWarning
@@ -349,8 +357,8 @@ fun VoipCallScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 shape = GxShapeMd,
-                colors = CardDefaults.cardColors(containerColor = if ((isAudioActive && uiState.riskScore > 65) || uiState.callState == CallConnectionState.FAILED) Color(0xFFFFFBEB) else GxSurface),
-                border = BorderStroke(2.dp, if (uiState.callState == CallConnectionState.FAILED) GxDanger.copy(alpha = 0.6f) else if (isAudioActive && uiState.riskScore > 65) Color(0xFFFCD34D) else radarAccent.copy(alpha = 0.5f))
+                colors = CardDefaults.cardColors(containerColor = if ((isAudioActive && uiState.riskScore > 65) || (uiState.callState == CallConnectionState.FAILED && !uiState.isSimulatedCall)) Color(0xFFFFFBEB) else GxSurface),
+                border = BorderStroke(2.dp, if (uiState.callState == CallConnectionState.FAILED && !uiState.isSimulatedCall) GxDanger.copy(alpha = 0.6f) else if (isAudioActive && uiState.riskScore > 65) Color(0xFFFCD34D) else radarAccent.copy(alpha = 0.5f))
             ) {
                 Column(
                     modifier = Modifier
@@ -465,7 +473,7 @@ fun VoipCallScreen(
             // ==========================================
             // CALL FAILURE / DIAGNOSTIC WARNING CARD
             // ==========================================
-            if (uiState.callState == CallConnectionState.FAILED) {
+            if (uiState.callState == CallConnectionState.FAILED && !uiState.isSimulatedCall) {
                 Surface(
                     color = GxDangerSoft,
                     shape = GxShapeSm,

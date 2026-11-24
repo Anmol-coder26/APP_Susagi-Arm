@@ -111,8 +111,8 @@ class VoipCallingSafetyTest {
         assertEquals("Agora token invalid or missing (Code 110: Project requires RTC Token)", VoiceCallManager.mapErrorCode(110))
         assertEquals("Agora token expired (Code 109)", VoiceCallManager.mapErrorCode(109))
         assertEquals("Agora App ID unconfigured or invalid (Code 101)", VoiceCallManager.mapErrorCode(101))
-        assertEquals("Invalid or missing token (Token authentication required)", VoiceCallManager.mapConnectionReason(9))
-        assertEquals("Keep-alive timeout (Agora servers unreachable)", VoiceCallManager.mapConnectionReason(15))
+        assertEquals("Agora token invalid or missing (RTC Token required)", VoiceCallManager.mapConnectionReason(io.agora.rtc2.Constants.CONNECTION_CHANGED_INVALID_TOKEN))
+        assertEquals("Keep-alive timeout (Agora servers unreachable)", VoiceCallManager.mapConnectionReason(io.agora.rtc2.Constants.CONNECTION_CHANGED_KEEP_ALIVE_TIMEOUT))
     }
 
     @Test

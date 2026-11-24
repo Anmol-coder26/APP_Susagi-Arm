@@ -339,12 +339,15 @@ class VoipCallViewModel @JvmOverloads constructor(
     fun simulateScamCall() {
         simulationJob?.cancel()
         _uiState.value = _uiState.value.copy(
+            callState = CallConnectionState.AUDIO_ACTIVE,
             isConnected = true,
             isCallActive = true,
+            isTranscriptionActive = true,
             isSimulatedCall = true,
+            diagnosticReason = null,
             connectionBanner = "DEMO — SYNTHETIC INPUT (Offline Extortion Simulation)"
         )
-        viewModelScope.launch {
+        simulationJob = viewModelScope.launch {
             val script = listOf(
                 Pair(Speaker.REMOTE, "This is Officer Rathore from CBI Cyber Crime Cell Mumbai."),
                 Pair(Speaker.LOCAL, "Hello? Officer, why are you calling me?"),
@@ -376,6 +379,8 @@ class VoipCallViewModel @JvmOverloads constructor(
                 if (rawTranscriptLines.size >= 7) tactics.add("Urgent Treasury Verification Fee Extortion")
 
                 _uiState.value = _uiState.value.copy(
+                    callState = CallConnectionState.AUDIO_ACTIVE,
+                    isTranscriptionActive = true,
                     riskScore = currentRisk,
                     victimRole = "You",
                     scammerRole = "Caller (Flagged)",
@@ -411,7 +416,10 @@ class VoipCallViewModel @JvmOverloads constructor(
         simulationJob = null
         _uiState.value = _uiState.value.copy(
             isSimulatedCall = false,
-            connectionBanner = if (_uiState.value.isConnected) null else "Call connection standby"
+            callState = CallConnectionState.IDLE,
+            isTranscriptionActive = false,
+            connectionBanner = null,
+            diagnosticReason = null
         )
     }
 
