@@ -35,9 +35,9 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
 
 # Bhashini Sovereign ASR Configuration
-BHASHINI_USER_ID=TYcnvGMZSCZnzg0QIyh-97KPNxJynJ5b4w_fY5tZa8jG_btp6zcsGQPGMmx303JC
-BHASHINI_INFERENCE_API_KEY=TYcnvGMZSCZnzg0QIyh-97KPNxJynJ5b4w_fY5tZa8jG_btp6zcsGQPGMmx303JC
-BHASHINI_ULCA_API_KEY=129fe72a91-352c-4321-b577-a89c3d3c6060
+BHASHINI_USER_ID=your_bhashini_user_id_here
+BHASHINI_INFERENCE_API_KEY=your_bhashini_inference_api_key_here
+BHASHINI_ULCA_API_KEY=your_bhashini_ulca_api_key_here
 BHASHINI_PIPELINE_ID=64392f96daac500b55c543cd
 BHASHINI_STT_ENDPOINT=https://dhruva-api.bhashini.gov.in/services/inference/pipeline
 BHASHINI_REST_ENDPOINT=https://dhruva-api.bhashini.gov.in/services/inference/pipeline

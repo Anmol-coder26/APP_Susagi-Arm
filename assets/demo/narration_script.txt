@@ -1,0 +1,46 @@
+SuSagi Guardian V2 — Two-Minute Official Demonstration Video Narration Script
+Bharat AI-SoC Challenge 2026–27 | PS3: On-Device Threat, Phishing & Scam Detection
+Target Duration: <= 120 Seconds | Master Resolution: 1920x1080 16:9
+
+======================================================================
+
+SCENE 1: THE HOOK [BHARAT AI-SOC CHALLENGE 2026-27]
+Header: SUSAGI GUARDIAN V2 — On-Device AI Cybersecurity Assistant | PS3
+Narration: "Every suspicious message creates a critical decision: is this safe, or is it a scam? SuSagi Guardian is built to make that decision clear."
+
+SCENE 2: THE PROBLEM [PROBLEM STATEMENT PS3]
+Header: THE DIGITAL SCAM EPIDEMIC — Lottery Traps • Fake Arrests • Reverse-Debit Phishing
+Narration: "Every day, millions encounter fake lottery claims, reverse-debit payment traps, and deceptive links. Ordinary users need accessible, on-device protection."
+
+SCENE 3: SYSTEM ARCHITECTURE [LOCAL-FIRST PRIVACY]
+Header: ON-DEVICE LOCAL SANDBOX — Deterministic Shields + Local Reasoning Engine
+Narration: "SuSagi operates on a local-first architecture. Incoming text and URLs are evaluated entirely on-device, isolating sensitive user data from the cloud."
+
+SCENE 4: MESSAGE SHIELD [MESSAGE SHIELD READY]
+Header: END-TO-END MESSAGE ANALYSIS — Evidence Extraction • Threat Normalization • Remediation
+Narration: "Through Message Shield, suspicious messages shared into SuSagi are parsed immediately. The safety barrier extracts evidence tokens, categorizes the threat, and guides action."
+
+SCENE 5: CONTEXTUAL INTELLIGENCE [ASTRA SECURITY BRIDGE]
+Header: THE ASTRA LOTTERY BENCHMARK — Disambiguating Unverified Claims from Active Extortion
+Narration: "Contextual intelligence is critical. SuSagi differentiates an unverified prize notification from an active advance-fee extortion trap, preventing notification fatigue."
+
+SCENE 6: LINK SHIELD & BROWSER [LINK SHIELD READY]
+Header: URL SAFETY & ANTI-SPOOFING — Punycode Detection • IP-Direct Blocking • Safe Sandbox
+Narration: "Link Shield intercepts shared URLs, inspecting for punycode spoofing, suspicious IP hosts, and malicious APK payloads before safe browser access."
+
+SCENE 7: SCAM RADAR & EXTORTION DEFENSE [OFFLINE EXTORTION RADAR]
+Header: REAL-TIME RADAR & FAMILY SOS — Authority Impersonation • Digital Arrest • Emergency Alert
+Narration: "For live threats, the extortion radar analyzes coercion patterns and digital arrest pretexts, triggering emergency family alerts when risk escalates."
+
+SCENE 8: ARM & EXECUTORCH [ARM64-v8a EXECUTORCH]
+Header: ARM64 NATIVE RUNTIME & LLAMA 3.2 — Local Model Execution + Knowledge Engine Fallback
+Narration: "Powered by Arm64 architecture, SuSagi integrates the ExecuTorch runtime for local Llama reasoning, supported by an on-device knowledge engine."
+
+SCENE 9: ENGINEERING VALUE & VALIDATION [100% UNIT TEST PASS]
+Header: 315/315 TEST SUITES PASSED — Zero Cloud Leakage • Rigorous Security Regression Suite
+Narration: "With three hundred and fifteen verified unit tests, SuSagi proves that consumer cybersecurity can be private, explainable, and reliable."
+
+SCENE 10: CLOSING [BUILT FOR BHARAT AI-SoC 2026-27]
+Header: SUSAGI GUARDIAN V2 — Cybersecurity that helps people make safer decisions.
+Narration: "SuSagi Guardian: On-Device AI Cybersecurity for Bharat AI-SoC Challenge."
+

@@ -48,7 +48,7 @@ Real 16kHz mono speech audio was generated, processed through the pipeline, disp
 ### 3.2 Production Cloud Services
 - **Bhashini Dhruva REST Endpoint:** `https://dhruva-api.bhashini.gov.in/services/inference/pipeline`
 - **Bhashini Pipeline ID:** `64392f96daac500b55c543cd`
-- **Inference Authentication Key:** Active (`TYcnvGMZSCZnzg0QIyh-97KPNxJynJ5b4w_...` [redacted])
+- **Inference Authentication Key:** Active (`[REDACTED_API_KEY]`)
 - **Agora RTC App ID:** `d575bd8b35004ad896366419f3a8a8f1` (Testing / App ID only mode)
 
 ---

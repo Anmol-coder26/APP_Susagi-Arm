@@ -55,3 +55,11 @@ files/whisper/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Submission & Proof working folders (preserved locally)
+SUSAGI_GUARDIAN_FINAL_EVIDENCE/
+SUSAGI_GUARDIAN_PS3_FINAL_SUBMISSION/
+SUSAGI_V2_FINAL_PROOF/
+SUSAGI_REAL_APP_DEMO/qr_download_apk.png
+SUSAGI_REAL_APP_DEMO/susagi_qr*
+SUSAGI_V2_OPERATION_ZERO_ILLUSIONS/
