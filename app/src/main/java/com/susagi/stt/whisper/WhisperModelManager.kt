@@ -36,6 +36,8 @@ class WhisperModelManager(private val context: Context) {
         const val DEFAULT_PREPROCESSOR_NAME = "whisper_preprocessor.pte"
         const val DEFAULT_TOKENIZER_NAME = "tokenizer.json"
 
+        const val TINY_MODEL_NAME = "whisper_tiny_vivo_executorch_optimized.pte"
+
         // Candidate model filenames supported by ExecuTorch runtime
         val CANDIDATE_MODEL_NAMES = listOf(
             "whisper_small_vivo_executorch_optimized.pte",
@@ -56,10 +58,12 @@ class WhisperModelManager(private val context: Context) {
             "tokenizer.model"
         )
 
-        // Official Arm Whisper ExecuTorch model endpoints on Hugging Face
+        // Official Arm Whisper ExecuTorch model endpoints on Hugging Face (Arm/whisper-small-int8-xnnpack-executorch)
         const val HF_MODEL_URL = "https://huggingface.co/Arm/whisper-small-int8-xnnpack-executorch/resolve/main/whisper_small_vivo_executorch_optimized.pte"
         const val HF_PREPROCESSOR_URL = "https://huggingface.co/Arm/whisper-small-int8-xnnpack-executorch/resolve/main/whisper_preprocessor.pte"
         const val HF_TOKENIZER_URL = "https://huggingface.co/Arm/whisper-small-int8-xnnpack-executorch/resolve/main/tokenizer.json"
+
+        const val HF_TINY_MODEL_URL = "https://huggingface.co/Arm/whisper-tiny-int8-xnnpack-executorch/resolve/main/whisper_tiny_vivo_executorch_optimized.pte"
 
         private fun logD(msg: String) { try { Log.d(TAG, msg) } catch (_: Throwable) { println("[$TAG] $msg") } }
         private fun logI(msg: String) { try { Log.i(TAG, msg) } catch (_: Throwable) { println("[$TAG] $msg") } }
@@ -187,11 +191,11 @@ class WhisperModelManager(private val context: Context) {
         onProgress: (DownloadProgress) -> Unit
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Check disk space (need at least 600 MB free)
+            // Check disk space (need at least 450 MB free)
             val freeSpace = getFreeStorageBytes()
-            if (freeSpace < 600_000_000L) {
+            if (freeSpace < 450_000_000L) {
                 return@withContext Result.failure(
-                    Exception("Insufficient mobile storage: ${freeSpace / (1024 * 1024)} MB available, 600 MB required.")
+                    Exception("Insufficient mobile storage: ${freeSpace / (1024 * 1024)} MB available, 450 MB required.")
                 )
             }
 

@@ -140,6 +140,19 @@ class VoiceShieldPipelineTest {
     }
 
     @Test
+    fun testHinglishPrizeClaim_SirAapkiDasHazaar_routesNeedsReview() = runBlocking {
+        // The owner's exact test sentence: "Sir aapki das hazaar ki lottery lagi hai."
+        val transcript = "Sir aapki das hazaar ki lottery lagi hai."
+        val threatEngine = UnifiedThreatEngine()
+        val result = threatEngine.analyzeCallTranscript(transcript)
+
+        assertEquals("MEDIUM", result.severity)
+        assertEquals("unverified_prize", result.threatType)
+        assertEquals(listOf("PRIZE_CLAIM"), result.detectedTactics)
+        assertTrue(result.explanation.contains("prize", ignoreCase = true))
+    }
+
+    @Test
     fun testHindiPrizeSolicitation_routesHighRisk() = runBlocking {
         val transcript = "आपकी लॉटरी लगी है, इनाम पाने के लिए फीस भेजें।"
         val barrier = SafetyBarrier.analyzeMessage(transcript)
