@@ -694,31 +694,48 @@ class ExecuTorchLlamaEngine(
                             tokensGenerated = tokenCount,
                             latencyMs = totalLatency,
                             tokensPerSecond = tps,
-                            error = null
+                            error = null,
+                            analysisSource = "LLAMA_EXECUTORCH_NATIVE"
+                        )
+                    } else {
+                        return@withContext GenerationResult(
+                            text = "Native generation completed with no tokens. Native error: ${nativeError ?: "Empty output from model"}",
+                            isSuccess = false,
+                            tokensGenerated = tokenCount,
+                            latencyMs = totalLatency,
+                            tokensPerSecond = tps,
+                            error = nativeError ?: "Empty output",
+                            analysisSource = "GENERATION_ERROR"
                         )
                     }
                 }
             } catch (t: Throwable) {
-                logW("Native ExecuTorch inference notice: ${t.message}. Operating with on-device knowledge engine.")
+                logW("Native ExecuTorch inference notice: ${t.message}.")
+                return@withContext GenerationResult(
+                    text = "Native ExecuTorch execution error: ${t.message}",
+                    isSuccess = false,
+                    tokensGenerated = 0,
+                    latencyMs = System.currentTimeMillis() - start,
+                    tokensPerSecond = 0f,
+                    error = t.message,
+                    analysisSource = "GENERATION_ERROR"
+                )
             }
         }
 
-        // On-device Conversational Knowledge Engine:
-        val response = ConversationalKnowledgeEngine.generateResponse(prompt)
-        val words = response.split(Regex("(?<=\\s)|(?<=\\n)"))
-        for (w in words) {
-            if (w.isNotEmpty()) {
-                onToken?.invoke(w)
-                kotlinx.coroutines.delay(10L)
-            }
-        }
+        // Truthful reporting: do NOT simulate token streaming or fake TPS
+        val notice = "SuSagi Core Mode: The on-device Llama 3.2 1B model is not active. " +
+                "In Core Mode, general-purpose generative AI conversation is disabled to guarantee zero hallucination. " +
+                "You can inspect suspicious messages, links, UPI requests, and QR codes using the dedicated security tools below, " +
+                "or activate Llama in the Model Manager."
         GenerationResult(
-            text = response,
-            isSuccess = true,
-            tokensGenerated = words.size,
-            latencyMs = 150L,
-            tokensPerSecond = 50f,
-            error = null
+            text = notice,
+            isSuccess = false,
+            tokensGenerated = 0,
+            latencyMs = 0L,
+            tokensPerSecond = 0f,
+            error = "Native Llama model not activated (SuSagi Core Mode)",
+            analysisSource = "CORE_DETERMINISTIC_SECURITY"
         )
     }
 
@@ -764,5 +781,6 @@ data class GenerationResult(
     val tokensGenerated: Int = 0,
     val latencyMs: Long = 0L,
     val tokensPerSecond: Float = 0f,
-    val error: String? = null
+    val error: String? = null,
+    val analysisSource: String = "LLAMA_EXECUTORCH_NATIVE"
 )

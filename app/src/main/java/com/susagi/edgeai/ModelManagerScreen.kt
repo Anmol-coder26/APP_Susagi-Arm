@@ -214,6 +214,34 @@ fun ModelManagerScreen(
         }
     }
 
+    val whisperModelPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                Toast.makeText(ctx, "Importing Whisper model...", Toast.LENGTH_SHORT).show()
+                val ok = whisperMgr.importFromUriSync(uri, com.susagi.stt.whisper.WhisperModelManager.DEFAULT_MODEL_NAME)
+                pack2Installed = whisperMgr.isReady()
+                val msg = if (ok) "Whisper model imported! Ready: $pack2Installed" else "Failed to import Whisper model."
+                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val whisperPrepPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                Toast.makeText(ctx, "Importing Whisper preprocessor...", Toast.LENGTH_SHORT).show()
+                val ok = whisperMgr.importFromUriSync(uri, com.susagi.stt.whisper.WhisperModelManager.DEFAULT_PREPROCESSOR_NAME)
+                pack2Installed = whisperMgr.isReady()
+                val msg = if (ok) "Whisper preprocessor imported! Ready: $pack2Installed" else "Failed to import preprocessor."
+                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     var packToDownload by remember { mutableStateOf<CapabilityPack?>(null) }
     var selectedComparisonScenario by remember { mutableIntStateOf(0) }
 
@@ -476,6 +504,29 @@ fun ModelManagerScreen(
                         modifier = Modifier.fillMaxWidth().height(36.dp)
                     ) {
                         Text("📄 Import tokenizer.json", fontSize = 11.sp)
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Text("Whisper Speech Model (Tier 3):", color = GxTextLo, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { whisperModelPicker.launch("*/*") },
+                            shape = GxShapeSm,
+                            modifier = Modifier.weight(1f).height(36.dp)
+                        ) {
+                            Text("🎙️ Import Whisper .pte", fontSize = 11.sp)
+                        }
+                        OutlinedButton(
+                            onClick = { whisperPrepPicker.launch("*/*") },
+                            shape = GxShapeSm,
+                            modifier = Modifier.weight(1f).height(36.dp)
+                        ) {
+                            Text("⚙️ Import Preprocessor", fontSize = 11.sp)
+                        }
                     }
                 }
             }

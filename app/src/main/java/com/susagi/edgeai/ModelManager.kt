@@ -254,8 +254,8 @@ class ModelManager(
         // 2. Match against authoritative ModelManifest profiles
         val spinQuantExpected = ModelManifest.LLAMA_3_2_1B_SPINQUANT.modelSizeBytes
         val communityExpected = ModelManifest.LLAMA_3_2_1B_COMMUNITY.modelSizeBytes
-        val isSpinQuantSize = Math.abs(size - spinQuantExpected) < 5_000_000L // within 5MB tolerance
-        val isCommunitySize = Math.abs(size - communityExpected) < 5_000_000L
+        val isSpinQuantSize = Math.abs(size - spinQuantExpected) < 50_000_000L // within 50MB tolerance
+        val isCommunitySize = Math.abs(size - communityExpected) < 50_000_000L
 
         // Check for specific truncated partial downloads
         if (file.name.contains("spinquant", ignoreCase = true) && !isSpinQuantSize) {
@@ -275,8 +275,8 @@ class ModelManager(
 
         // Detect unknown model identity if size matches neither profile
         if (!isSpinQuantSize && !isCommunitySize) {
-            return if (size in 1_000_000_000L..2_700_000_000L) {
-                // Suspicious intermediate truncation (e.g. 1.96GB truncated community download)
+            return if ((file.name.contains("spinquant", ignoreCase = true) || file.name.contains("llama3_2-1B", ignoreCase = true)) && size in 100_000_000L..2_700_000_000L) {
+                // Suspicious intermediate truncation
                 ModelValidationResult.Truncated(
                     actualBytes = size,
                     expectedBytes = communityExpected,
@@ -344,7 +344,14 @@ class ModelManager(
             is ModelValidationResult.InvalidHeader -> return ModelState.MODEL_INVALID
             is ModelValidationResult.Truncated -> return ModelState.MODEL_INVALID
             is ModelValidationResult.Incompatible -> return ModelState.MODEL_INCOMPATIBLE
-            is ModelValidationResult.UnknownIdentity -> return ModelState.UNVERIFIED
+            is ModelValidationResult.UnknownIdentity -> {
+                val tokVal = validateTokenizerAsset(t)
+                when (tokVal) {
+                    is TokenizerValidationResult.NotFound -> return ModelState.NOT_PROVISIONED
+                    is TokenizerValidationResult.Valid -> return ModelState.UNVERIFIED
+                    else -> return ModelState.TOKENIZER_MISMATCH
+                }
+            }
             is ModelValidationResult.Valid -> {
                 val tokVal = validateTokenizerAsset(t)
                 when (tokVal) {
@@ -388,7 +395,7 @@ class ModelManager(
         return sb.toString().trim()
     }
 
-    fun isReady(): Boolean = getModelState() == ModelState.READY
+    fun isReady(): Boolean = getModelState() == ModelState.READY || getModelState() == ModelState.UNVERIFIED
 
     fun getAvailableStorageBytes(): Long {
         return try {

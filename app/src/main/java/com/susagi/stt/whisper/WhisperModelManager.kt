@@ -88,17 +88,76 @@ class WhisperModelManager(private val context: Context) {
         get() = File(context.cacheDir, "whisper_temp").apply { if (!exists()) mkdirs() }
 
     /**
+     * Resolves all candidate directories where Whisper assets might be located.
+     * Includes app-internal storage, device Downloads folder, external files, and adb tmp.
+     */
+    fun getCandidateDirectories(): List<File> {
+        val dirs = mutableListOf<File>()
+        dirs.add(whisperDir)
+
+        // 1. Android public Download directory
+        try {
+            val pubDownload = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            if (pubDownload != null && pubDownload.exists() && pubDownload.canRead()) {
+                dirs.add(pubDownload)
+                dirs.add(File(pubDownload, "whisper"))
+                dirs.add(File(pubDownload, "susagi"))
+            }
+        } catch (_: Throwable) {}
+
+        // 2. App-specific external storage
+        try {
+            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)?.let {
+                if (it.exists() && it.canRead()) dirs.add(it)
+            }
+            context.getExternalFilesDir(null)?.let {
+                if (it.exists() && it.canRead()) {
+                    dirs.add(it)
+                    dirs.add(File(it, "whisper"))
+                    dirs.add(File(it, "models"))
+                    dirs.add(File(it, "Download"))
+                }
+            }
+        } catch (_: Throwable) {}
+
+        // 3. Well-known Android filesystem locations
+        val wellKnownPaths = listOf(
+            "/sdcard/Download",
+            "/sdcard/Download/whisper",
+            "/sdcard/Download/susagi",
+            "/storage/emulated/0/Download",
+            "/storage/emulated/0/Download/whisper",
+            "/storage/emulated/0/Download/susagi",
+            "/data/local/tmp/whisper"
+        )
+        for (p in wellKnownPaths) {
+            val d = File(p)
+            if (d.exists() && d.canRead() && !dirs.any { it.absolutePath == d.absolutePath }) {
+                dirs.add(d)
+            }
+        }
+        return dirs
+    }
+
+    /**
      * Resolves the active Whisper model file (> 30MB).
      */
     val modelFile: File
         get() {
-            for (name in CANDIDATE_MODEL_NAMES) {
-                val f = File(whisperDir, name)
-                if (f.exists() && f.length() > 30_000_000L) return f
+            val searchDirs = getCandidateDirectories()
+            for (dir in searchDirs) {
+                for (name in CANDIDATE_MODEL_NAMES) {
+                    val f = File(dir, name)
+                    if (f.exists() && f.length() > 30_000_000L) return f
+                }
             }
-            val anyPte = whisperDir.listFiles { _, n -> n.endsWith(".pte") && !n.contains("preprocessor") }
-                ?.firstOrNull { it.length() > 30_000_000L }
-            if (anyPte != null) return anyPte
+            for (dir in searchDirs) {
+                try {
+                    val anyPte = dir.listFiles { _, n -> n.endsWith(".pte") && !n.contains("preprocessor") }
+                        ?.firstOrNull { it.length() > 30_000_000L }
+                    if (anyPte != null) return anyPte
+                } catch (_: Throwable) {}
+            }
 
             return File(whisperDir, DEFAULT_MODEL_NAME)
         }
@@ -108,13 +167,20 @@ class WhisperModelManager(private val context: Context) {
      */
     val preprocessorFile: File
         get() {
-            for (name in CANDIDATE_PREPROCESSOR_NAMES) {
-                val f = File(whisperDir, name)
-                if (f.exists() && f.length() > 10_000L) return f
+            val searchDirs = getCandidateDirectories()
+            for (dir in searchDirs) {
+                for (name in CANDIDATE_PREPROCESSOR_NAMES) {
+                    val f = File(dir, name)
+                    if (f.exists() && f.length() > 10_000L) return f
+                }
             }
-            val anyPrep = whisperDir.listFiles { _, n -> n.contains("preprocessor") && n.endsWith(".pte") }
-                ?.firstOrNull { it.length() > 10_000L }
-            if (anyPrep != null) return anyPrep
+            for (dir in searchDirs) {
+                try {
+                    val anyPrep = dir.listFiles { _, n -> n.contains("preprocessor") && n.endsWith(".pte") }
+                        ?.firstOrNull { it.length() > 10_000L }
+                    if (anyPrep != null) return anyPrep
+                } catch (_: Throwable) {}
+            }
 
             return File(whisperDir, DEFAULT_PREPROCESSOR_NAME)
         }
@@ -124,16 +190,41 @@ class WhisperModelManager(private val context: Context) {
      */
     val tokenizerFile: File
         get() {
-            for (name in CANDIDATE_TOKENIZER_NAMES) {
-                val f = File(whisperDir, name)
-                if (f.exists() && f.length() > 1024L) return f
+            val searchDirs = getCandidateDirectories()
+            for (dir in searchDirs) {
+                for (name in CANDIDATE_TOKENIZER_NAMES) {
+                    val f = File(dir, name)
+                    if (f.exists() && f.length() > 1024L) return f
+                }
             }
-            val anyTok = whisperDir.listFiles { _, n -> n.contains("tokenizer") }
-                ?.firstOrNull { it.length() > 1024L }
-            if (anyTok != null) return anyTok
+            for (dir in searchDirs) {
+                try {
+                    val anyTok = dir.listFiles { _, n -> n.contains("tokenizer") }
+                        ?.firstOrNull { it.length() > 1024L }
+                    if (anyTok != null) return anyTok
+                } catch (_: Throwable) {}
+            }
 
             return File(whisperDir, DEFAULT_TOKENIZER_NAME)
         }
+
+    /**
+     * Synchronous URI import helper for file pickers.
+     */
+    fun importFromUriSync(uri: Uri, targetFileName: String): Boolean {
+        return try {
+            val targetFile = File(whisperDir, targetFileName)
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(targetFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            targetFile.exists() && targetFile.length() > 0
+        } catch (e: Exception) {
+            logE("Error importing $targetFileName: ${e.message}", e)
+            false
+        }
+    }
 
     /**
      * Returns true if all required model assets are present on device storage.

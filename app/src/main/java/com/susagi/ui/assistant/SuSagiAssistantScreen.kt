@@ -3,7 +3,10 @@ package com.susagi.ui.assistant
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -55,6 +58,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -82,6 +86,7 @@ import com.guardian.app.ui.theme.GxBorder
 import com.guardian.app.ui.theme.GxDanger
 import com.guardian.app.ui.theme.GxDangerSoft
 import com.guardian.app.ui.theme.GxPrimary
+import com.guardian.app.ui.theme.GxPrimarySoft
 import com.guardian.app.ui.theme.GxSafe
 import com.guardian.app.ui.theme.GxSafeSoft
 import com.guardian.app.ui.theme.GxShapeLg
@@ -188,6 +193,52 @@ fun SuSagiAssistantScreen(
             }
         }
         isLlmReady = llamaEngine.isReady
+    }
+
+    val modelPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                Toast.makeText(ctx, "Importing & connecting Llama model...", Toast.LENGTH_SHORT).show()
+                val ok = modelManager.importFromUri(uri, isTokenizer = false)
+                if (ok) {
+                    val ready = modelManager.isReady()
+                    if (ready) {
+                        llamaEngine.tryInitialize()
+                        isLlmReady = llamaEngine.isReady
+                        Toast.makeText(ctx, "⚡ Llama 3.2 1B Connected & Active!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(ctx, "Model imported. Please also select tokenizer.json to complete activation.", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(ctx, "Failed to import model.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    val tokenizerPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                Toast.makeText(ctx, "Importing tokenizer...", Toast.LENGTH_SHORT).show()
+                val ok = modelManager.importFromUri(uri, isTokenizer = true)
+                if (ok) {
+                    val ready = modelManager.isReady()
+                    if (ready) {
+                        llamaEngine.tryInitialize()
+                        isLlmReady = llamaEngine.isReady
+                        Toast.makeText(ctx, "⚡ LLM Fully Connected & Active!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(ctx, "Tokenizer imported successfully.", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(ctx, "Failed to import tokenizer.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     LaunchedEffect(messages.size) {
@@ -837,25 +888,67 @@ fun SuSagiAssistantScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = GxSafe,
+                            color = if (isLlmReady) GxSafe else GxWarning,
                             modifier = Modifier.size(7.dp)
                         ) {}
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text = if (isLlmReady) "Local AI Active (ExecuTorch Llama 3.2 1B)" else "SuSagi AI Active (On-Device Intelligence)",
-                            color = GxSafe,
+                            text = if (isLlmReady) "⚡ SuSagi Intelligence Active (Llama 3.2 1B)" else "SuSagi Core (No LLM Active)",
+                            color = if (isLlmReady) GxSafe else GxTextHi,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
-                        if (!isLlmReady) {
-                            Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (isLlmReady) "• Manage" else "• Connect Models",
+                            color = GxPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { onOpenModelManager() }
+                        )
+                    }
+                }
+
+                if (!isLlmReady) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        color = GxPrimarySoft.copy(alpha = 0.5f),
+                        shape = GxShapeSm,
+                        border = BorderStroke(1.dp, GxPrimary.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = GxPrimary, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Connect Downloaded Models", color = GxTextHi, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.height(2.dp))
                             Text(
-                                text = "• Manage Models",
-                                color = GxPrimary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.clickable { onOpenModelManager() }
+                                "Downloaded Llama weights? Tap below to select your .pte model from Downloads and activate on-device intelligence.",
+                                color = GxTextMid,
+                                fontSize = 11.sp
                             )
+                            Spacer(Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Button(
+                                    onClick = { modelPicker.launch("*/*") },
+                                    colors = ButtonDefaults.buttonColors(containerColor = GxPrimary),
+                                    shape = GxShapeSm,
+                                    modifier = Modifier.weight(1f).height(34.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text("📂 Select .pte Model", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                                OutlinedButton(
+                                    onClick = { tokenizerPicker.launch("*/*") },
+                                    shape = GxShapeSm,
+                                    modifier = Modifier.weight(1f).height(34.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text("📄 Select tokenizer", fontSize = 11.sp)
+                                }
+                            }
                         }
                     }
                 }
