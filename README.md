@@ -1,284 +1,268 @@
 <div align="center">
 
-<img src="assets/branding/susagi-logo.svg" alt="SuSagi Guardian Logo" width="84">
+<img src="assets/branding/susagi-logo.svg" alt="SuSagi Guardian" width="76">
 
 # SuSagi Guardian
 
 **Think before you click. Know before you trust.**
 
-*A context-aware Android cybersecurity assistant with an expandable edge AI architecture.*
+*A context-aware Android cybersecurity assistant with an expandable ARM64 edge AI architecture.*
 
-<br>
+<p>
+  <a href="docs/INSTALLATION.md"><img src="https://img.shields.io/badge/Android-8.0%E2%80%9315%20(API%2026%E2%80%9335)-059669?style=for-the-badge&logo=android&logoColor=white" alt="Android 8-15"></a>
+  <a href="docs/ARCHITECTURE.md"><img src="https://img.shields.io/badge/ABI-arm64--v8a-0F172A?style=for-the-badge&logo=arm&logoColor=white" alt="ARM64-v8a"></a>
+  <a href="docs/MODEL_PROVISIONING.md"><img src="https://img.shields.io/badge/ExecuTorch-v1.5.1-0891B2?style=for-the-badge&logo=pytorch&logoColor=white" alt="ExecuTorch 1.5.1"></a>
+  <a href="docs/TESTING.md"><img src="https://img.shields.io/badge/JVM%20Tests-318%2F318%20Pass-10B981?style=for-the-badge" alt="318 Tests Passing"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-334155?style=for-the-badge" alt="Apache 2.0"></a>
+</p>
 
-[![Platform](https://img.shields.io/badge/Android-8.0%E2%80%9315%20(API%2026%E2%80%9335)-059669?style=flat-square&logo=android&logoColor=white)](docs/INSTALLATION.md)
-[![Architecture](https://img.shields.io/badge/ABI-arm64--v8a-0F172A?style=flat-square&logo=arm&logoColor=white)](docs/ARCHITECTURE.md)
-[![Edge Runtime](https://img.shields.io/badge/ExecuTorch-v1.5.1-0891B2?style=flat-square&logo=pytorch&logoColor=white)](docs/MODEL_PROVISIONING.md)
-[![Unit Tests](https://img.shields.io/badge/JVM%20Tests-318%20Passing%20(51%20Suites)-059669?style=flat-square)](docs/TESTING.md)
-[![License](https://img.shields.io/badge/License-Apache%202.0-334155?style=flat-square)](LICENSE)
-
-<br>
-
-<img src="assets/branding/github_hero.png" alt="SuSagi Guardian Product Hero Banner" width="100%">
-
-<br>
-
-[Product Demo](#product-demonstration) ·
-[App Gallery](#application-gallery) ·
-[Feature Matrix](#feature-overview) ·
-[Contextual Engine](#contextual-security-intelligence) ·
-[Architecture](#system-architecture) ·
-[Edge AI](#on-device-ai-architecture) ·
-[Install](#installation-and-setup) ·
+[Product Film](#product-demonstration) &nbsp;·&nbsp;
+[App Spotlight](#application-spotlight) &nbsp;·&nbsp;
+[Feature Matrix](#feature-overview) &nbsp;·&nbsp;
+[Contextual Engine](#contextual-security-intelligence) &nbsp;·&nbsp;
+[Architecture](#system-architecture) &nbsp;·&nbsp;
+[Edge AI](#on-device-ai-architecture) &nbsp;·&nbsp;
+[Quick Start](#installation--setup) &nbsp;·&nbsp;
 [Limitations](#current-limitations)
+
+<br>
+
+<img src="assets/branding/github_hero.png" alt="SuSagi Guardian — Link Shield, UPI Reverse-Debit Guard, ExecuTorch AI Packs, and Call Audit 1930" width="96%">
 
 </div>
 
 ---
 
-## What is SuSagi Guardian?
+## Why SuSagi Guardian?
 
-SuSagi Guardian (`com.susagi.guardian2`) is an Android cybersecurity assistant engineered over four months to help users inspect suspicious links, payment requests, QR codes, text notifications, network logs, and audio interactions before acting.
+Mobile scams in India rarely use a single lure—they pair urgent psychological scripts (*digital arrest* threats, fake KYC shutoffs, reverse-debit QR cashback traps, sideloaded `.apk` droppers) with code-mixed Hinglish and disguised URLs. Keyword blacklists over-trigger on harmless bank notices (*"never share your OTP"*), while cloud-only AI analyzers leak private conversations and stall offline.
 
-Instead of relying solely on heavy cloud classifiers or generic chatbots, SuSagi separates **deterministic offline security screening** from an **expandable local neural stack** powered by PyTorch ExecuTorch on `arm64-v8a` devices. Every alert aims to surface observable evidence, requested-action context, and clear remediation guidance—including direct escalation paths to India's Cybercrime Helpline (`1930`) and `https://cybercrime.gov.in`.
+SuSagi Guardian (`com.susagi.guardian2`) resolves this trade-off with a **two-tier architecture** across **four months of engineering**:
 
----
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h4>1. Deterministic Shields First</h4>
+      <sub>Offline contextual regex, Unicode NFKC normalization, canonical host inspection, CameraX QR parsing, and <code>upi://pay</code> validation execute locally in milliseconds with zero network reliance.</sub>
+    </td>
+    <td width="33%" valign="top">
+      <h4>2. Requested-Action Precision</h4>
+      <sub>Instead of flagging isolated keywords like <i>"lottery"</i> or <i>"police"</i>, cross-clause rules distinguish harmless discussions and warnings from live fee, OTP, or authority coercion.</sub>
+    </td>
+    <td width="33%" valign="top">
+      <h4>3. Expandable ARM64 Edge AI</h4>
+      <sub>Optional <code>ExecuTorch 1.5.1</code> packages (<code>Llama 3.2 1B SpinQuant</code> &amp; <code>Whisper INT8</code>) validate via pre-flight <code>ET12</code> header &amp; SHA-256 checks without gating core shields.</sub>
+    </td>
+  </tr>
+</table>
 
-## The Problem
-
-Everyday digital users face fast-moving social-engineering threats designed to override calm judgment:
-
-- **Digital arrest impersonation:** Attackers posing as police, customs, or central agency officers threaten immediate warrants or custody to coerce video calls and "safe account" transfers.
-- **Fraudulent UPI & reverse-debit QR payloads:** Payment strings (`upi://pay`) disguised as refunds or lottery winnings exploit the misconception that scanning a QR code or entering a UPI PIN can receive money.
-- **Phishing URLs & APK dropper traps:** Obfuscated links—using raw IP hosts, Punycode lookalikes, nested redirects, or disguised `.apk` payloads—circulate across chat apps and SMS.
-- **OTP & credential disclosure scripts:** Urgent KYC-expiry or electricity-disconnection threats combine social pressure with regional phrasing and code-mixed Hindi/English.
-- **Anomalous network activity:** Suspicious host communications, port reconnaissance, and periodic command-and-control (C2) beaconing remain invisible to standard mobile users.
-
-Conventional spam filters often over-flag benign conversations mentioning keywords like *"lottery"* or *"police"*, while single-purpose browsers lack context across calls, QR codes, and payment URIs. No security system eliminates fraud entirely, so SuSagi pairs structural signal extraction with clear risk explanations to support human decisions.
-
----
-
-## Our Approach
-
-```text
-Suspicious Interaction
-   -> Contextual Examination (clause normalization, requested action, canonical URL/UPI parse)
-   -> Evidence Extraction (structured Signal flags & host/payment fields)
-   -> Risk Assessment (precedence scoring & uncertainty disclosure)
-   -> Protective Guidance (user confirmation gate, Call Audit & 1930 portal access)
-```
-
-1. **Deterministic core first:** URL canonicalization, `upi://pay` parsing, `.apk` detection, and contextual rule engines (`SafetyBarrier`, `ContextualScamRules`, `PrizeIntent`) operate cleanly offline with zero mandatory cloud dependency.
-2. **Requested-action distinction:** Rather than blacklisting isolated nouns, contextual analyzers evaluate *who is speaking* and *what action is demanded* (e.g., whether an advance fee, OTP disclosure, or PIN entry accompanies a claim).
-3. **Expandable generative tier:** Provisioned `ExecuTorch` weights (`Llama 3.2 1B` and `Whisper`) enrich explanations and voice tools locally without blocking core protection when unprovisioned or unsupported by device memory.
+> [!IMPORTANT]
+> **Engineering Honesty First:** Deterministic shields, `318/318` automated JVM tests, and core UI verification (`Link`, `QR`, `UPI`, `ModelManager`, `Call Audit`, `CSV NetFlow`) are verified on physical handset Build `D74`. Experimental two-device Agora VoIP calling, live Speaker Guard calibration (`5/100` observed in SBI simulation), and physical Whisper live WER benchmarks remain transparently disclosed under [Current Limitations](#current-limitations).
 
 ---
 
 ## Product Demonstration
 
-Watch **`INSIDE SUSAGI — From Threat to Protection.`** (`01:50.99`, `1080p`), assembled strictly from genuine handset interactions with personal identifiers, tracking parameters, VoIP room digits, and browser session history persistently redacted:
-
 <div align="center">
 
-[![Watch Inside SuSagi Product Film](assets/branding/video_thumbnail.png)](SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4)
+<a href="SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4">
+  <img src="assets/branding/video_thumbnail.png" alt="Inside SuSagi — From Threat to Protection (01:51, 1080p)" width="82%">
+</a>
 
-[Play Demo MP4 (`01:51 · 1080p`)](SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4) ·
-[Synchronized Subtitles (`.srt`)](SUSAGI_FINAL_SUBMISSION/Subtitles.srt) ·
-[Narration Script](SUSAGI_FINAL_SUBMISSION/Narration_Script.txt)
+<br><br>
+
+[**Watch Film (`01:51 · 1080p MP4`)**](SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4) &nbsp;&nbsp;|&nbsp;&nbsp;
+[**Synchronized Subtitles (`.srt`)**](SUSAGI_FINAL_SUBMISSION/Subtitles.srt) &nbsp;&nbsp;|&nbsp;&nbsp;
+[**Narration Script**](SUSAGI_FINAL_SUBMISSION/Narration_Script.txt) &nbsp;&nbsp;|&nbsp;&nbsp;
+[**Shot-Timing Manifest**](FINAL_SUBMISSION/01_Video/Shot_Timing_Manifest.md)
+
+<sub>Assembled strictly from genuine Vivo iQOO Z7 Pro 5G (Build <code>D74</code>) footage with personal identifiers, share sheets, URL tokens, and VoIP room codes permanently redacted.</sub>
 
 </div>
 
 ---
 
-## Application Gallery
+## Application Spotlight
 
-Every screen below is extracted from genuine application sessions on physical Android hardware, with private identifiers, notification bars, share sheets, URL tracking tokens, and room codes permanently redacted.
+Six core surfaces spanning prevention, contextual disambiguation, local AI management, and 1930 escalation:
 
 <div align="center">
 <table>
   <tr>
     <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/01_home_dashboard.png" width="90%" alt="Home Dashboard"><br>
-      <b>Home Dashboard</b><br>
-      <sub>Central workspace launching Link Shield, AI Assistant, and active defense modules.</sub>
+      <img src="assets/screenshots/gallery/04_link_shield.png" width="88%" alt="Link Shield"><br>
+      <b>Link Safety Barrier</b><br>
+      <sub>Intercepts <code>ACTION_VIEW</code>/<code>SEND</code> intents, canonicalizes tracking URLs, and gates external browsers.</sub>
     </td>
     <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/02_message_shield.png" width="90%" alt="Message Shield"><br>
-      <b>Message Shield</b><br>
-      <sub>Manual SMS/chat inspection screen with explicit Android notification sandboxing notice.</sub>
+      <img src="assets/screenshots/gallery/05_upi_protection.png" width="88%" alt="UPI Protection"><br>
+      <b>UPI Reverse-Debit Guard</b><br>
+      <sub>Parses <code>upi://pay</code> fields (<code>pa</code>, <code>am</code>, <code>cu</code>) and exposes fake refund/cashback traps.</sub>
     </td>
     <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/03_contextual_assessment.png" width="90%" alt="Contextual Scam Assessment"><br>
-      <b>Contextual Scam Assessment</b><br>
-      <sub>Controlled offline test scenarios exercising digital arrest, UPI, and benign controls.</sub>
+      <img src="assets/screenshots/gallery/06_qr_inspection.png" width="88%" alt="QR Inspection"><br>
+      <b>CameraX QR Vision</b><br>
+      <sub>Decodes barcodes locally via Google ML Kit before opening external URLs or payment targets.</sub>
     </td>
   </tr>
   <tr>
     <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/04_link_shield.png" width="90%" alt="Link Shield"><br>
-      <b>Link Shield</b><br>
-      <sub>Canonical host parsing and local static inspection prior to browser navigation.</sub>
+      <img src="assets/screenshots/gallery/03_contextual_assessment.png" width="88%" alt="Contextual Scam Assessment"><br>
+      <b>Contextual Scam Engine</b><br>
+      <sub>Runs offline Hindi digital-arrest, UPI reverse-debit, and benign banking control scenarios.</sub>
     </td>
     <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/05_upi_protection.png" width="90%" alt="UPI Protection"><br>
-      <b>UPI Protection</b><br>
-      <sub>Parses `upi://pay` VPA/amount fields and warns against reverse-debit refund claims.</sub>
+      <img src="assets/screenshots/gallery/11_intelligence_tiers.png" width="88%" alt="Intelligence Mode Tiers"><br>
+      <b>Arm64 Telemetry &amp; AI Tiers</b><br>
+      <sub>Displays <code>arm64-v8a</code> telemetry alongside rule-only vs optional <code>ExecuTorch</code> comparisons.</sub>
     </td>
     <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/06_qr_inspection.png" width="90%" alt="QR Inspection"><br>
-      <b>QR Inspection</b><br>
-      <sub>CameraX + ML Kit scanner decoding QR payloads locally before opening external targets.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/07_network_intelligence.png" width="90%" alt="Network Intelligence"><br>
-      <b>Network Intelligence</b><br>
-      <sub>Offline inspection of imported CSV NetFlow records flagging periodic C2 beaconing.</sub>
-    </td>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/08_voice_shield.png" width="90%" alt="Voice Shield"><br>
-      <b>Voice Shield (Speaker Guard)</b><br>
-      <sub>Real-time risk vector view running a controlled staged SBI script (scored 5/100 here).</sub>
-    </td>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/09_ai_assistant.png" width="90%" alt="SuSagi AI Assistant"><br>
-      <b>SuSagi AI Assistant</b><br>
-      <sub>Domain safety shortcuts alongside an offline liveness turn when Llama is active.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/10_ai_model_manager.png" width="90%" alt="AI Model Manager"><br>
-      <b>AI Model Manager</b><br>
-      <sub>Manages local Llama 3.2 1B SpinQuant and Whisper INT8 packages with safety fallback notes.</sub>
-    </td>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/11_intelligence_tiers.png" width="90%" alt="Intelligence Mode Comparison"><br>
-      <b>Intelligence Mode Tiers</b><br>
-      <sub>Arm64 telemetry and side-by-side comparison across rule-only vs downloadable AI tiers.</sub>
-    </td>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/12_secure_voip.png" width="90%" alt="Secure VoIP Experimental"><br>
-      <b>Secure VoIP (Experimental)</b><br>
-      <sub>Agora room interface scaffolding with session code redacted; peer call requires backend.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/13_trusted_person.png" width="90%" alt="Trusted Person Configuration"><br>
-      <b>Trusted Person Config</b><br>
-      <sub>Local emergency contact setup UI (autonomous remote SMS delivery verification pending).</sub>
-    </td>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/14_threat_history.png" width="90%" alt="Threat History"><br>
-      <b>Threat History</b><br>
-      <sub>Cross-channel log spanning web destinations, unverified UPI links, and direct IP APK flags.</sub>
-    </td>
-    <td width="33%" align="center" valign="top">
-      <img src="assets/screenshots/gallery/15_incident_remediation.png" width="90%" alt="Incident Remediation"><br>
-      <b>Incident Remediation</b><br>
-      <sub>Call Audit transcript snippet with Helpline 1930, `cybercrime.gov.in`, and PDF capture.</sub>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="3" align="center" valign="top">
-      <img src="assets/screenshots/gallery/16_privacy_settings.png" width="30%" alt="Privacy and Settings"><br>
-      <b>Privacy Boundaries & Language Preferences</b><br>
-      <sub>10 Indian regional script selectors alongside explicit Android notification sandboxing disclosures.</sub>
+      <img src="assets/screenshots/gallery/15_incident_remediation.png" width="88%" alt="Incident Remediation"><br>
+      <b>Call Audit &amp; 1930 Escalation</b><br>
+      <sub>Bundles transcript logs with one-tap <code>Call 1930</code>, <code>cybercrime.gov.in</code>, and PDF report actions.</sub>
     </td>
   </tr>
 </table>
 </div>
 
+<details>
+<summary><b>Browse All 16 Verified Application Screens</b> &nbsp;<sub>(Home, Message Shield, NetFlow C2, Speaker Guard, AI Assistant, Tiers, VoIP, Trusted Contact, Threat Log &amp; 10-Script Settings)</sub></summary>
+
+<br>
+
+<div align="center">
+<table>
+  <tr>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/01_home_dashboard.png" width="95%" alt="Home Dashboard"><br>
+      <b>Home</b><br><sub>Defense cards &amp; nav</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/02_message_shield.png" width="95%" alt="Message Shield"><br>
+      <b>Message Shield</b><br><sub>Opt-in listener notice</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/07_network_intelligence.png" width="95%" alt="Network Intelligence"><br>
+      <b>NetFlow CSV</b><br><sub><code>85/100 C2_BEACONING</code></sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/08_voice_shield.png" width="95%" alt="Voice Shield"><br>
+      <b>Speaker Guard</b><br><sub>SBI sim (<code>5/100</code> status)</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/09_ai_assistant.png" width="95%" alt="AI Assistant"><br>
+      <b>AI Assistant</b><br><sub>Offline <code>hi</code> liveness turn</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/10_ai_model_manager.png" width="95%" alt="AI Model Manager"><br>
+      <b>Model Manager</b><br><sub><code>ET12</code> &amp; SHA-256 packages</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/12_secure_voip.png" width="95%" alt="Secure VoIP"><br>
+      <b>VoIP (Exp.)</b><br><sub>Redacted room UI</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/13_trusted_person.png" width="95%" alt="Trusted Person"><br>
+      <b>Trusted Contact</b><br><sub>Local alert config UI</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/14_threat_history.png" width="95%" alt="Threat History"><br>
+      <b>Threat History</b><br><sub>UPI &amp; raw-IP APK logs</sub>
+    </td>
+    <td width="20%" align="center" valign="top">
+      <img src="assets/screenshots/gallery/16_privacy_settings.png" width="95%" alt="Privacy and Settings"><br>
+      <b>Privacy &amp; Scripts</b><br><sub>10 Indian UI scripts</sub>
+    </td>
+  </tr>
+</table>
+</div>
+
+</details>
+
 ---
 
 ## Feature Overview
 
-Status classification follows strict engineering evidence categories:
-**`Device verified`** (observed working end-to-end on physical handset) · **`Implemented — verification pending`** (source + unit tests or UI built; physical device validation incomplete) · **`Experimental`** (active prototype / external service dependency) · **`Known issue`** · **`Planned`**.
+Status categories align strictly across README, Video, and Technical Report:
+**`Device verified`** · **`Implemented — verification pending`** · **`Experimental`** · **`Known issue`** · **`Planned`**.  
+Full 7-column Single Source of Truth: [Feature_Verification_Matrix.md](FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md).
 
 | Feature | Purpose | Implementation Component | Development Status | Physical-Device Verification |
 | :--- | :--- | :--- | :--- | :--- |
-| **Link Shield (`ACTION_VIEW` / `SEND` & Manual)** | Inspects tapped/shared URLs for raw IPs, Punycode, brand spoofing, shorteners, redirects & `.apk` payloads | `LinkCheckActivity.kt`, `SafetyBarrier.kt`, `LinkSafetyBarrierScreen.kt` | Implemented | **Device verified** (static heuristic inspection & consent handoff) |
-| **Camera QR & Barcode Shield** | Scans QR codes locally and inspects decoded `http`/`https`/`upi` destinations before opening | `QrScannerActivity.kt`, CameraX `1.3.4`, ML Kit `17.2.0` | Implemented | **Device verified** |
-| **UPI Payment Protection** | Parses `upi://pay` fields (`pa`, `pn`, `am`, `cu`) and flags reverse-debit cashback/refund requests | `PaymentFields.kt`, `SafetyBarrier.kt` | Implemented | **Device verified** (offline demo & URI barrier) |
-| **Contextual Scam Engine** | Disambiguates benign mentions vs advance-fee, extortion, credential, and KYC fraud | `SafetyBarrier.kt`, `ContextualScamRules.kt`, `PrizeIntent.java`, `FraudIntent.kt` | Implemented | **Device verified** (JVM verified + Offline Demo Panel; live speaker calibration ongoing) |
-| **Message Shield & Notification Scan** | Analyzes pasted text or user-permitted notifications (never accesses encrypted chat DBs) | `MessageScanScreen.kt`, `NotificationScannerService.kt`, `HinglishNormalizer` | Implemented | **Implemented — verification pending** (UI & JVM verified; live listener soak test pending) |
-| **Threat History & Call Audit** | Stores logged flags locally and prepares PDF/text summaries with Helpline `1930` / portal shortcuts | `IncidentHistoryStore.kt`, `CallHistoryEntity.kt`, `Screens.kt`, `EvidenceCaptureActivity.kt` | Implemented | **Device verified** (Call Audit log, PDF modal & portal handoff shown) |
-| **Network Flow Intelligence** | Detects admin ports, SYN spikes, port scans, and periodic C2 beaconing in flow batches | `NetworkAnomalyClassifier.kt`, `NetworkFlowImporter.kt`, `NetworkShieldScreen.kt` | Implemented (CSV import) | **Implemented — verification pending** (CSV demo verified; live OS packet monitoring blocked without VPN/gateway -> **Planned**) |
-| **AI Model Manager & Tier Comparison** | Validates `ET12` headers, sizes, and SHA-256 digests; manages local/SAF `.pte` discovery | `ModelManager.kt`, `ModelManifest.kt`, `ModelManagerScreen.kt` | Implemented | **Device verified** (package listing, tier comparison & `READY` detection shown) |
-| **On-Device Llama Assistant** | Provides conversational safety guidance via ExecuTorch `LlmModule` with output sanitization | `ExecuTorchLlamaEngine.kt`, `ConversationManager.kt`, `SuSagiAssistantScreen.kt` | Implemented (**Known issue** tuning) | **Implemented — verification pending** (short liveness greeting shown; full reasoning & prompt-echo stability require benchmark validation) |
-| **Whisper Offline Speech AI** | Captures 16 kHz PCM into RIFF WAV turns and runs ExecuTorch `AsrModule` transcription | `WhisperSttEngine.kt`, `WhisperAudioProcessor.kt`, `VoiceClipScannerScreen.kt` | Implemented | **Implemented — verification pending** (models listed Ready on storage; live physical microphone ASR transcription unverified) |
-| **Speaker Guard (Live Call Radar)** | Monitors speakerphone utterances via acoustic radar and staged simulation scenarios | `Screens.kt`, `CallProtectionService.kt`, `LiveRiskEngine.kt` | **Experimental / Known issue** | **Experimental** (UI active; staged SBI scenario scored `LOW 5/100` in Build D74 recording; calibration pending) |
-| **Secure Two-Way VoIP Calling** | Room-code voice calling paired with real-time Agora RTC/RTM transcript channels | `AgoraEngine.kt`, `VoipCallViewModel.kt`, `RoomCodeActivity.kt` | **Experimental** | **Experimental** (room UI renders; live two-device connection & backend token auth unverified here) |
-| **Trusted Person Emergency Config** | Stores emergency contact config and sends HTTP JSON payload to `/alerts/trusted-contact` | `TrustedContactSettingsScreen.kt`, `TrustedContactManager.kt`, `TrustedContactAlertSender.kt` | **Implemented (Config)** / Alert **Experimental** | **Implemented — verification pending** (config form works locally; remote alert delivery not verified end-to-end) |
-| **Home Edge Gateway (Phase 2)** | Inline `eBPF` telemetry & DNS sinkhole across household devices | Architecture specification only | **Planned** | **Planned** |
+| **Link Shield (`ACTION_VIEW`/`SEND`)** | Unmasks raw IPs, Punycode, brand spoofs, shorteners &amp; `.apk` links before browsing | `LinkCheckActivity.kt`, `SafetyBarrier.kt`, `LinkSafetyBarrierScreen.kt` | Implemented | **Device verified** (static barrier &amp; consent gate) |
+| **Camera QR &amp; Barcode Shield** | Scans QR codes locally and inspects decoded destinations prior to launch | `QrScannerActivity.kt`, CameraX `1.3.4`, ML Kit `17.2.0` | Implemented | **Device verified** |
+| **UPI Payment Protection** | Validates `upi://pay` (`pa`, `pn`, `am`, `cu`) and flags reverse-debit traps | `PaymentFields.kt`, `SafetyBarrier.kt` | Implemented | **Device verified** (offline demo &amp; URI barrier) |
+| **Contextual Scam Engine** | Disambiguates benign prize/police mentions vs fee, OTP &amp; extortion fraud | `SafetyBarrier.kt`, `ContextualScamRules.kt`, `PrizeIntent.java`, `FraudIntent.kt` | Implemented | **Device verified** (JVM verified + Offline Demo Panel) |
+| **Message Shield &amp; Notification Scan** | Inspects pasted chat text or opt-in Android notifications (zero DB access) | `MessageScanScreen.kt`, `NotificationScannerService.kt`, `HinglishNormalizer` | Implemented | **Implemented — verification pending** (listener soak pending) |
+| **Threat History &amp; Call Audit** | Persists multi-vector logs cleanly with Helpline `1930` / portal &amp; PDF tools | `IncidentHistoryStore.kt`, `CallHistoryEntity.kt`, `EvidenceCaptureActivity.kt` | Implemented | **Device verified** |
+| **Network Flow Intelligence** | Detects admin ports, SYN bursts, scans &amp; low-jitter C2 beaconing in CSVs | `NetworkAnomalyClassifier.kt`, `NetworkFlowImporter.kt`, `NetworkShieldScreen.kt` | Implemented (CSV) | **Device verified** (CSV Demo H; live `tun0` **Planned**) |
+| **AI Model Manager &amp; Tiers** | Enforces `ET12` magic, size bounds &amp; SHA-256 digests across `.pte` packages | `ModelManager.kt`, `ModelManifest.kt`, `ModelManagerScreen.kt` | Implemented | **Device verified** |
+| **On-Device Llama Assistant** | Conversational guidance via ExecuTorch `LlmModule` with echo sanitization | `ExecuTorchLlamaEngine.kt`, `ConversationManager.kt`, `SuSagiAssistantScreen.kt` | Implemented | **Implemented — verification pending** (greeting shown; perf open) |
+| **Whisper Offline Speech AI** | 16 kHz PCM RMS-VAD framing + ExecuTorch `AsrModule` transcription | `WhisperSttEngine.kt`, `WhisperAudioProcessor.kt`, `VoiceClipScannerScreen.kt` | Implemented | **Implemented — verification pending** (live WER unmeasured) |
+| **Speaker Guard (Live Radar)** | Monitors speakerphone utterances and controlled SBI test dialogues | `Screens.kt`, `CallProtectionService.kt`, `LiveRiskEngine.kt` | **Known issue** | **Known issue** (staged SBI scenario scored `5/100` in Build D74) |
+| **Secure Two-Way VoIP Calling** | Room-code calling backed by Agora RTC/RTM transcript channels | `AgoraEngine.kt`, `VoipCallViewModel.kt`, `RoomCodeActivity.kt` | **Experimental** | **Experimental** (room UI renders; backend token auth needed) |
+| **Trusted Person Alert Config** | Saves emergency contact config locally &amp; dispatches JSON to `/alerts` | `TrustedContactSettingsScreen.kt`, `TrustedContactManager.kt` | **Implemented** | **Implemented — verification pending** (remote SMS unverified) |
+| **Home Edge Gateway (Phase 2)** | Inline `eBPF` telemetry &amp; DNS sinkhole on ARM Linux gateways | [Phase 2 Architecture](docs/hardware/PHASE2_RASPBERRY_PI_ROADMAP.md) | **Planned** | **Planned** |
 
 ---
 
 ## Contextual Security Intelligence
 
-Instead of reacting indiscriminately to keywords such as *"lottery"* or *"police"*, `SafetyBarrier.kt`, `PrizeIntent.java`, `CredentialIntent.kt`, `FraudIntent.kt`, and `ContextualScamRules.kt` inspect **context and requested action**:
+Instead of reacting blindly to words such as *"lottery"* or *"police"*, `SafetyBarrier.kt`, `PrizeIntent.java`, `CredentialIntent.kt`, `FraudIntent.kt`, and `ContextualScamRules.kt` normalize obfuscated Unicode and inspect **clause-pair requested actions**:
 
-| Input | Relevant Context | Engine Assessment Basis *(from source rules)* |
+| Input Scenario | Contextual Class | Deterministic Rule Outcome |
 | :--- | :--- | :--- |
-| *My school organized a lottery.* | Benign discussion | `PrizeIntent` detects informational `CONTEXT` (`school (conducted\|held)`) -> `Finding.NONE` (**Low risk**). |
-| *You have won ₹10,000.* | Unverified prize claim | `PrizeIntent` matches directed prize/amount claim without fee demand -> `Signal.PRIZE_CLAIM` (`Risk.REVIEW`). |
-| *Pay ₹500 to receive your prize.* | Advance-payment demand | `PrizeIntent` / `ContextualScamRules` links payout claim + upfront transfer demand -> `Signal.ADVANCE_FEE` (`Risk.HIGH`). |
-| *Share your OTP to claim the prize.* | Credential disclosure request | `CredentialIntent` & `SafetyBarrier` match credential + disclosure verb (`share OTP`) -> `Signal.OTP` (`Risk.HIGH`). |
+| *"My school organized a lottery."* | Benign past event | `PrizeIntent` matches informational `CONTEXT` -> `LOW RISK` (`OFFER_OPEN`). |
+| *"You have won ₹10,000."* | Unsolicited claim | Directed amount without fee/OTP act -> `REVIEW` (`ASK_CONFIRMATION`). |
+| *"Pay ₹500 to receive your prize."* | Advance-fee extortion | Claim paired with upfront payment clause -> `HIGH` (`RECOMMEND_BLOCK`). |
+| *"Share your OTP to claim the prize."* | Credential trap | `CredentialIntent` matches OTP + disclosure verb -> `HIGH` (`RECOMMEND_BLOCK`). |
 
-### Implemented Detection Techniques (`app/src/main/java/com/susagi/safety/`)
+<details>
+<summary><b>How the 4-Stage Contextual Pipeline Works</b> &nbsp;<sub>(NFKC cleaning, warning suppression, clause pairs, risk floor invariants)</sub></summary>
 
-1. **Unicode Normalization & Obfuscation Stripping:** `Normalizer.Form.NFKC`, root lowercasing, apostrophe normalization, and removal of invisible zero-width characters (`\u200b`, `\ufeff`, `\u2060`, `\u00ad`) before regex matching.
-2. **Educational & Quoted Example Suppression:** Strips attributed advisory examples (e.g., `"scammers say: ..."`) and explicit negative advisories (`"do not share OTP"`, `"मत भेजें"`) so cyber-awareness warnings are not conflated with live coercion.
-3. **Clause Splitting & Multi-Clause Lookahead:** Splits text along sentence boundaries (`[.!?;।\n]+`) and evaluates pairs of `(clause, nextClause)` so multi-sentence traps (claim in clause 1, transfer/OTP demand in clause 2) remain catchable.
-4. **URL Canonicalization & Redirect Budget:** Validates IPv4/IPv6 brackets, `IDN.toASCII` labels, Punycode mismatch checks, Latin/Cyrillic lookalike character checks (`0x370..0x52f` + skeleton replacements), deceptive bank brand tokens, `.apk` suffixes, and query redirect recursion capped at `depth <= 3` / `budget = 8`.
+1. **Unicode Normalization & Obfuscation Stripping:** Applies `Normalizer.Form.NFKC`, root lowercasing, curly apostrophe folding, and stripping of zero-width characters (`\u200b`, `\ufeff`, `\u2060`, `\u00ad`) up to `MAX = 32,768` chars (`Signal.LIMIT`).
+2. **Educational & Warning Exclusion:** Removes quoted advisory examples (`reportedExample`) and negative warnings (`"never share OTP"`, `"मत भेजें"`) before scanning.
+3. **Clause Lookahead & Link Unwrapping:** Evaluates `(clause[i], clause[i+1])` transitions; unwraps nested redirect parameters up to `depth <= 3` / `budget <= 8`; checks IPv4/IPv6 brackets, `IDN.toASCII` labels, Punycode/Cyrillic homoglyphs (`0x370..0x52f`), and direct `.apk` installers.
+4. **Immutable Precedence (`UnifiedThreatEngine.withBarrier`):** Enforces `HIGH` (score floor `>= 85`) > `UNKNOWN` > `REVIEW` (`>= 40`) > `LOW` so probabilistic LLM text can never downgrade high-risk deterministic evidence.
 
-*(Illustrative unit verdicts are validated in JVM suites including `PrizeContextTest`, `ContextPairsTest`, and `SafetyBarrierTest`; generalized real-world accuracy figures are not claimed without large labeled physical field trials.)*
-
----
-
-## Security Assessment Methodology
-
-Every inspected URL, message, or QR payload evaluates to an explicit `Assessment` (`SafetyBarrier.kt`) or fused `InferenceResult` (`UnifiedThreatEngine.kt`):
-
-- **Risk Precedence:** `Risk.HIGH` > `Risk.UNKNOWN` > `Risk.REVIEW` > `Risk.LOW`.
-- **Mapped Protective Action:**
-  - `Risk.HIGH` -> `Action.RECOMMEND_BLOCK` (score floor `>= 85` in `UnifiedThreatEngine.withBarrier`)
-  - `Risk.UNKNOWN` -> `Action.DO_NOT_OPEN`
-  - `Risk.REVIEW` -> `Action.ASK_CONFIRMATION` (score floor `>= 40`)
-  - `Risk.LOW` -> `Action.OFFER_OPEN`
-- **Provenance & Uncertainty:** Outputs record source attribution (`OFFLINE_RULES`, `LOCAL_RULES`, `LLAMA_EXECUTORCH`, `HEURISTIC_FALLBACK`) and preserve the explicit local boundary note: *"Offline inspection cannot establish ownership, reputation or the destination after navigation."*
+</details>
 
 ---
 
 ## System Architecture
 
-> **Legend:** **Solid lines** represent implemented local pipelines; **dashed lines** denote optional neural inference or experimental integrations.
+> **Legend:** **Solid emerald/navy blocks** run deterministically on-device; **dashed cyan/amber blocks** indicate optional native AI or experimental modules.
 
 ```mermaid
 flowchart LR
+    classDef core fill:#ECFDF5,stroke:#059669,stroke-width:2px,color:#0F172A;
+    classDef dark fill:#0F172A,stroke:#10B981,stroke-width:2px,color:#F8FAFC;
+    classDef opt fill:#ECFEFF,stroke:#0891B2,stroke-width:2px,stroke-dasharray: 5 4,color:#0F172A;
+    classDef exp fill:#FFFBEB,stroke:#D97706,stroke-width:2px,stroke-dasharray: 5 4,color:#0F172A;
+
     subgraph Inputs ["1. Input Channels"]
-        U["URLs & Share Intents<br/>(ACTION_VIEW / SEND)"]
-        Q["CameraX QR / UPI<br/>(ML Kit 17.2.0)"]
-        M["Messages & Permitted<br/>Notifications"]
-        N["Imported NetFlow CSV<br/>(NetworkFlowImporter)"]
-        V["Voice / VoIP Audio<br/>(16kHz PCM / Agora Exp.)"]
+        U["URLs & Share Intents<br/>(ACTION_VIEW / SEND)"]:::core
+        Q["CameraX QR / UPI<br/>(ML Kit 17.2.0)"]:::core
+        M["Messages & Permitted<br/>Notifications"]:::core
+        N["Imported NetFlow CSV<br/>(NetworkFlowImporter)"]:::core
+        V["Voice / VoIP Audio<br/>(16kHz PCM / Agora Exp.)"]:::exp
     end
 
-    subgraph Core ["2. Deterministic & Contextual Core (On-Device)"]
-        LB["LinkCheckActivity &<br/>PaymentFields"]
-        SB["SafetyBarrier &<br/>ContextualScamRules"]
-        NC["NetworkAnomalyClassifier"]
-        VAD["WhisperAudioProcessor<br/>(RMS VAD + RIFF WAV)"]
+    subgraph Engine ["2. Deterministic & Contextual Core"]
+        LB["LinkCheckActivity &<br/>PaymentFields"]:::core
+        SB["SafetyBarrier &<br/>ContextualScamRules"]:::core
+        NC["NetworkAnomalyClassifier"]:::core
+        VAD["WhisperAudioProcessor<br/>(RMS VAD + RIFF WAV)"]:::exp
     end
 
-    subgraph Outcome ["3. Evidence, Assessment & Expandable AI"]
-        UT["UnifiedThreatEngine &<br/>Risk Precedence"]
-        ST["IncidentHistory &<br/>Call Audit (1930 / PDF)"]
-        MM["ModelManager<br/>(ET12 + SHA-256 Gate)"]
-        LL["ExecuTorchLlamaEngine<br/>(Llama 3.2 1B Opt.)"]
-        WH["WhisperSttEngine<br/>(ExecuTorch AsrModule Opt.)"]
+    subgraph Output ["3. Evidence, Assessment & Optional AI"]
+        UT["UnifiedThreatEngine &<br/>Risk Precedence"]:::dark
+        ST["IncidentHistory &<br/>Call Audit (1930 / PDF)"]:::core
+        MM["ModelManager<br/>(ET12 + SHA-256 Gate)"]:::opt
+        LL["ExecuTorchLlamaEngine<br/>(Llama 3.2 1B Opt.)"]:::opt
+        WH["WhisperSttEngine<br/>(ExecuTorch AsrModule)"]:::exp
     end
 
     U --> LB
@@ -313,181 +297,117 @@ flowchart LR
 
 ## On-Device AI Architecture
 
-### 1. Llama Integration (`com.susagi.edgeai`)
-- **Models & Format:** `ModelManifest` pins Software Mansion's `Llama 3.2 1B Instruct (SpinQuant Int4 XNNPACK)` (`llama_3_2_1b_xnnpack_spinquant.pte`, `~1.08 GB`, HuggingFace `tokenizer.json`, ~9.45 MB) and Community `Llama 3.2 1B (FP16)` (`llama3_2-1B.pte`, `~2.47 GB`, `tokenizer.model`, ~2.08 MB).
-- **Prompt Construction:** `ThreatPromptBuilder` and `ConversationManager` assemble Llama 3.2 Instruct chat markers (`<|begin_of_text|>`, `<|start_header_id|>system|user|assistant<|end_header_id|>`, `<|eot_id|>`) with bounded turn history (`maxTurnsToKeep = 10`, `maxCharsPerTurn = 2048`).
-- **Native Execution & Guardrails:** `ExecuTorchLlamaEngine` initializes `org.pytorch.executorch.extension.llm.LlmModule` lazily (`seqLen = 2048`, `echo = false`), validates JSON/text outputs, strips special tokens via `sanitizeLlamaOutput`, and detects echoed inputs via `isPromptEcho` before falling back safely to deterministic local guidance (`ConversationalKnowledgeEngine`).
-- **Scope Honesty:** SuSagi uses upstream ExecuTorch/community quantized packages directly—no custom Llama weight fine-tuning is claimed, and open-ended conversational accuracy/latency await comprehensive physical-device profiling.
+<details open>
+<summary><b>ExecuTorch 1.5.1 Stack — Llama 3.2 1B, Whisper INT8 &amp; Model Lifecycle</b></summary>
 
-### 2. Whisper Integration (`com.susagi.stt.whisper`)
-- **Audio Capture & PCM Framing:** `WhisperAudioProcessor` accepts 16 kHz 16-bit mono PCM chunks, runs RMS energy VAD (`vadThresholdRms = 120.0`, `minTurnBytes = 25,600` [800 ms], `maxSegmentBytes = 160,000` [5.0 s], `silenceHangoverFrames = 5`), and wraps frames into 44-byte RIFF WAV headers.
-- **Native ASR & Decoding:** `WhisperSttEngine` loads `org.pytorch.executorch.extension.asr.AsrModule` with `model`, `whisper_preprocessor.pte` (~78 KB), and `tokenizer.json`. `WhisperDecoder` strips `<|...|>` and timestamp tokens and suppresses repetitive decoding loops (`suppressRepetitions`). Model readiness checks exist in UI; live physical handset speech accuracy and latency remain pending validation.
+1. **Llama Integration (`com.susagi.edgeai`):**
+   - `ModelManifest.kt` pins Software Mansion's `Llama 3.2 1B Instruct (SpinQuant INT4 XNNPACK)` (`1,082,483,584` B, ~`1.08 GB` + `tokenizer.json` ~`9.45 MB`) and Community `Llama 3.2 1B FP16` (`2,471,922,052` B, ~`2.47 GB` + `tokenizer.model` ~`2.08 MB`)—no custom weight fine-tuning is claimed.
+   - `ExecuTorchLlamaEngine.kt` lazily loads `LlmModule(..., 0.7f)`, resets KV-cache context via `resetContext()`, calls `generate(prompt, 2048, cb, false)` (`echo = false`), and applies `sanitizeLlamaOutput()` / `isPromptEcho()` before falling back cleanly to `ConversationalKnowledgeEngine`.
+2. **Whisper Speech Pipeline (`com.susagi.stt.whisper`):**
+   - `WhisperAudioProcessor.kt` consumes 16 kHz mono PCM16 (`32,000` B/s), applies RMS VAD (`vadThresholdRms = 120.0`, `5`-frame hangover, `0.8 s–5.0 s` turn slicing), and wraps segments in 44-byte RIFF WAV headers for `AsrModule` (`Arm Whisper Tiny INT8` ~`116.58 MB` / `Small` ~`395.05 MB`).
+3. **ARM64 & Pre-Flight Model Gate (`ModelManager.kt`):**
+   - Packages `org.pytorch:executorch-android:1.5.1` (`lib/arm64-v8a/libexecutorch.so`) executing on Arm CPU/NEON via **XNNPACK** kernels; custom vendor NPU/GPU delegates are not claimed.
+   - Validates `ET12` FlatBuffer magic (`offset 4` / `offset 0`), `±50 MB` byte bounds, and SHA-256 digests prior to JNI initialization so truncated multi-gigabyte downloads transition cleanly to `MODEL_INVALID` without `SIGABRT`.
 
-### 3. ExecuTorch & ARM64 Runtime
-- **Pinned Dependency (`app/build.gradle.kts`):** `org.pytorch:executorch-android:1.5.1`.
-- **Target Hardware Architecture:** Built for `arm64-v8a` Android devices using XNNPACK CPU/NEON quantized kernels packaged inside the ExecuTorch runtime (`libexecutorch.so`). Custom NPU delegate acceleration beyond ExecuTorch XNNPACK defaults is not claimed.
+<p align="center">
+  <img src="assets/diagrams/model_lifecycle_d89.png" alt="Expandable Model Lifecycle and Pre-Flight Integrity Gate" width="96%">
+</p>
 
----
-
-## Model Lifecycle & Provisioning
-
-![Expandable Model Lifecycle](assets/diagrams/model_lifecycle_d89.png)
-
-SuSagi decouples core installation from optional `> 100 MB` model binaries to avoid bloating APKs or committing weights to Git:
-
-- **Pre-Flight Binary Validation (`ModelManager.kt`):** Checks `ET12` FlatBuffer magic identifier (`offset 4` with validated `rootTableOffset` or `offset 0`), verifies file sizes against pinned manifest sizes (`±50 MB`), and supports full SHA-256 verification across internal storage, public `Downloads` paths, or manual Storage Access Framework selection.
-- **Zero-Crash Guarantee:** Invalid or incomplete downloads transition `ModelManager.ModelState` to `MODEL_INVALID` or `MODEL_INCOMPATIBLE`—never handing corrupt buffers to JNI—so deterministic rule shields continue uninterrupted.
-
-For complete manifest SHA-256 digests and storage paths, see [docs/MODEL_PROVISIONING.md](docs/MODEL_PROVISIONING.md).
+</details>
 
 ---
 
-## Security & Privacy Boundaries
+## Technology Stack & Security Boundaries
 
-- **Local Processing Scope:** `SafetyBarrier`, `LinkCheckActivity.evaluateLinkSafety`, `ContextualScamRules`, `PaymentFields`, QR parsing, `NetworkAnomalyClassifier`, local Room incident history, and validated `ExecuTorch` weights run without remote inference calls.
-- **Optional External Services:** When configured and explicitly used, optional integrations exist for Agora RTC/RTM calling (`AgoraEngine`), companion backend relay (`BACKEND_URL`), Gemini role evaluation (`GeminiRoleClient`), Bhashini speech/translation, Firebase Auth/FCM, and Ably alerts.
-- **Notification & Storage Boundaries:** `NotificationScannerService` inspects notifications only after explicit user approval in Android System Settings and never opens third-party messaging databases. `LinkCheckActivity` states clearly that offline heuristics cannot verify DNS ownership or post-redirect targets.
-- **Credential Hygiene:** `app/build.gradle.kts` strips `GEMINI_API_KEY`, `BHASHINI_ULCA_API_KEY`, `BHASHINI_INFERENCE_API_KEY`, and `ABLY_API_KEY` from release `BuildConfig` fields. Previously committed development Agora IDs or LAN defaults in older history must be rotated and treated as compromised; never redistribute uncleaned legacy APKs.
-
-Full permission breakdown and security guidance: [docs/SECURITY.md](docs/SECURITY.md) · [SECURITY.md](SECURITY.md).
-
----
-
-## Technology Stack
-
-Verified directly against [build.gradle.kts](build.gradle.kts) and [app/build.gradle.kts](app/build.gradle.kts):
-
-| Category | Technology & Exact Version |
-| :--- | :--- |
-| **Platform & SDK** | Android (`compileSdk = 35`, `targetSdk = 35`, `minSdk = 26`), Java `17` |
-| **Language** | Kotlin `2.0.21` (with selective Java components such as `PrizeIntent.java`) |
-| **UI Framework** | Jetpack Compose BOM `2024.09.03`, Material 3, Activity Compose `1.9.2` |
-| **Edge AI Runtime** | Meta PyTorch ExecuTorch [`org.pytorch:executorch-android:1.5.1`](https://pytorch.org/executorch/) (`LlmModule`, `AsrModule`) |
-| **Language Models** | Meta Llama 3.2 1B Instruct (`SpinQuant INT4 XNNPACK` & `FP16` `.pte` via `ModelManifest`) |
-| **Speech Models** | OpenAI Whisper Tiny & Small (`INT8 XNNPACK` `.pte` + preprocessor via `ModelManifest`) |
-| **Vision & QR** | AndroidX CameraX `1.3.4` + ML Kit Barcode Scanning `17.2.0` |
-| **Persistence & Security** | AndroidX Room `2.6.1` (KSP), `androidx.security:security-crypto:1.1.0-alpha06` |
-| **Networking** | OkHttp `4.12.0`, Socket.IO Client `2.1.0` |
-| **Optional RTC / Cloud** | Agora Voice SDK `4.4.1`, Agora RTM `2.2.1`, Firebase BOM `33.7.0`, Ably `1.2.0` |
-| **Build & Testing** | Android Gradle Plugin `8.5.2`, KSP `2.0.21-1.0.28`, JUnit `4.13.2`, `org.json:20231013` |
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>Verified Build Stack (<code>app/build.gradle.kts</code>)</h4>
+      <ul>
+        <li><b>Android SDK:</b> <code>minSdk 26</code> – <code>targetSdk 35</code> (Android 8–15)</li>
+        <li><b>Language &amp; UI:</b> Kotlin <code>2.0.21</code>, Java <code>17</code>, Compose BOM <code>2024.09.03</code></li>
+        <li><b>Edge AI:</b> <code>org.pytorch:executorch-android:1.5.1</code> (<code>arm64-v8a</code>)</li>
+        <li><b>Vision &amp; DB:</b> CameraX <code>1.3.4</code>, ML Kit <code>17.2.0</code>, Room <code>2.6.1</code>, <code>security-crypto</code></li>
+        <li><b>Optional RTC:</b> Agora Voice <code>4.4.1</code> / RTM <code>2.2.1</code>, OkHttp <code>4.12.0</code>, Socket.IO <code>2.1.0</code>, Firebase BOM <code>33.7.0</code>, Ably <code>1.2.0</code></li>
+        <li><b>Verification:</b> JUnit <code>4.13.2</code> · <b>318 / 318</b> unit tests passing across <b>51</b> suites (<code>12.37 s</code>)</li>
+      </ul>
+    </td>
+    <td width="50%" valign="top">
+      <h4>Privacy &amp; Credential Hygiene (<code>docs/SECURITY.md</code>)</h4>
+      <ul>
+        <li><b>Offline Core:</b> Links, UPI/QR, messages, CSV NetFlow &amp; local logs run offline without remote telemetry.</li>
+        <li><b>Scoped OS Permissions:</b> <code>NotificationListenerService</code> runs only on explicit opt-in and never reads WhatsApp/messaging DBs.</li>
+        <li><b>Honest Disclosures:</b> Offline screening states explicitly it cannot confirm external DNS ownership post-redirect.</li>
+        <li><b>Release Hardening:</b> Release builds strip <code>GEMINI_API_KEY</code>, <code>BHASHINI_*</code> &amp; <code>ABLY_API_KEY</code>; historical Agora/LAN dev defaults are flagged for owner-side rotation prior to shared backend hosting.</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
 ---
 
 ## Installation & Setup
 
-### Prerequisites
-- JDK 17, Android SDK (`API 26–35`), Android Studio (or CLI Gradle wrapper `./gradlew`), and an `arm64-v8a` Android handset for hardware/model testing.
-
-### Build & Install from Source
-
 ```bash
 git clone https://github.com/Anmol-coder26/APP_Susagi-Arm.git
 cd APP_Susagi-Arm
 cp local.properties.template local.properties
-# Edit local.properties and set sdk.dir=<path-to-your-Android-SDK>
+# Edit local.properties -> set sdk.dir=<path-to-your-Android-SDK>
 
-# 1. Verify offline unit tests (318 tests / 51 suites)
+# 1. Verify offline deterministic & pipeline tests (318 tests / 51 suites)
 ./gradlew testDebugUnitTest --offline
 
-# 2. Build & install debug APK onto connected handset
+# 2. Build & install clean debug APK onto an arm64-v8a handset
 ./gradlew assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-- **No Cloud Keys Required for Core Shields:** Leave `GEMINI_API_KEY`, `AGORA_APP_ID`, `ABLY_API_KEY`, and `BHASHINI_*` empty in `local.properties` when testing local link, message, QR, audit log, and ExecuTorch weight loading workflows.
-- **Prebuilt Binary Notice:** Public prebuilt APK release links from prior competition iterations are withheld pending key-rotation cleanup; build cleanly from source or follow [docs/INSTALLATION.md](docs/INSTALLATION.md).
-
----
-
-## Testing & Benchmarks
-
-SuSagi strictly separates host JVM verification from physical ARM64 Android validation:
-
-- **Automated JVM Unit Tests (`app/build/test-results/testDebugUnitTest/`):** **318 tests across 51 test suites passing** (`0` failures, `0` errors, `0` skipped; cumulative suite execution time **12.37s**). Covers `SafetyBarrier`, `PrizeContextTest`, `PaymentMutationTest`, `LinkCheckSecurityTest`, `UnifiedThreatEngineTest`, `ModelManagerTest`, `NetworkAnomalyClassifierTest`, `AudioFramePipelineTest`, and `WhisperModuleTest`.
-- **Android Instrumented Harnesses (`app/src/androidTest/`):** Includes `LlamaNativeInferenceDeviceTest`, `WhisperNativeInferenceDeviceTest`, `EndToEndScamDetectionDeviceTest`, and `AgoraVoipDeviceTest` requiring physical `arm64-v8a` targets and staged `.pte` assets.
-- **Benchmark Discipline:** No generalized tokens/sec, Whisper Word Error Rate, RAM ceilings, or real-world call accuracy claims are asserted where continuous device-farm benchmarking has not been logged. In recorded Build D74 walk-through runs, the scripted *Speaker Guard SBI KYC* scenario returned `LOW (5/100)`, reflecting active tuning of live call thresholds.
-
-Full test breakdown: [docs/TESTING.md](docs/TESTING.md).
-
----
-
-## Project Structure
+- **No Cloud Keys Required for Core Shields:** Leave optional keys (`GEMINI_API_KEY`, `AGORA_APP_ID`, `ABLY_API_KEY`, `BHASHINI_*`) blank for offline screening and local `.pte` testing ([docs/MODEL_PROVISIONING.md](docs/MODEL_PROVISIONING.md)).
+- **Prebuilt Binary Notice:** Legacy third-party APK mirrors from prior commits are retired pending key rotation; compile cleanly from source via [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 <details>
-<summary><b>Explore Repository Layout</b></summary>
+<summary><b>Explore Repository Directory Layout &amp; Documentation Hub</b></summary>
 
 ```text
 APP_Susagi-Arm/
-├── app/
-│   ├── build.gradle.kts              # SDK 26-35, ExecuTorch 1.5.1, CameraX, Room & release hardening
-│   └── src/
-│       ├── main/java/
-│       │   ├── com/guardian/app/     # UI screens, LinkCheckActivity, QrScannerActivity, CallAudit, AgoraEngine
-│       │   └── com/susagi/
-│       │       ├── safety/           # SafetyBarrier, ContextualScamRules, PrizeIntent, PaymentFields
-│       │       ├── intelligence/     # UnifiedThreatEngine, AstraSecurityBridge, classifiers
-│       │       ├── edgeai/           # ModelManifest, ModelManager, ExecuTorchLlamaEngine, ConversationManager
-│       │       ├── stt/whisper/      # WhisperSttEngine, WhisperAudioProcessor, WhisperDecoder
-│       │       ├── network/          # NetworkAnomalyClassifier, NetworkFlowImporter
-│       │       ├── ui/               # Assistant, ModelManager, OfflineDemo, VoiceClip & Network UIs
-│       │       └── call/             # Experimental VoIP UI & ViewModel
-│       ├── test/                     # 51 JVM unit & regression test suites (318 tests)
-│       └── androidTest/              # Physical-device ExecuTorch & VoIP instrumented tests
+├── app/                         # Kotlin 2.0.21 + Compose Android app (safety, intelligence, edgeai, whisper, network, call)
 ├── assets/
-│   ├── branding/                     # SVG logo, hero banner & demo thumbnail
-│   ├── diagrams/                     # Verified architecture & lifecycle visuals
-│   └── screenshots/gallery/          # 16 privacy-redacted authentic product screens
-├── docs/                             # ARCHITECTURE, SECURITY, MODEL_PROVISIONING, INSTALLATION, TESTING, LIMITATIONS, ROADMAP
-├── server/                           # Optional Node.js relay for Agora tokens, contacts & alerts (.env.example)
-├── submission/ & SUSAGI_FINAL_SUBMISSION/  # Competition-specific archive, reports & final film
-├── CONTRIBUTING.md
-├── LICENSE                           # Apache License 2.0
-├── NOTICE.md
-└── SECURITY.md
+│   ├── branding/                # SVG logo, 4-phone showcase strip & film thumbnail
+│   ├── diagrams/                # Source-grounded architecture & lifecycle diagrams
+│   └── screenshots/gallery/     # 16 privacy-redacted authentic product screens
+├── docs/                        # ARCHITECTURE, SECURITY, MODEL_PROVISIONING, INSTALLATION, TESTING, LIMITATIONS, ROADMAP
+├── FINAL_SUBMISSION/            # Organized 01_Video..05_Submission package, SSOT matrix & PS3 traceability
+├── server/                      # Optional Node.js Agora/alert relay (.env.example)
+├── submission/ & reports/       # Final 33-page PDF/DOCX Technical Report & synced competition records
+├── LICENSE & NOTICE.md          # Apache License 2.0 + third-party attributions
+└── SECURITY.md                  # Vulnerability reporting & operating boundaries
 ```
 
 </details>
 
 ---
 
-## Current Limitations
+## Current Limitations & Roadmap
 
-- **Generative LLM Tuning & Hardware Staging:** `Llama 3.2 1B` requires manual `.pte` staging (~1.08 GB); output sanitizer and prompt-echo defenses are active, while general multi-turn reasoning quality remains under hardware validation.
-- **Whisper Native Audio Validation Pending:** Native `AsrModule` wiring and audio preprocessors exist, but live phone microphone speech accuracy has not been benchmarked end-to-end.
-- **Experimental Agora VoIP & Speaker Guard Calibration:** Live two-device VoIP calls depend on external backend tokens; stock Android (API 29+) restricts direct PSTN uplink/downlink audio capture (`VOICE_CALL`), and live Speaker Guard thresholding remains under calibration (`LOW 5/100` observed in SBI demo).
-- **Trusted Contact Dispatch Dependency:** Local recipient settings save reliably, whereas remote dispatch routes via `BACKEND_URL` (`/alerts/trusted-contact` / `/alerts/family`) rather than verified carrier SMS alerts.
-- **Network Shield Scope:** Inspects imported NetFlow CSV logs locally; non-root Android apps cannot sniff system traffic without enabling a `VpnService` (`tun0`) intercept or home gateway node.
+| Area | Current Honest Boundary | Next Planned Milestone |
+| :--- | :--- | :--- |
+| **Llama Multi-Turn Reasoning** | Short offline `"hi"` greeting verified; Build `D74` echo guard active (`sanitizeLlamaOutput`); tok/s &amp; TTFT unmeasured | Profile quantized `SpinQuant INT4` latency &amp; audit multi-turn grounding via `LlamaNativeInferenceDeviceTest` |
+| **Whisper Live Speech ASR** | 16 kHz WAV/VAD framing passes unit tests; `Tiny INT8` staged; hardware live WER/RTF unbenchmarked | Execute noisy Hindi/Hinglish handset microphone validation suite (`WhisperNativeInferenceDeviceTest`) |
+| **Speaker Guard &amp; Agora VoIP** | SBI simulation returned `LOW (5/100)` in Build `D74`; two-device VoIP requires backend token server &amp; rotated Agora creds | Calibrate `LiveRiskEngine` live thresholds against `SafetyBarrier`; provision clean rotated token relay |
+| **Trusted Contact Dispatch** | Local recipient UI saves cleanly; remote dispatch routes to `BACKEND_URL/alerts`; SMS delivery unverified | Implement delivery acknowledgement and opt-in offline SMS fallback testing |
+| **Live Network Inspection** | Currently analyzes imported CSV NetFlow batches (`85/100 C2_BEACONING` verified in Demo H) | Build opt-in local `VpnService` (`tun0`) metadata collector &amp; [Phase 2 Home Gateway](docs/hardware/PHASE2_RASPBERRY_PI_ROADMAP.md) |
 
-Detailed disclosure: [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
-
----
-
-## Development Roadmap
-
-- **Calibrate Live Voice & Speaker Guard Scoring** against realistic Indian scam transcripts paired with end-to-end physical `WhisperSttEngine` benchmarks.
-- **Harden `ExecuTorchLlamaEngine` Output & Tool Grounding** across quantized `SpinQuant INT4` device runs.
-- **Complete Signed Clean Releases & Credential Rotation** after purging all legacy development keys and hardcoded LAN defaults.
-- **Optional Local `VpnService` Telemetry & Companion Home Edge Gateway:** See [docs/ROADMAP.md](docs/ROADMAP.md) and [Phase 2 Architecture](docs/hardware/PHASE2_RASPBERRY_PI_ROADMAP.md).
+Detailed documentation: [docs/TESTING.md](docs/TESTING.md) · [docs/LIMITATIONS.md](docs/LIMITATIONS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ---
 
-## Contributors
+## Contributors, License & Submission Archive
 
-- **Anmol Singh** ([@Anmol-coder26](https://github.com/Anmol-coder26)) — Project Creator & Lead Engineer
-- **Tanya Singh** — Co-Contributor
-
----
-
-## License & Acknowledgements
-
-Licensed under the [Apache License 2.0](LICENSE).  
-Incorporates open-source components including PyTorch ExecuTorch (BSD-3-Clause), Meta Llama 3.2 model format tooling, OpenAI Whisper / Arm XNNPACK packages, Android Jetpack / CameraX / ML Kit (Apache-2.0), Agora SDK, and Bhashini interfaces — see [NOTICE.md](NOTICE.md).
-
----
-
-## Hackathon Submission Archive
-
-Competition-specific deliverables prepared separately from core product documentation are preserved in:
-- [Official Final Submission Bundle](FINAL_SUBMISSION/05_Submission/Submission_Information.txt) · [Feature Verification Matrix](FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md) · [PS3 Traceability](FINAL_SUBMISSION/04_Evidence/PS3_Requirement_Traceability.md)
-- [Final Technical Report (PDF)](SUSAGI_FINAL_SUBMISSION/SuSagi_Guardian_Final_Technical_Report.pdf) · [Editable Report (DOCX)](SUSAGI_FINAL_SUBMISSION/SuSagi_Guardian_Final_Technical_Report.docx) · [Final Submission Demo Film (`01:51`)](SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4)
-- [Legacy Submission Links](submission/SUBMISSION_LINKS.md) · [Test Evidence Summary](submission/EVIDENCE.md) · [Release Manifest](submission/RELEASE_MANIFEST.md)
+- **Contributors:** **Anmol Singh** ([@Anmol-coder26](https://github.com/Anmol-coder26), Project Creator &amp; Lead Engineer) · **Tanya Singh** (Co-Contributor)
+- **License:** [Apache License 2.0](LICENSE) · Third-party notices in [NOTICE.md](NOTICE.md)
+- **Competition Submission Archive (Separate from Core Identity):**
+  [Official Submission Bundle](FINAL_SUBMISSION/05_Submission/Submission_Information.txt) ·
+  [Feature Verification Matrix](FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md) ·
+  [PS3 Traceability](FINAL_SUBMISSION/04_Evidence/PS3_Requirement_Traceability.md) ·
+  [Final Technical Report (`33p PDF`)](SUSAGI_FINAL_SUBMISSION/SuSagi_Guardian_Final_Technical_Report.pdf) ·
+  [Editable Report (`DOCX`)](SUSAGI_FINAL_SUBMISSION/SuSagi_Guardian_Final_Technical_Report.docx)
