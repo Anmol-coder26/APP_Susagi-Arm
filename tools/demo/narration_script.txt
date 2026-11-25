@@ -1,46 +1,44 @@
-SuSagi Guardian V2 — Two-Minute Official Demonstration Video Narration Script
-Bharat AI-SoC Challenge 2026–27 | PS3: On-Device Threat, Phishing & Scam Detection
-Target Duration: <= 120 Seconds | Master Resolution: 1920x1080 16:9
+# SUSAGI GUARDIAN — OFFICIAL ULTRA-INTERACTIVE PRODUCT FILM SCRIPT
+# BHARAT AI-SOC CHALLENGE 2026–27 | PS3: ON-DEVICE THREAT, PHISHING & SCAM DETECTION
+# Lead Contributor & Author: Anmol Singh (@Anmol-coder26)
+# Target Runtime: Exactly 117.5 Seconds (Strictly <= 120 Seconds) | Voice: en-US-ChristopherNeural (+24% rate)
 
-======================================================================
+[00:00.000 - 00:12.500 | SCENE 01: LINK INTERCEPT & APK OVERLOAD SHIELD]
+Voiceover: "When you tap a link in WhatsApp or SMS, Android routes it to SuSagi Guardian first. Before opening your browser, Link Shield inspects numeric IPs, missing TLS, and quarantines dangerous APK overloads."
+Visual: Incoming WhatsApp message simulation. User taps link -> Android Intent Interceptor engages Link Safety Barrier before external browser. Red warning locks onto 192.168.1.100 and plain HTTP. Interactive tap triggers Quarantine APK action.
 
-SCENE 1: THE HOOK [BHARAT AI-SOC CHALLENGE 2026-27]
-Header: SUSAGI GUARDIAN V2 — On-Device AI Cybersecurity Assistant | PS3
-Narration: "Every suspicious message creates a critical decision: is this safe, or is it a scam? SuSagi Guardian is built to make that decision clear."
+[00:12.500 - 00:24.500 | SCENE 02: QR CODE VISION & UPI PAYMENT PHYSICS]
+Voiceover: "Physical QR codes hide the same traps. SuSagi’s QR Vision decodes payloads in milliseconds, exposing reverse-debit traps and enforcing the law: your UPI PIN is only for sending money, never receiving."
+Visual: Camera viewfinder scanning physical QR code card with active neon reticles. Instant NPCI parameter decoding (am=4999.00). Zoom into DO_NOT_AUTO_PAY verdict and the golden law: UPI PIN is ONLY entered to send money.
 
-SCENE 2: THE PROBLEM [PROBLEM STATEMENT PS3]
-Header: THE DIGITAL SCAM EPIDEMIC — Lottery Traps • Fake Arrests • Reverse-Debit Phishing
-Narration: "Every day, millions encounter fake lottery claims, reverse-debit payment traps, and deceptive links. Ordinary users need accessible, on-device protection."
+[00:24.500 - 00:37.000 | SCENE 03: CONTEXTUAL MESSAGE SHIELD & 10 INDIAN LANGUAGES]
+Voiceover: "Suspicious words alone do not prove fraud. SuSagi understands context across ten Indian languages—from Hindi to Tamil, Bengali, and Marathi—distinguishing harmless notices from coercive digital arrest schemes."
+Visual: Live scanning of Hindi police extortion SMS. Active laser scanline sweep. Threat meter needle surges to 100/100. Interactive animated carousel highlights 10 Indian language engines (Hindi, Tamil, Telugu, Bengali, Marathi, etc.).
 
-SCENE 3: SYSTEM ARCHITECTURE [LOCAL-FIRST PRIVACY]
-Header: ON-DEVICE LOCAL SANDBOX — Deterministic Shields + Local Reasoning Engine
-Narration: "SuSagi operates on a local-first architecture. Incoming text and URLs are evaluated entirely on-device, isolating sensitive user data from the cloud."
+[00:37.000 - 00:48.500 | SCENE 04: CYBERSECURITY AI ASSISTANT — DIGITAL ARREST GUIDANCE]
+Voiceover: "When citizens need advice, our AI Assistant focuses strictly on cybersecurity. It explains digital arrest tactics, reassures the victim, and confirms: police never conduct arrests over video calls."
+Visual: On-device Llama 3.2 1B assistant session. User asks about a digital arrest video call. Typing indicator animates. Local model generates advice: Police never arrest over Skype/WhatsApp; do not transfer clearance funds; dial 1930.
 
-SCENE 4: MESSAGE SHIELD [MESSAGE SHIELD READY]
-Header: END-TO-END MESSAGE ANALYSIS — Evidence Extraction • Threat Normalization • Remediation
-Narration: "Through Message Shield, suspicious messages shared into SuSagi are parsed immediately. The safety barrier extracts evidence tokens, categorizes the threat, and guides action."
+[00:48.500 - 01:01.500 | SCENE 05: EDGE AI MODELS & TELEMETRY SIGNIFICANCE]
+Voiceover: "Under the hood: Meta Llama 3.2 1B quantized with SpinQuant Int4, and Whisper Small for speech. Powered by ExecuTorch on Arm Cortex-A715 cores, all inference runs 100% inside local memory."
+Visual: Model Manager screen in motion. Active hardware telemetry HUD: Arm Cortex-A715 performance cores, PyTorch ExecuTorch runtime, SpinQuant Int4 1.1GB weights, Whisper Small 480MB, and 0.0 KB cloud leakage badge.
 
-SCENE 5: CONTEXTUAL INTELLIGENCE [ASTRA SECURITY BRIDGE]
-Header: THE ASTRA LOTTERY BENCHMARK — Disambiguating Unverified Claims from Active Extortion
-Narration: "Contextual intelligence is critical. SuSagi differentiates an unverified prize notification from an active advance-fee extortion trap, preventing notification fatigue."
+[01:01.500 - 01:12.500 | SCENE 06: VOIP CALL PROTECTION & ACOUSTIC RADAR]
+Voiceover: "During active calls, Call Shield monitors for acoustic stress and extortion keywords. The on-device radar visualizes threat levels in real time, alerting users to deceptive manipulation."
+Visual: Active call screen with dynamic multi-bar audio waveform animating live speech. High-tech rotating radar scope sweeps across caller frequency, detecting extortion keywords and surging to High Coercion alert.
 
-SCENE 6: LINK SHIELD & BROWSER [LINK SHIELD READY]
-Header: URL SAFETY & ANTI-SPOOFING — Punycode Detection • IP-Direct Blocking • Safe Sandbox
-Narration: "Link Shield intercepts shared URLs, inspecting for punycode spoofing, suspicious IP hosts, and malicious APK payloads before safe browser access."
+[01:12.500 - 01:24.000 | SCENE 07: CALL AUDIT & NATIONAL 1930 CYBERCRIME REPORTING]
+Voiceover: "Post-call, the Call Audit engine compiles an evidence summary. With a single tap, the user can export the incident to cybercrime.gov.in or directly dial the national 1930 helpline."
+Visual: Call Audit incident summary dossier (caller ID, duration, 88% risk score, coercive signals). Interactive tap on 'Report to Cybercrime.gov.in' pre-fills dossier. Secondary glowing pulse on 'Dial 1930 Helpline'.
 
-SCENE 7: SCAM RADAR & EXTORTION DEFENSE [OFFLINE EXTORTION RADAR]
-Header: REAL-TIME RADAR & FAMILY SOS — Authority Impersonation • Digital Arrest • Emergency Alert
-Narration: "For live threats, the extortion radar analyzes coercion patterns and digital arrest pretexts, triggering emergency family alerts when risk escalates."
+[01:24.000 - 01:34.500 | SCENE 08: FAMILY MEMBER GUARDIAN (TRUSTED PERSON)]
+Voiceover: "For vulnerable elderly parents, SuSagi includes the Trusted Person Guardian. When a critical extortion threat is intercepted, an alert is automatically dispatched to a family member to intervene."
+Visual: Trusted Contact screen. Family safety toggle engages. Immediate simulated emergency dispatch card: 'Alert Dispatched to Son (Rahul): High-risk extortion scam intercepted on Papa's device. Blocked automatically.'
 
-SCENE 8: ARM & EXECUTORCH [ARM64-v8a EXECUTORCH]
-Header: ARM64 NATIVE RUNTIME & LLAMA 3.2 — Local Model Execution + Knowledge Engine Fallback
-Narration: "Powered by Arm64 architecture, SuSagi integrates the ExecuTorch runtime for local Llama reasoning, supported by an on-device knowledge engine."
+[01:34.500 - 01:46.500 | SCENE 09: AUTONOMOUS NETFLOW SHIELD & DETERMINISTIC ARCHITECTURE]
+Voiceover: "Beyond apps, NetFlow Shield ingests traffic offline, detecting C2 beaconing through periodicity analysis. Deterministic barriers enforce immediate blocking, while local AI provides explanation."
+Visual: Real network anomaly log showing 10,000ms periodic heartbeats on foreign IP 198.51.100.88. Side-by-side architecture comparison: Layer 1 Deterministic Barrier (<1ms non-negotiable blocking) vs Layer 2 Local AI Guidance.
 
-SCENE 9: ENGINEERING VALUE & VALIDATION [100% UNIT TEST PASS]
-Header: 315/315 TEST SUITES PASSED — Zero Cloud Leakage • Rigorous Security Regression Suite
-Narration: "With three hundred and fifteen verified unit tests, SuSagi proves that consumer cybersecurity can be private, explainable, and reliable."
-
-SCENE 10: CLOSING [BUILT FOR BHARAT AI-SoC 2026-27]
-Header: SUSAGI GUARDIAN V2 — Cybersecurity that helps people make safer decisions.
-Narration: "SuSagi Guardian: On-Device AI Cybersecurity for Bharat AI-SoC Challenge."
-
+[01:46.500 - 01:57.500 | SCENE 10: SOVEREIGN DIGITAL FREEDOM FINALE & CREDITS]
+Voiceover: "SuSagi Guardian. Sovereign privacy, multilingual security, and on-device Arm intelligence for every citizen across Bharat. Think before you click. Know before you trust."
+Visual: Majestic cinematic product finale with glowing 3D SuSagi shield emblem, Bharat AI-SoC Challenge PS3 badge, 10 Languages ribbons, Armv9-A / ExecuTorch crest, and author credit: Anmol Singh (@Anmol-coder26).

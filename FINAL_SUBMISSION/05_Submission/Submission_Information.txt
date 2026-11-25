@@ -14,7 +14,7 @@ Public Repository URL: https://github.com/Anmol-coder26/APP_Susagi-Arm
 Branch: main
 Team Name: Breakthrough
 Team Leader: Harsh Bamer
-Team Members: Harsh Bamer (Leader), Anmol Singh (@Anmol-coder26), Tanya Singh
+Team Members: Harsh Bamer (Leader), Anmol Singh (@Anmol-coder26)
 Institute: SGSITS, Indore
 
 Required Final Public Video URL (Owner Upload):

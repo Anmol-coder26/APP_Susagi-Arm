@@ -1,6 +1,6 @@
 # SuSagi Guardian V2 — Verified Submission Links
 **Challenge:** Bharat AI-SoC Student Challenge 2026–27 · Problem Statement PS3  
-**Contributors:** Anmol Singh (`@Anmol-coder26`), Tanya Singh
+**Team:** Breakthrough · **Institute:** SGSITS, Indore · **Team Leader:** Harsh Bamer · **Contributors:** Anmol Singh (`@Anmol-coder26`), Harsh Bamer
 
 ---
 
