@@ -6,7 +6,7 @@
 - [x] **Gate C — Repository (`https://github.com/Anmol-coder26/APP_Susagi-Arm`):** Publicly reachable (`HTTP 200`), competition-independent hero `README.md`, `16` redacted genuine screens, grounded docs under `docs/`, zero tracked APKs/keystores/`local.properties`.
 - [x] **Gate D — Cross-Artifact Consistency:** Video, Technical Report, README, and `FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md` agree identically on `ExecuTorch 1.5.1`, `compileSdk 35` / `minSdk 26`, `318/318` unit tests (`51` suites), Llama/Whisper asset identities, `5/100` SBI calibration, and experimental/pending boundaries.
 - [ ] **Gate E — Owner Final Pre-Submit Actions (Mandatory Before Official Portal Submit):**
-  1. Fill `[TEAM NAME]`, `[INSTITUTION NAME]`, and optional `[MENTOR NAME]` in `FINAL_SUBMISSION/02_Report/SuSagi_Guardian_Final_Technical_Report.docx` and re-export PDF before form upload.
+  1. *(Done)* Team metadata (`Team Breakthrough`, Leader `Harsh Bamer`, Institute `SGSITS, Indore`) populated cleanly in [SuSagi_Guardian_Final_Technical_Report.docx](file:///D:/SuSagi_Guardian_V2/FINAL_SUBMISSION/02_Report/SuSagi_Guardian_Final_Technical_Report.docx) & exported PDF.
   2. Upload `FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4` to YouTube or Google Drive as **Public** and verify anonymous incognito playback.
   3. **Post-Freeze Credential Rotation Advisory (Directive 92 Part 19):**
      - `app/src/main/java/com/guardian/app/AgoraEngine.kt` still carries a hardcoded 32-hex development Agora App ID in `HEAD` (and historical commits contained Agora/API dev keys + `192.168.29.62` in `app/build.gradle.kts` & `network_security_config.xml`).

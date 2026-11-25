@@ -12,10 +12,10 @@ Platform: Android 8.0–15 (API 26–35) · ABI arm64-v8a · PyTorch ExecuTorch 
 
 Public Repository URL: https://github.com/Anmol-coder26/APP_Susagi-Arm
 Branch: main
-Contributors: Anmol Singh (Lead Engineer · @Anmol-coder26), Tanya Singh
+Team Name: Breakthrough
+Team Leader: Harsh Bamer
+Team Members: Harsh Bamer (Leader), Anmol Singh (@Anmol-coder26), Tanya Singh
+Institute: SGSITS, Indore
 
-Mandatory Owner Fields to Fill Before Form Submission:
-- Team Name: [TEAM NAME — TO BE CONFIRMED BY OWNER PRIOR TO SUBMISSION]
-- Institution: [INSTITUTION NAME — TO BE CONFIRMED BY OWNER PRIOR TO SUBMISSION]
-- Faculty Mentor (recommended): [MENTOR NAME — OPTIONAL / TO BE CONFIRMED BY OWNER PRIOR TO SUBMISSION]
+Required Final Public Video URL (Owner Upload):
 - Public Video URL (YouTube / Google Drive): [UPLOAD FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4 AS PUBLIC WITH OWNER ACCOUNT & PASTE URL HERE]
