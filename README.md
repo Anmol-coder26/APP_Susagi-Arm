@@ -403,7 +403,7 @@ Detailed documentation: [docs/TESTING.md](docs/TESTING.md) · [docs/LIMITATIONS.
 
 ## Contributors, License & Submission Archive
 
-- **Contributors:** **Anmol Singh** ([@Anmol-coder26](https://github.com/Anmol-coder26), Project Creator &amp; Lead Engineer) · **Tanya Singh** (Co-Contributor)
+- **Contributors:** **Anmol Singh** ([@Anmol-coder26](https://github.com/Anmol-coder26), Project Creator &amp; Lead Engineer) · **Harsh Bamer** (Co-Contributor)
 - **License:** [Apache License 2.0](LICENSE) · Third-party notices in [NOTICE.md](NOTICE.md)
 - **Competition Submission Archive (Separate from Core Identity):**
   [Official Submission Bundle](FINAL_SUBMISSION/05_Submission/Submission_Information.txt) ·
