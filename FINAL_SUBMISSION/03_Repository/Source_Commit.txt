@@ -1,0 +1,5 @@
+Repository: https://github.com/Anmol-coder26/APP_Susagi-Arm
+Branch: main
+Application Source Tree Baseline: c661baf..1892ce1 (app/src unmodified since Phase-A freeze; docs & submission updates layered cleanly atop main)
+Verification Suite Run Reference: ./gradlew testDebugUnitTest -> 51 XML suites, 318/318 tests passing (0 failures, 12.368 s)
+Artifact Package Version: com.susagi.guardian2 (versionName 3.0.0, versionCode 3, Build D74)

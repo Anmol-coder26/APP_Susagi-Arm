@@ -1,26 +1,13 @@
-# SuSagi Guardian V2 — PS3 Compliance & Requirements Traceability Matrix
-**Challenge:** Bharat AI-SoC Challenge 2026–27  
-**Problem Statement:** PS3 — On-Device Threat, Phishing & Scam Detection  
-**Lead Contributor:** Anmol Singh (`Anmol-coder26`)
+# SuSagi Guardian V2 — PS3 Compliance & Traceability Summary
 
----
+Canonical traceability is maintained in `FINAL_SUBMISSION/04_Evidence/PS3_Requirement_Traceability.md` and `Table D.1` of `SuSagi_Guardian_Final_Technical_Report.pdf`.
 
-## 1. Compliance Traceability
-
-| PS3 Requirement | SuSagi Implementation | Architectural Component | Verification Status |
+| PS3 Requirement | SuSagi Implementation | Component(s) | Status |
 | :--- | :--- | :--- | :--- |
-| **Req 1: Real-Time On-Device Scam Detection** | Detects extortion, fake authority, urgency tactics, and financial fraud locally on handset. | `SafetyBarrier` + `UnifiedThreatEngine` + `ExecuTorchLlamaEngine` | **Device Verified** |
-| **Req 2: Phishing & Malicious URL Analysis** | Analyzes deceptive Unicode homoglyphs, IP addresses, credential-harvesting paths, and `.apk` downloads. | `LinkShield` + `SafeBrowsingLocalDatabase` | **Device Verified** |
-| **Req 3: Message & SMS Security Inspection** | Scans SMS and text messages for lottery lures, fake KYC, electricity disconnection, and OTP traps. | `MessageShield` + `HinglishNormalizer` | **Device Verified** |
-| **Req 4: Financial & Payment Safety Guard** | Prevents reverse-debit fraud by enforcing that entering a UPI PIN always debits funds. | `PaymentInspector` + `QrScannerActivity` | **Device Verified** |
-| **Req 5: Arm Architecture Optimization** | Engineered for ARM64-v8a / ARMv9-A with ExecuTorch native runtime (`libexecutorch.so`). | `org.pytorch:executorch-android:1.5.1` | **Binary Packaged & JNI Bound** |
-| **Req 6: Strict Privacy & Offline Boundaries** | Zero cloud server telemetry. Incident logs stored strictly in encrypted handset database. | `IncidentHistoryStore` (Encrypted Room DB) | **Device Verified** |
-| **Req 7: Multi-Turn Conversational Explanations** | Conversational assistant explains complex threat indicators in simple language with action items. | `SuSagiAssistantScreen` + `ConversationManager` | **Device Verified** |
-
----
-
-## 2. Technical Evidence Summary
-
-* **Automated Regression Suite:** 315 tests passed across 51 test suites with 0 failures (`BUILD SUCCESSFUL`).
-* **Binary Packaging:** `susagi-guardian-v2.apk` contains pre-compiled `libexecutorch.so` in `lib/arm64-v8a`.
-* **Zero Telemetry Execution:** Heuristic safety barriers, SafeBrowsing homoglyph rules, and payment checks run 100% locally with zero internet access required.
+| **PS3-R1: Phishing URL Detection** | Offline URI canonicalization, raw-IP, missing TLS & `.apk` checks gating browser launch | `LinkCheckActivity.kt`, `SafetyBarrier.kt` | **Device verified** |
+| **PS3-R2: Contextual Scam Messages** | Unicode NFKC cleaning, advisory suppression, requested-action `(clause, nextClause)` rules | `SafetyBarrier.kt`, `PrizeIntent.java`, `FraudIntent.kt`, `CredentialIntent.kt` | **Device verified** |
+| **PS3-R3: UPI & QR Payment Safety** | CameraX + ML Kit decode + `upi://pay` reverse-debit & duplicate-key inspection | `QrScannerActivity.kt`, `PaymentFields.kt` | **Device verified** |
+| **PS3-R4: Arm Edge SLM Integration** | ExecuTorch `1.5.1` (`arm64-v8a` XNNPACK) + ET12/SHA-256 `ModelManager` + D74 echo sanitization | `ExecuTorchLlamaEngine.kt`, `ModelManager.kt`, `ModelManifest.kt` | **Implemented — verification pending** |
+| **PS3-R5: Speech & Voice Extortion Defense** | 16 kHz PCM RMS-VAD + Whisper INT8 `AsrModule` + experimental Agora VoIP + Speaker Guard | `WhisperSttEngine.kt`, `AgoraEngine.kt`, `LiveRiskEngine.kt` | **Known issue / Experimental** |
+| **PS3-R6: Network Anomaly Classification** | Statistical CSV batch port-scan, SYN & low-jitter C2 beaconing engine (`85/100` Demo H) | `NetworkAnomalyClassifier.kt`, `NetworkFlowImporter.kt` | **Device verified** (CSV) / **Planned** (Live `tun0`) |
+| **PS3-R7: Local Privacy & Escalation** | Local Room incident logs, opt-in permissions, `tel:1930` / `cybercrime.gov.in` shortcuts, release key stripping | `IncidentHistoryStore.kt`, `AndroidManifest.xml`, `app/build.gradle.kts` | **Device verified** |

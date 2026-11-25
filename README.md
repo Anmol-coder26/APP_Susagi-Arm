@@ -488,5 +488,6 @@ Incorporates open-source components including PyTorch ExecuTorch (BSD-3-Clause),
 ## Hackathon Submission Archive
 
 Competition-specific deliverables prepared separately from core product documentation are preserved in:
-- [Submission Manifest & Checklists](submission/SUBMISSION_LINKS.md) · [Engineering Evidence](submission/EVIDENCE.md) · [Release Manifest](submission/RELEASE_MANIFEST.md)
-- [Final Technical Report (PDF)](SUSAGI_FINAL_SUBMISSION/Final_Technical_Report.pdf) · [Final Submission Demo Film (`01:51`)](SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4)
+- [Official Final Submission Bundle](FINAL_SUBMISSION/05_Submission/Submission_Information.txt) · [Feature Verification Matrix](FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md) · [PS3 Traceability](FINAL_SUBMISSION/04_Evidence/PS3_Requirement_Traceability.md)
+- [Final Technical Report (PDF)](SUSAGI_FINAL_SUBMISSION/SuSagi_Guardian_Final_Technical_Report.pdf) · [Editable Report (DOCX)](SUSAGI_FINAL_SUBMISSION/SuSagi_Guardian_Final_Technical_Report.docx) · [Final Submission Demo Film (`01:51`)](SUSAGI_FINAL_SUBMISSION/SUSAGI_GUARDIAN_FINAL_SUBMISSION.mp4)
+- [Legacy Submission Links](submission/SUBMISSION_LINKS.md) · [Test Evidence Summary](submission/EVIDENCE.md) · [Release Manifest](submission/RELEASE_MANIFEST.md)

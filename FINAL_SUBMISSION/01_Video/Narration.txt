@@ -1,0 +1,25 @@
+INSIDE SUSAGI — From Threat to Protection.
+Bharat AI-SoC Challenge 2026-27
+============================================================
+
+[0.00s - 8.86s] OPEN
+Every scam begins with a message, a link, a QR code, or a voice. Inside SuSagi: from threat to protection.
+
+[8.86s - 22.93s] 01 — Discover.
+Zero one: Discover. Built over four months, SuSagi Guardian organizes defense layers around an on-device core — uniting URL shields, QR vision, conversational help, speech tools, and incident logs.
+
+[22.93s - 41.43s] 02 — Inspect.
+Zero two: Inspect. Before a browser loads, Link Shield and QR Vision extract the canonical host and check local indicators. Intercepted redirects pause at a zero-trust barrier — confirming destinations before opening India's cybercrime portal.
+
+[41.43s - 67.93s] 03 — Understand.
+Zero three: Understand. On ARM64 via ExecuTorch, quantized Llama 3.2 1B and Whisper Tiny INT8 pair with sub-five-millisecond local rules. An offline greeting proves assistant liveness. Alongside experimental Agora VoIP scaffolding, Speaker Guard runs a controlled SBI script — honestly scoring five out of one hundred as threshold tuning continues.
+
+[67.93s - 85.93s] 04 — Respond.
+Zero four: Respond. Call Audit and Threat Logs capture multi-vector evidence — from UPI requests to raw-IP APK traps — preparing reports for Helpline 1930 alongside voice diagnostics pending hardware validation.
+
+[85.93s - 98.73s] 05 — Expand intelligence.
+Zero five: Expand intelligence. Sensor toggles, a trusted-contact form, local models, regional Indian scripts, and explicit Android permission boundaries keep control with the user.
+
+[98.73s - 110.99s] ARCHITECTURE
+Intent capture, deterministic screening, ARM64 local AI, and human reporting. SuSagi Guardian. Bharat AI-SoC Challenge twenty twenty-six to twenty-seven.
+

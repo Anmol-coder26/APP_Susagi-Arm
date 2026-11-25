@@ -1,42 +1,27 @@
-# SuSagi Guardian V2 — Official Submission Links
-**Bharat AI-SoC Challenge 2026–27 • Problem Statement PS3 (On-Device Threat Detection)**
-**Contributor:** Anmol Singh (`Anmol-coder26`)
+# SuSagi Guardian V2 — Verified Submission Links
+**Challenge:** Bharat AI-SoC Student Challenge 2026–27 · Problem Statement PS3  
+**Contributors:** Anmol Singh (`@Anmol-coder26`), Tanya Singh
 
 ---
 
-## 1. Primary Public Links
+## 1. Core Deliverables
 
-| Deliverable | Target Resource | Access Status | Verification Notes |
+| Deliverable | Path / Location | Status | Notes |
 | :--- | :--- | :--- | :--- |
-| **Deliverable A: Source Repository** | [https://github.com/Anmol-coder26/APP_Susagi-Arm](https://github.com/Anmol-coder26/APP_Susagi-Arm) | Public | Active & Synced |
-| **Deliverable B: 2-Minute Demo Video** | [SuSagi_Guardian_2_Minute_Demo.mp4](file:///D:/SuSagi_Guardian_V2/assets/demo/SuSagi_Guardian_2_Minute_Demo.mp4) | Local & Cloud | 1080p HD, 01:46 Runtime (<=120s) |
-| **Deliverable C: Final Technical Report (PDF)** | [SuSagi_Guardian_Final_Report.pdf](file:///D:/SuSagi_Guardian_V2/reports/SuSagi_Guardian_Final_Report.pdf) | High-Res PDF | 2.66 MB, 8 Dense Pages, 27 Chapters |
-| **Deliverable C: Final Technical Report (DOCX)** | [SuSagi_Guardian_Final_Report.docx](file:///D:/SuSagi_Guardian_V2/reports/SuSagi_Guardian_Final_Report.docx) | Editable DOCX | 2.83 MB, Embedded Diagrams A-J |
-| **Release Candidate APK (Primary Mirror)** | [https://gofile.io/d/0oZ6NJXm](https://gofile.io/d/0oZ6NJXm) | Active Cloud | Direct APK Download (Outside LAN) |
-| **Release Candidate APK (Secondary Mirror)** | [https://gofile.io/d/rzFD5zrP](https://gofile.io/d/rzFD5zrP) | Active Cloud | Alternative CDN Mirror |
-| **Release Candidate APK (LAN Mirror)** | `http://192.168.29.62:8080/susagi-guardian-v2.apk` | Local LAN | Range-request enabled local server |
+| **Source Repository** | [https://github.com/Anmol-coder26/APP_Susagi-Arm](https://github.com/Anmol-coder26/APP_Susagi-Arm) | **Public (`main`)** | Competition-independent product showcase + source |
+| **Official Demo Video** | `FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4` | **Verified (`01:50.99`, 1080p)** | H.264 High / AAC 48 kHz; awaiting owner public YouTube/Drive upload |
+| **Final Technical Report (PDF)** | `FINAL_SUBMISSION/02_Report/SuSagi_Guardian_Final_Technical_Report.pdf` | **Verified (33 pages)** | Includes Methodology, Results, Arm Hardware, and Optimization sections |
+| **Final Technical Report (DOCX)** | `FINAL_SUBMISSION/02_Report/SuSagi_Guardian_Final_Technical_Report.docx` | **Editable Master** | Fill Team / Institution / Mentor on Cover Page prior to portal submit |
+| **Feature Verification Matrix** | `FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md` | **Verified SSOT** | Consistent status categories across video, report, and README |
+
+> **Security Note (Part 19):** Legacy third-party Gofile/LAN (`192.168.29.62`) APK mirrors created prior to credential hygiene refactoring are deprecated and omitted intentionally. Build cleanly from source using `./gradlew assembleDebug` (see [docs/INSTALLATION.md](docs/INSTALLATION.md)).
 
 ---
 
-## 2. Release & Cryptographic Identity
+## 2. Verified Technical Identity
 
-```text
-Package Name:       com.guardian.app (SuSagi Guardian V2)
-Build Variant:      Debug / Pre-Release Verification Candidate
-APK Filename:       susagi-guardian-v2.apk
-APK File Size:      137,989,585 bytes (131.60 MB)
-APK SHA-256:        028E77B94FB45FEE1E6E82048DB10F1075D4429FD2A1A8D1830F096C7FC21CC9
-Git Commit SHA:     5058a609b139477cf3ca39f97674e7d95cac9656
-Git Release Tag:    v2.0.0-final-release
-Target Platform:    ARM64-v8a / ARMv9-A (Android 14+, Min API 28)
-```
-
----
-
-## 3. Official Form Readiness Check
-
-* [x] **Repository Public & Accessible:** Verified.
-* [x] **Video Runtime Compliance:** Exact runtime `00:01:46.50` (106.5 seconds), strictly within the $\le 120$ second limit.
-* [x] **Report Completeness:** All 27 required chapters, before/after benchmark tables, and architecture diagrams A through J embedded.
-* [x] **Attribution:** 100% authored and credited to Anmol Singh (`Anmol-coder26`).
-* [x] **Offline Defense Boundary:** Heuristic and semantic safety barriers operate 100% offline with zero cloud server dependencies.
+* **Application ID:** `com.susagi.guardian2` (`namespace com.guardian.app`)
+* **Version Name:** `3.0.0` (`versionCode 3`, Build `D74`)
+* **SDK Targets:** `minSdk = 26` (Android 8.0 Oreo), `compileSdk = 35` / `targetSdk = 35` (Android 15)
+* **ExecuTorch Runtime:** `org.pytorch:executorch-android:1.5.1` (`arm64-v8a` XNNPACK CPU)
+* **Automated Host JVM Tests:** **318 / 318 passing** (`51` XML suites, `0` failures, `12.368 s`)

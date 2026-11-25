@@ -1,0 +1,92 @@
+1
+00:00:00,250 --> 00:00:05,285
+Every scam begins with a message, a link, a QR code, or a voice.
+
+2
+00:00:05,285 --> 00:00:08,510
+Inside SuSagi: from threat to protection.
+
+3
+00:00:09,110 --> 00:00:10,403
+Zero one: Discover.
+
+4
+00:00:10,403 --> 00:00:16,596
+Built over four months, SuSagi Guardian organizes defense layers around an on-device core —
+
+5
+00:00:16,596 --> 00:00:22,380
+uniting URL shields, QR vision, conversational help, speech tools, and incident logs.
+
+6
+00:00:23,180 --> 00:00:24,363
+Zero two: Inspect.
+
+7
+00:00:24,363 --> 00:00:31,196
+Before a browser loads, Link Shield and QR Vision extract the canonical host and check local indicators.
+
+8
+00:00:31,196 --> 00:00:34,679
+Intercepted redirects pause at a zero-trust barrier —
+
+9
+00:00:34,679 --> 00:00:38,950
+confirming destinations before opening India's cybercrime portal.
+
+10
+00:00:41,680 --> 00:00:43,349
+Zero three: Understand.
+
+11
+00:00:43,349 --> 00:00:51,548
+On ARM64 via ExecuTorch, quantized Llama 3.2 1B and Whisper Tiny INT8 pair with sub-five-millisecond local rules.
+
+12
+00:00:51,548 --> 00:00:54,886
+An offline greeting proves assistant liveness.
+
+13
+00:00:54,886 --> 00:01:01,488
+Alongside experimental Agora VoIP scaffolding, Speaker Guard runs a controlled SBI script —
+
+14
+00:01:01,488 --> 00:01:06,640
+honestly scoring five out of one hundred as threshold tuning continues.
+
+15
+00:01:08,180 --> 00:01:09,533
+Zero four: Respond.
+
+16
+00:01:09,533 --> 00:01:13,663
+Call Audit and Threat Logs capture multi-vector evidence —
+
+17
+00:01:13,663 --> 00:01:16,439
+from UPI requests to raw-IP APK traps —
+
+18
+00:01:16,439 --> 00:01:22,990
+preparing reports for Helpline 1930 alongside voice diagnostics pending hardware validation.
+
+19
+00:01:26,180 --> 00:01:28,176
+Zero five: Expand intelligence.
+
+20
+00:01:28,176 --> 00:01:37,770
+Sensor toggles, a trusted-contact form, local models, regional Indian scripts, and explicit Android permission boundaries keep control with the user.
+
+21
+00:01:38,980 --> 00:01:44,620
+Intent capture, deterministic screening, ARM64 local AI, and human reporting.
+
+22
+00:01:44,620 --> 00:01:45,792
+SuSagi Guardian.
+
+23
+00:01:45,792 --> 00:01:50,040
+Bharat AI-SoC Challenge twenty twenty-six to twenty-seven.
+

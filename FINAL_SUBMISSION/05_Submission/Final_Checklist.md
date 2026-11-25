@@ -1,0 +1,13 @@
+# Directive 92 — Final Quality Gate & Security Audit Checklist
+
+## Gate Verification Status
+- [x] **Gate A — Video (`01_Video/`):** Genuine Build D74 footage (`1920x1080`, `30 fps`, `H.264/AAC`, `110.99s <= 120s`), permanent privacy redactions, neural narration + mixed SFX, honest `5/100` SBI disclosure, SRT subtitles, narration script, thumbnail, and shot-timing manifest generated.
+- [x] **Gate B — Report (`02_Report/`):** 33-page A4 PDF & editable DOCX explicitly containing the four mandatory official section titles (`Methodology and System Implementation`, `Experimental Results and Evaluation`, `Arm Hardware Utilization and Deployment Architecture`, `Model Optimization and Mobile Resource Management`), synced clickable TOC/LOF/LOT (`54` bookmarks), `18` grounded diagrams/charts, genuine screenshots, exact `318/318` JVM suite breakdown, and explicit unbenchmarked metrics table.
+- [x] **Gate C — Repository (`https://github.com/Anmol-coder26/APP_Susagi-Arm`):** Publicly reachable (`HTTP 200`), competition-independent hero `README.md`, `16` redacted genuine screens, grounded docs under `docs/`, zero tracked APKs/keystores/`local.properties`.
+- [x] **Gate D — Cross-Artifact Consistency:** Video, Technical Report, README, and `FINAL_SUBMISSION/03_Repository/Feature_Verification_Matrix.md` agree identically on `ExecuTorch 1.5.1`, `compileSdk 35` / `minSdk 26`, `318/318` unit tests (`51` suites), Llama/Whisper asset identities, `5/100` SBI calibration, and experimental/pending boundaries.
+- [ ] **Gate E — Owner Final Pre-Submit Actions (Mandatory Before Official Portal Submit):**
+  1. Fill `[TEAM NAME]`, `[INSTITUTION NAME]`, and optional `[MENTOR NAME]` in `FINAL_SUBMISSION/02_Report/SuSagi_Guardian_Final_Technical_Report.docx` and re-export PDF before form upload.
+  2. Upload `FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4` to YouTube or Google Drive as **Public** and verify anonymous incognito playback.
+  3. **Post-Freeze Credential Rotation Advisory (Directive 92 Part 19):**
+     - `app/src/main/java/com/guardian/app/AgoraEngine.kt` still carries a hardcoded 32-hex development Agora App ID in `HEAD` (and historical commits contained Agora/API dev keys + `192.168.29.62` in `app/build.gradle.kts` & `network_security_config.xml`).
+     - Per Directive 92 Part 3 (`src` code frozen before submission) and Part 19 (do not rewrite public Git history without authorization): **rotate the Agora App ID / certificate and any prior Firebase/cloud keys in their consoles** immediately after freeze lifts / before hosted deployment, and do **not** distribute older third-party Gofile APK mirrors.

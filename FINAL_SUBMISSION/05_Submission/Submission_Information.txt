@@ -1,0 +1,21 @@
+# SuSagi Guardian — Official Submission Information
+
+Competition: Bharat AI-SoC Student Challenge 2026–27
+Problem Statement: PS3 — On-device threat, phishing and scam detection
+Submission Deadline: 25 November 2026, 11:59 PM IST
+Official Support Contact: support@armbharatchallenge.com
+
+Product Name: SuSagi Guardian
+Application Package ID: com.susagi.guardian2 (namespace com.guardian.app)
+Version: 3.0.0 (versionCode 3, Build D74)
+Platform: Android 8.0–15 (API 26–35) · ABI arm64-v8a · PyTorch ExecuTorch 1.5.1
+
+Public Repository URL: https://github.com/Anmol-coder26/APP_Susagi-Arm
+Branch: main
+Contributors: Anmol Singh (Lead Engineer · @Anmol-coder26), Tanya Singh
+
+Mandatory Owner Fields to Fill Before Form Submission:
+- Team Name: [TEAM NAME — TO BE CONFIRMED BY OWNER PRIOR TO SUBMISSION]
+- Institution: [INSTITUTION NAME — TO BE CONFIRMED BY OWNER PRIOR TO SUBMISSION]
+- Faculty Mentor (recommended): [MENTOR NAME — OPTIONAL / TO BE CONFIRMED BY OWNER PRIOR TO SUBMISSION]
+- Public Video URL (YouTube / Google Drive): [UPLOAD FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4 AS PUBLIC WITH OWNER ACCOUNT & PASTE URL HERE]

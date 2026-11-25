@@ -1,0 +1,19 @@
+# Official Video Upload Instructions & Status
+
+Local Approved File:
+FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4
+
+Verified Media Properties:
+- Resolution: 1920 x 1080 (16:9)
+- Frame Rate: 30 fps
+- Codecs: H.264 High (yuv420p) + AAC LC Stereo (48000 Hz, 192 kbps)
+- Measured Duration: 110.99 seconds (00:01:50.99 <= 120.0s requirement)
+- File Size: 18,191,858 bytes
+
+Upload Status:
+NOT YET UPLOADED AUTOMATICALLY — Per Directive 92 Part 21, YouTube or Google Drive upload must only be performed with the owner's explicit authorization/session.
+
+Owner Action Required:
+1. Upload `FINAL_SUBMISSION/01_Video/SUSAGI_GUARDIAN_OFFICIAL_SUBMISSION.mp4` to YouTube (Unlisted/Public per form guide, Public recommended by email spec) or Google Drive (`Anyone with the link -> Viewer`).
+2. Verify full playback, audio sync, and public incognito accessibility.
+3. Paste the verified public URL here and into the Bharat AI-SoC PS3 official submission form.
