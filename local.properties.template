@@ -12,5 +12,5 @@ GEMINI_MODEL=gemini-1.5-flash
 # Optional: Bhashini STT WebSocket streaming URL
 BHASHINI_STREAMING_URL=
 
-# Optional: Agora RTC App ID (for live VOIP call protection assist)
-AGORA_APP_ID=d575bd8b35004ad896366419f3a8a8f1
+# Optional: Agora RTC App ID (for experimental VoIP calling; rotate & keep private)
+AGORA_APP_ID=

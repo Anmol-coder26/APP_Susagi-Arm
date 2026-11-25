@@ -1,91 +1,48 @@
-# SuSagi Guardian — Technical Limitations & Edge Engineering Disclosures
+# Current Limitations & Engineering Disclosures
 
-**Problem Statement:** PS3 — On-Device Threat, Phishing, and Scam Detection  
-**Review Standard:** Rigorous Engineering Transparency & Systems Analysis  
-**Evidence Levels:**
-- Cellular Audio Restrictions: `VERIFIED ON PHYSICAL DEVICE` (Android 12/AOSP security model)
-- Physical Model Asset State on Handset: `VERIFIED ON PHYSICAL DEVICE` (Truncated 1.96 GB file, size 1,964,614,528 bytes)
-- Network Flow OS Boundary: `VERIFIED ON PHYSICAL DEVICE` (Android SELinux UID sandbox)
-- Pre-Flight Safe Fallback: `VERIFIED BY AUTOMATED TEST` (101 unit tests passing)
+SuSagi Guardian separates verified functionality from interfaces under active development or operating system restriction.
 
 ---
 
-## 1. Overview & Disclosure Philosophy
+## 1. On-Device Generative LLM (`ExecuTorchLlamaEngine`)
 
-In accordance with rigorous engineering practice and competition evaluation standards, this document provides a comprehensive, transparent disclosure of the physical, architectural, and operating system boundaries governing SuSagi Guardian on edge Arm devices.
-
-Rather than obscuring constraints behind simulated demos, we detail the exact boundary conditions, root causes, and production mitigations.
-
----
-
-## 2. Cellular Call Audio Capture Restrictions (Android OS Level)
-
-### Limitation
-SuSagi Guardian cannot directly record or capture bidirectional raw cellular call audio (PSTN / VoLTE / VoNR) on stock, non-OEM-rooted Android devices.
-
-### Root Cause Mechanics
-1. **Android Security Architecture:** Beginning with Android 9 (Pie, API 28) and solidified in Android 10+ (API 29+), the Android Open Source Project (AOSP) explicitly restricted `AudioSource.VOICE_CALL`, `VOICE_UPLINK`, and `VOICE_DOWNLINK` to system-signed privileged applications holding the `CAPTURE_AUDIO_OUTPUT` permission.
-2. **AudioFlinger Hardware HAL:** The cellular baseband modem feeds directly into the audio DSP/HAL; the Linux kernel prevents user-space third-party applications from opening the cellular audio device node (`/dev/snd/pcmC0D*`).
-
-### SuSagi Guardian Implementation Strategy
-- **VoIP / RTC Stream Integration:** SuSagi Guardian captures and transcribes digital voice communications originating within supported VoIP frameworks (e.g. WebRTC, Agora RTC sessions, SIP apps) via standard `AudioRecord` / in-app audio observer pipelines.
-- **Accessibility Audio Loopback (Roadmap):** For cellular calls, production deployments require either:
-  - OEM partnership integrating SuSagi Guardian into the vendor system image as a privileged system service.
-  - Accessibility API text capture when callers interact with live transcription services.
+- **Conversational Reliability & Echo Guard:** `ExecuTorchLlamaEngine` integrates `LlmModule` (`echo = false`) alongside `sanitizeLlamaOutput` and `isPromptEcho` defenses (`ExecuTorchLlamaEngine.kt`) specifically to prevent control-token leaks (`<|eot_id|>`) and system-prompt echoing seen on early mobile runs. General-purpose freeform reasoning quality on device (`Build D74`) has only been liveness-demonstrated via short greeting verification and remains under tuning.
+- **Hardware & Storage Prerequisite:** Running `Llama 3.2 1B SpinQuant INT4` requires `~1.08 GB` disk storage (`llama_3_2_1b_xnnpack_spinquant.pte`) and sufficient free memory on `arm64-v8a`. When models are absent or invalid, the app automatically falls back to deterministic local rules.
 
 ---
 
-## 3. Dual-Model Concurrent Memory Limits on 8GB Handsets
+## 2. Offline Speech Recognition (`WhisperSttEngine`)
 
-### Limitation
-Attempting to run Meta Llama-3.2-1B-Instruct (SpinQuant INT4 ~1.08 GB) and OpenAI Whisper STT (~150-250 MB) concurrently in active physical memory alongside heavy foreground gaming or camera apps can approach Android Low Memory Killer (LMK) thresholds on devices with 6 GB or 8 GB RAM.
-
-### Engineering Analysis
-```text
-+-----------------------------------------------------------------------------------+
-|                        8 GB PHYSICAL LPDDR4X/LPDDR5 RAM BUDGET                    |
-+-----------------------------------------------------------------------------------+
-|  - Android OS, Kernel, Display Server, Zygote:               ~2.50 GB             |
-|  - System Apps, Play Services, Background Daemons:           ~3.20 GB             |
-|  - Available Working Memory for Foreground Applications:     ~2.30 GB             |
-+-----------------------------------------------------------------------------------+
-|  PEAK DUAL-MODEL DEMAND:                                                          |
-|  - Llama-3.2 Model Weights (mmap) + Native KV Cache (512 ctx): ~1.12 GB           |
-|  - Whisper STT Weights + Mel Spectrogram Buffer:               ~0.25 GB           |
-|  - JVM Heap + Compose HUD + Correlated Knowledge Graph:        ~0.15 GB           |
-|  - Peak Combined Allocation:                                  ~1.52 GB (66% free) |
-+-----------------------------------------------------------------------------------+
-```
-
-### Mitigation: Time-Multiplexed Lifecycle Management
-To guarantee stability without risking LMK termination:
-1. **Streaming Audio Phase:** During an active call, Whisper STT occupies native memory to transcribe incoming audio chunks. Llama-3.2 weights remain mapped but dormant.
-2. **Post-Call Reasoning Phase:** Once audio streaming completes and transcription text is formulated, Whisper's working memory is deallocated before the Llama-3.2 reasoning pipeline executes.
-3. **Sub-5ms Fallback:** If memory pressure exceeds 85%, `ModelManager` gracefully falls back to deterministic rule heuristics, consuming less than 15 MB of RAM.
+- **Native Execution Validation Pending:** `WhisperAudioProcessor` (16 kHz mono PCM, RMS VAD, RIFF WAV framing), `WhisperDecoder`, and `WhisperModelManager` are implemented alongside `org.pytorch.executorch.extension.asr.AsrModule` bindings. Model readiness indicators reflect provisioned `.pte` assets on disk; end-to-end physical hardware transcription accuracy, multilingual dialect robustness, and speaker diarization on live phone audio require further device validation.
 
 ---
 
-## 4. Current Physical Model Asset State on Handset
+## 3. Experimental VoIP Calling & Acoustic Call Analysis
 
-### Limitation
-On the physical Vivo test handset (Vivo V2141), the local model directory contains an incomplete download from an earlier session:
-- **Location:** `/data/user/0/com.guardian.app/files/models/llama_3_2_1b_xnnpack_spinquant.pte`
-- **Current Size on Phone:** `1,964,614,528 bytes` (~1.96 GB) instead of the clean 1.08 GB SpinQuant INT4 weights (`1,082,483,584 bytes`).
-
-### Engineering Safety Guarantee
-- The newly implemented **Pre-Flight Integrity Guard (`ModelManager.kt`)** detects that this file does not match the clean SpinQuant profile (it is a truncated FP16 file).
-- The engine marks the model status as `MODEL_INVALID` / `Truncated` and **never hands the pointer to native JNI `libexecutorch.so`**.
-- As a result, the physical app launches cleanly with **zero crashes**, executing the verified deterministic heuristic engine.
-- Staging the completed `1,082,483,584 byte` SpinQuant model will immediately activate the native LLM pipeline without modifying application code.
+- **VoIP Room Interface (`Experimental`):** Agora RTC (`4.4.1`) and RTM (`2.2.1`) scaffolding plus room-code screens exist, but live bidirectional connectivity depends on an external token backend (`BACKEND_URL`), matching `AGORA_APP_ID` / `APP_CERTIFICATE` credentials, and two peer devices. Live multi-device calls are classified as experimental.
+- **Stock Android Cellular Call Audio Block (OS Boundary):** On non-rooted stock Android (API 29+), `AudioSource.VOICE_CALL` uplink/downlink telephony streams are restricted to privileged system apps. Third-party speakerphone capture (`AudioRecord`) is affected by acoustic feedback and hardware mixer variations.
+- **Simulation vs Live Threshold Calibration:** Speaker Guard's built-in staged scam scenarios remain **controlled test harnesses**. In observed Build D74 demonstration footage, the simulated SBI KYC script returned `LOW (5/100)` (`No scam indicators detected yet`), highlighting incomplete live-transcript risk calibration.
 
 ---
 
-## 5. Network Flow Telemetry Ingestion Boundaries on Stock Android
+## 4. Trusted Contact Alert Delivery
 
-### Limitation
-On stock Android without root privileges, applications cannot place the network interface (Wi-Fi / 4G / 5G) into promiscuous packet capture mode (`pcap`) to inspect external socket traffic from other arbitrary apps.
+- **Configuration vs Confirmed Dispatch:** `TrustedContactSettingsScreen` and `TrustedContactManager` persist recipient contact info locally in `SharedPreferences`. Actual dispatch (`TrustedContactAlertSender` & `VoipCallViewModel`) issues HTTP requests to `/alerts/trusted-contact` or `/alerts/family` on `BACKEND_URL` (or relies on dialer/intent helpers), so autonomous alert delivery requires a configured backend relay and lacks independent end-to-end delivery confirmation in offline mode.
 
-### Supported Ingestion Pathways
-1. **Local VPN Service (`VpnService`):** Android's official, sanctioned API creates a local virtual network interface (`tun0`). Traffic flows locally through the app's packet handler without an external VPN server, extracting 5-tuple flow records before forwarding packets.
-2. **NetworkStatsManager:** Ingests system-level bandwidth and socket usage metrics per UID on enterprise-managed devices.
-3. **Phase 2 Gateway Deployment:** Moving network flow inspection to the Raspberry Pi 5 appliance eliminates mobile OS sandboxing constraints, allowing line-rate eBPF packet capture across all home devices.
+---
+
+## 5. Network Anomaly Analysis vs Live Packet Inspection
+
+- **Imported Telemetry Focus (`NetworkShieldScreen`):** Android's non-root OS sandbox prevents apps from placing Wi-Fi or cellular adapters into promiscuous `pcap` mode to sniff traffic belonging to other applications. Accordingly, `NetworkAnomalyClassifier` and `NetworkFlowImporter` inspect **imported CSV flow records** and unit scenarios rather than passive live OS-wide packet capture. Live traffic monitoring would require activating a user-consented `VpnService` (`tun0`) pipeline or gateway deployment.
+
+---
+
+## 6. Android Link Interception Boundaries
+
+- `LinkCheckActivity` intercepts links only when the user taps an `http`/`https` link and either sets SuSagi Guardian as default handler or picks it via Android's resolver (`ACTION_VIEW`) or shares text via `ACTION_SEND`. Links opened inside apps that force their own built-in WebViews or Custom Tabs bypass external Android Intent interception. Static inspection also cannot verify live DNS records, server-side redirects, or TLS certificates offline (`"Offline inspection cannot establish ownership, reputation or the destination after navigation"`).
+
+---
+
+## 7. Security & Credential Hygiene Notice
+
+Earlier development iterations exposed an Agora development `APP_ID` in source/templates (`AgoraEngine.kt`, older `local.properties.template` history) and internal LAN IP defaults (`app/build.gradle.kts`). Treat previously committed development IDs/keys as **compromised**, rotate all external service credentials immediately before any production or hosted backend deployment, and never redistribute legacy APKs built before credential cleanup.

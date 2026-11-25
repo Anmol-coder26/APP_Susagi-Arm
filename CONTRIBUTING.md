@@ -1,25 +1,35 @@
-# Contributing to SuSagi Guardian V2
+# Contributing to SuSagi Guardian
 
-Thank you for your interest in contributing to SuSagi Guardian V2 (Bharat AI-SoC Challenge 2026–27 | PS3)!
+Thank you for helping improve **SuSagi Guardian**. Please follow these development and engineering honesty guidelines when submitting changes.
 
-## Development Setup
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Anmol-coder26/APP_Susagi-Arm.git
-   cd APP_Susagi-Arm
-   ```
-2. Open the project in Android Studio (Ladybug or newer).
-3. Ensure Android SDK 34 (Android 14) and NDK 26+ are installed.
-4. Copy `local.properties.template` to `local.properties` and set `sdk.dir`.
+---
 
-## Running Verification Tests
-Execute the comprehensive JVM test suite:
+## 1. Local Development Setup
+
+```bash
+git clone https://github.com/Anmol-coder26/APP_Susagi-Arm.git
+cd APP_Susagi-Arm
+cp local.properties.template local.properties
+# Set sdk.dir in local.properties (JDK 17, Android SDK API 26–35)
+```
+
+---
+
+## 2. Verification Requirements
+
+Run the full host unit test suite before opening a pull request:
+
 ```bash
 ./gradlew testDebugUnitTest
 ```
-All 315 tests must pass before submitting pull requests.
 
-## Code Style & Ethics
-- Never disable or bypass security barriers.
-- Maintain zero cloud leakage on user communications.
-- Adhere to Master Directive 61 honesty guidelines: never fake model outputs or performance metrics.
+Verify that all suites (`318` unit tests across `51` suites at baseline) pass cleanly without regressions or suppressed assertions.
+
+---
+
+## 3. Security & Honesty Standards
+
+- **Never commit secrets or private test data:** Keep `local.properties`, `keystore.properties`, `app/google-services.json`, `.env`, phone numbers, private URLs, and personal captures untracked.
+- **Separate verification levels honestly:** Never cite host JVM unit tests or controlled scripted demos as proof of native Android LLM, Whisper ASR, or two-device VoIP hardware execution.
+- **No bypasses:** Never remove `SafetyBarrier`, `ModelManager` pre-flight `ET12` validation, or release-build key stripping.
+- **Do not commit large binary weights:** Provision `.pte` and tokenizer files externally via `ModelManager` / user Downloads.

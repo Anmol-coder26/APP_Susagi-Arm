@@ -1,146 +1,53 @@
-# SuSagi Guardian — System Architecture & Dataflow
+# System Architecture
 
-**Problem Statement:** PS3 — On-Device Threat, Phishing, and Scam Detection  
-**Target Platform:** Arm64 Edge Systems (MediaTek Dimensity 7200 / Arm Cortex-A715 & Cortex-A510)  
-**Security Paradigm:** 100% Offline-First, Zero-Telemetry, Multi-Vector Intelligence
+SuSagi Guardian follows a **two-layer separation of concerns** designed to fail safely on mobile hardware: fast deterministic rules always run locally without network dependencies, while optional generative language and speech inference modules activate only after asset integrity validation.
 
----
-
-## 1. Executive Architecture Overview
-
-SuSagi Guardian is architected as a **6-Layer Decoupled Edge Cybersecurity Pipeline**. Traditional mobile security solutions rely on cloud reputation lookups, exposing user browsing habits, private messages, and network telemetry to external servers while introducing network latency and total failure during connectivity loss.
-
-SuSagi Guardian executes entirely on-device, combining deterministic sub-millisecond rule engines with quantized Arm-optimized LLM inference (Llama-3.2-1B via ExecuTorch) and a graph-inspired sliding-window correlation engine.
-
-```
-+-----------------------------------------------------------------------------------+
-|                           LAYER 1: SENSORS & INGESTION                            |
-|  - SMS Receiver         - Intent / Clipboard URL   - Flow Telemetry Ingestion     |
-|  - Agora RTC Audio In   - Accessibility Events     - Syslog / Socket Monitor      |
-+------------------------------------------+----------------------------------------+
-                                           |
-                                           v
-+-----------------------------------------------------------------------------------+
-|                   LAYER 2: DETERMINISTIC HEURISTIC GUARDS (<5ms)                  |
-|  - Regex Threat Matcher - Punycode / Homoglyph     - Flow Statistical Window      |
-|  - Deceptive Userinfo   - Authority Entropy        - Port Scan / Spike Detector   |
-+------------------------------------------+----------------------------------------+
-                                           |
-                                           v
-+-----------------------------------------------------------------------------------+
-|                  LAYER 3: CROSS-CHANNEL INCIDENT CORRELATION                      |
-|  - Entity Normalizer (FQDN, IPv4/v6, Threat Tag)   - 1-Hour Sliding Window Cache  |
-|  - Graph Entity Matcher                            - Composite Threat Multiplier  |
-+------------------------------------------+----------------------------------------+
-                                           |
-                                           v
-+-----------------------------------------------------------------------------------+
-|                   LAYER 4: ARM-OPTIMIZED ON-DEVICE AI ENGINE                      |
-|  - ExecuTorch 1.5.1 Runtime                        - XNNPACK Backend (FP32/FP16)  |
-|  - Llama-3.2-1B-Instruct (SpinQuant INT4)          - Memory-Mapped Weight Store   |
-|  - Deterministic Zero-Crash Heuristic Fallback                                   |
-+------------------------------------------+----------------------------------------+
-                                           |
-                                           v
-+-----------------------------------------------------------------------------------+
-|                   LAYER 5: DECISION, PROVENANCE & SAFETY VERIFIER                 |
-|  - Result Provenance Attributor (LLAMA_EXECUTORCH vs LOCAL_RULES vs HEURISTIC)    |
-|  - Confidence Scorer    - Threat Severity Rater    - Actionable Defense Generator |
-+------------------------------------------+----------------------------------------+
-                                           |
-                                           v
-+-----------------------------------------------------------------------------------+
-|                        LAYER 6: USER DEFENSE & RESPONSE                           |
-|  - Jetpack Compose Threat HUD                      - Multilingual (EN, HI, TA)    |
-|  - One-Touch Incident Containment (Block / Kill)   - Direct 1930 Helpline Link    |
-+-----------------------------------------------------------------------------------+
-```
+![SuSagi Guardian Verified System Architecture](../assets/diagrams/system_architecture_d89.png)
 
 ---
 
-## 2. Detailed Layer Analysis
+## 1. Input Ingestion Channels
 
-### Layer 1: Sensors & Telemetry Ingestion
-- **SMS Receiver (`SmsReceiver.kt`):** Subscribed to `android.provider.Telephony.SMS_RECEIVED` with high priority. Extracts sender headers, alphanumeric sender IDs, timestamp, and raw message body without storing PII.
-- **Link & Intent Ingestion (`LinkCheckActivity.kt`):** Captures incoming URLs via Android intent filters (`android.intent.action.VIEW`), clipboard inspection, and manual user query input.
-- **Network Flow Telemetry (`NetworkFlowRecord.kt`):** Ingests unidirectional IP flow summaries capturing 5-tuple metrics: source IP/port, destination IP/port, protocol, byte count, packet count, duration, and inter-arrival timestamps.
-- **Real-Time Communication Audio (`AgoraAudioPipeline`):** Ingests 16kHz PCM audio frames from active communication sessions for Whisper speech-to-text tokenization.
-
-### Layer 2: Fast Deterministic Heuristic Guards
-- **Latency Budget:** `< 5 ms` execution limit on Cortex-A510 efficiency cores.
-- **Message Shield Heuristics (`UnifiedThreatEngine.analyzeMessage`):**
-  - Scans for high-velocity Indian fraud vectors: *Digital Arrest* (CBI, ED, Mumbai Police, arrest warrant), *Electricity Disconnection* (overdue bill power cut at 9:30 PM), *KYC Expiration* (SBI, HDFC, PAN update), *Part-Time Job scams* (Telegram, daily earnings).
-- **Link Shield Heuristics (`UnifiedThreatEngine.analyzeUrl`):**
-  - Canonicalizes URLs, decodes obfuscated hex/octal IP formats, parses Punycode/IDN homoglyphs (`xn--`), detects misleading userinfo strings (`https://sbi.co.in@evil-server.top`), flags deceptive subdomains (`sbi.co.in.verification-portal.com`), and inspects direct APK payload downloads (`.apk`, `.dex`).
-- **Network Flow Sentinel (`NetworkAnomalyClassifier.kt`):**
-  - Evaluates sliding time-window batches for horizontal port scans (unique IPs touched), vertical port scans (unique ports touched on a single host > 15), connection volume spikes (> 3x baseline), and periodic C2 beaconing (inter-packet arrival interval variance with jitter ratio `<= 0.15`).
-
-### Layer 3: Cross-Channel Incident Correlation Engine (`IncidentCorrelationEngine.kt`)
-- Solves the single-vector blind spot where an SMS appears suspicious but unconfirmed, a link is visited, and an outbound connection is initiated.
-- **Correlated Attributes:**
-  - Normalized Fully Qualified Domain Names (FQDN).
-  - Target IPv4/IPv6 addresses.
-  - Multi-vector threat flags (e.g. `KYC_FRAUD`, `C2_BEACONING`, `CREDENTIAL_PHISH`).
-- **Temporal Sliding Window:** Configured to `3600 seconds` (1 hour) with automatic garbage collection of expired nodes to maintain a deterministic memory footprint under `2 MB`.
-- **Composite Scoring:** Upgrades isolated medium-risk alerts to **CRITICAL** when two or more distinct attack surfaces converge on the same target entity within the time window.
-
-### Layer 4: Arm-Optimized On-Device AI Engine (`ExecuTorchLlamaEngine.kt`)
-- **Runtime:** ExecuTorch 1.5.1 C++ JNI binding (`libexecutorch.so`).
-- **Model Profile:** Meta Llama-3.2-1B-Instruct quantized via SpinQuant INT4, optimized for Arm NEON / XNNPACK backends.
-- **Weight Mapping:** Zero-copy memory-mapped file loading (`mmap`) directly from internal storage, preventing Java heap fragmentation.
-- **Fail-Safe Startup Guard (`ModelManager.kt`):**
-  - Validates flatbuffer binary header magic (`ET12`) and exact byte-count checks before initiating JNI loader.
-  - If weights are corrupted, truncated, or absent, the engine immediately and gracefully switches to `executeLocalHeuristicIntelligence()` with 0ms delay, guaranteeing zero native SIGABRT crashes.
-
-### Layer 5: Decision, Provenance & Safety Verifier (`InferenceResult.kt`)
-- Every verdict emitted by the system contains explicit provenance metadata:
-  - `analysisSource`: `LLAMA_EXECUTORCH`, `LOCAL_RULES`, `LOCAL_HEURISTIC`, `HEURISTIC_FALLBACK`, or `CLOUD_SERVICE`.
-  - `threatSeverity`: `LOW`, `MODERATE`, `HIGH`, `CRITICAL`, or `UNKNOWN`.
-  - `confidenceScore`: Normalized float `[0.0 - 1.0]`.
-  - `riskBreakdown`: Structured dictionary of fired indicators.
-  - `recommendedActions`: Concrete, step-by-step mitigation advice.
-
-### Layer 6: User Defense & Incident Containment
-- **UI Architecture:** 100% Jetpack Compose reactive state architecture.
-- **Indic Localization:** Full native string resources in English, Hindi (हिंदी), and Tamil (தமிழ்).
-- **One-Touch Actions:**
-  - Kill suspicious background connection socket.
-  - Copy malicious URL to Android blocklist / hosts filter.
-  - Direct dial Indian National Cyber Crime Helpline (**1930**) and prepopulate complaint draft for `cybercrime.gov.in`.
+| Channel | Implementation Component | Operating Mechanism |
+| :--- | :--- | :--- |
+| **External Web & Shared URLs** | `LinkCheckActivity.kt`, `AndroidManifest.xml` | Intent filters for `ACTION_VIEW` (`http`, `https`) and `ACTION_SEND` (`text/plain`) intercept tapped or shared links when selected by the user. |
+| **Camera QR & Barcodes** | `QrScannerActivity.kt` | CameraX frame pipeline (`1.3.4`) paired with ML Kit (`barcode-scanning:17.2.0`) decodes `upi://pay` and web URIs locally before handoff. |
+| **SMS / Notification Content** | `NotificationScannerService.kt`, `MessageScanScreen.kt` | Inspects notification text only after explicit Android Settings listener approval, plus manual paste inspection. Does not inspect encrypted chat databases. |
+| **Network Flow CSV Telemetry** | `NetworkFlowImporter.kt`, `NetworkShieldScreen.kt` | Parses structured CSV/flow records (`NetworkFlowRecord`) locally on device. Does not passively sniff other applications' traffic on non-rooted Android. |
+| **Voice & VoIP Audio *(Exp.)*** | `WhisperAudioProcessor.kt`, `AudioFrameBridge.kt`, `AgoraEngine.kt` | Buffers 16 kHz mono PCM samples via RMS energy VAD into RIFF WAV turns for optional Whisper analysis, or experimental Agora RTC/RTM streams. |
 
 ---
 
-## 3. Dataflow & Latency Specifications
+## 2. Core Inspection & Threat Engine
 
-| Stage | Input | Engine / Component | Output | Target Latency |
-| :--- | :--- | :--- | :--- | :--- |
-| **Stage 1: Link Scan** | Raw URL string | `UnifiedThreatEngine.analyzeUrl` | Heuristic Verdict + Indicators | `< 2 ms` |
-| **Stage 2: SMS Scan** | SMS text + Sender ID | `UnifiedThreatEngine.analyzeMessage` | Rule Match + Severity | `< 4 ms` |
-| **Stage 3: Flow Batch** | 50 Flow Records | `NetworkAnomalyClassifier.classifyBatch` | Anomaly List + Confidence | `< 8 ms` |
-| **Stage 4: Correlation** | Events 1, 2, 3 | `IncidentCorrelationEngine.correlate` | `CorrelatedIncident` or Isolated | `< 1 ms` |
-| **Stage 5: LLM Reason** | Threat Context | `ExecuTorchLlamaEngine.generateExplanation` | Plain-English Explanation | `~120-180 ms / token` |
-| **Stage 6: UI Render** | Threat State | Jetpack Compose HUD | Visual Alert + Audio Chirp | `< 16 ms (60 FPS)` |
+### `SafetyBarrier` & Contextual Scams (`com.susagi.safety`)
+- **Normalization (`SafetyBarrier.kt`):** Runs Unicode NFKC normalization, lowercasing in `Locale.ROOT`, apostrophe unification, and invisible character removal (`\u200b`, `\ufeff`, `\u2060`, `\u00ad`).
+- **Quoted-Warning Suppression:** Removes educational advisories (e.g., `"scammers say: ..."` and negative Hindi advisories like `"मत भेजें"`) before actionable extraction so cybersecurity advice triggers fewer false alarms.
+- **Clause-Level Contextual Engines:** Splits normalized text across sentence delimiters (`[.!?;।\n]+`) and inspects current and adjacent clauses using `PrizeIntent.java`, `FraudIntent.kt`, `CredentialIntent.kt`, and `ContextualScamRules.kt`.
+- **URL & Payment Rules (`SafetyBarrier.inspect` / `PaymentFields.kt`):** Enforces canonical domain/IDN ASCII checks, raw IP checks, mixed-script label checks (`0x370..0x52f`), `.apk` download tail checks, userinfo phishing (`user@host`), shortener checks, redirect parameter recursion budgets (depth `<= 3`, budget `8`), and `upi://pay` reverse-debit verification.
 
----
+### `UnifiedThreatEngine` (`com.susagi.intelligence`)
+- Combines deterministic `LinkCheckActivity.evaluateLinkSafety` / `SafetyBarrier` findings with optional `ExecuTorchLlamaEngine` explanations.
+- Enforces invariant score floors via `UnifiedThreatEngine.withBarrier(assessment)`:
+  - `Risk.HIGH` enforces score `>= 85` (`RECOMMEND_BLOCK`).
+  - `Risk.UNKNOWN` maps to `DO_NOT_OPEN`.
+  - `Risk.REVIEW` enforces score `>= 40` (`ASK_CONFIRMATION`).
+  - `Risk.LOW` permits optional continuation (`OFFER_OPEN`) with explicit uncertainty disclosure (`"Offline inspection cannot establish ownership, reputation or the destination after navigation."`).
 
-## 4. Hardware Resource Allocation on MediaTek Dimensity 7200
-
-| Subsystem | CPU Core Affinity | Peak RAM Allocation | Storage Footprint |
-| :--- | :--- | :--- | :--- |
-| **OS & Baseline Services** | Cores 0-3 (Cortex-A510) | ~2.5 GB (System total) | N/A |
-| **SuSagi App Runtime (JVM)** | Cores 0-5 (A510 + A715) | ~85 MB | ~45 MB (APK) |
-| **Rule & Correlation Engine** | Cores 0-3 (Cortex-A510) | < 15 MB | In-memory |
-| **ExecuTorch Runtime (C++)** | Cores 6-7 (Cortex-A715) | ~120 MB (Native arena) | ~22 MB (.so binaries) |
-| **Llama-3.2-1B SpinQuant Model**| Mapped to RAM via mmap | ~820 MB (Clean pages) | 1,080 MB (.pte file) |
-| **Total Peak Resource Cost** | Mixed Workload | **~1,040 MB App Total** | **~1,150 MB Disk Total** |
+### `NetworkAnomalyClassifier` (`com.susagi.network`)
+- Inspects `NetworkFlowRecord` entries and batches for outbound administrative port attempts (`22` SSH, `23` Telnet, `3389` RDP, `445` SMB, `135` RPC, `5555` ADB), high-rate SYN bursts (`pps > 100.0` without `ACK`), port scans, and periodic beaconing intervals (`beaconMinIntervalCount = 4`, `beaconMaxJitterRatio = 0.15f`) while exempting benign periodic ports (`53` DNS, `123` NTP, `67/68` DHCP).
 
 ---
 
-## 5. Architectural Verification
+## 3. Optional On-Device AI Modules (`com.susagi.edgeai` & `com.susagi.stt.whisper`)
 
-The architecture outlined above is completely verified via unit and integration tests:
-- **`com.susagi.network.NetworkAnomalyClassifierTest`**: 6 tests validating port scans, C2 beaconing, and connection spikes.
-- **`com.susagi.correlation.IncidentCorrelationEngineTest`**: 3 tests validating cross-channel graph correlation, domain unification, and temporal expiration.
-- **`com.susagi.risk.LiveRiskEngineTest`**: End-to-end multi-vector scoring.
-- **`com.susagi.edgeai.ModelManager` & `ExecuTorchLlamaEngine`**: Non-eager, zero-crash guarded model initialization.
-- **Offline Build Execution**: 84/84 tests passed using `gradlew testDebugUnitTest --offline`.
+- **LLM Explanations (`ExecuTorchLlamaEngine.kt`):** Uses Meta ExecuTorch `LlmModule` (`org.pytorch:executorch-android:1.5.1`) with Llama 3.2 1B Instruct templates constructed by `ThreatPromptBuilder` (`seqLen = 2048`, `echo = false`), hardened by `sanitizeLlamaOutput` and `isPromptEcho`.
+- **Speech Transcription (`WhisperSttEngine.kt`):** Wraps `AsrModule` (`16 kHz` mono WAV segments, `WhisperDecoder` repetition & special-token cleanup). Physical hardware validation remains pending.
+- **Knowledge & Rule Fallback:** `ConversationalKnowledgeEngine` and `executeLocalHeuristicIntelligence()` maintain full application operation when model files are not yet staged or validated.
+
+---
+
+## 4. Storage, Evidence & Escalation
+
+- **Local Persistence (`Room` & `SharedPreferences`):** Call audit entries (`CallHistoryEntity.kt`), local threat logs, and user trusted-contact config persist locally on device.
+- **Incident Remediation:** Generates formatted threat summaries, captures PDF evidence (`EvidenceCaptureActivity`), and links users to India's Cybercrime Helpline **1930** and `https://cybercrime.gov.in`.

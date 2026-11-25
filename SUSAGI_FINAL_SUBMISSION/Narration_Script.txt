@@ -1,33 +1,25 @@
-================================================================================
-SUSAGI GUARDIAN — MASTER NARRATION SCRIPT
-Author & Contributor: Anmol Singh (Anmol-coder26)
-Duration: 01:54 (114 seconds) | Target: <= 120 seconds
-Tone: Confident, Authoritative, Technical, Measured Pace (~120 WPM)
-================================================================================
+INSIDE SUSAGI — From Threat to Protection.
+Bharat AI-SoC Challenge 2026-27
+============================================================
 
-[00:00 - 00:09] SCENE 1: THE PROBLEM
-"Every suspicious message, unfamiliar link, and deceptive payment request forces someone to make a decision. But recognizing digital fraud is not always easy."
+[0.00s - 8.86s] OPEN
+Every scam begins with a message, a link, a QR code, or a voice. Inside SuSagi: from threat to protection.
 
-[00:09 - 00:19] SCENE 2: PRODUCT INTRODUCTION
-"Meet SuSagi Guardian, a privacy-conscious cybersecurity assistant designed to help people understand threats and make safer decisions."
+[8.86s - 22.93s] 01 — Discover.
+Zero one: Discover. Built over four months, SuSagi Guardian organizes defense layers around an on-device core — uniting URL shields, QR vision, conversational help, speech tools, and incident logs.
 
-[00:19 - 00:39] SCENE 3: CONTEXTUAL SCAM INTELLIGENCE
-"SuSagi examines not just suspicious keywords, but context, requested actions, and supporting evidence. An unverified prize announcement is fundamentally different from a demand for money or banking credentials."
+[22.93s - 41.43s] 02 — Inspect.
+Zero two: Inspect. Before a browser loads, Link Shield and QR Vision extract the canonical host and check local indicators. Intercepted redirects pause at a zero-trust barrier — confirming destinations before opening India's cybercrime portal.
 
-[00:39 - 00:53] SCENE 4: MULTIPLE PROTECTION CHANNELS
-"Dedicated security modules examine deceptive URLs, suspicious payment requests, and other digital threat indicators, translating technical findings into understandable protective guidance."
+[41.43s - 67.93s] 03 — Understand.
+Zero three: Understand. On ARM64 via ExecuTorch, quantized Llama 3.2 1B and Whisper Tiny INT8 pair with sub-five-millisecond local rules. An offline greeting proves assistant liveness. Alongside experimental Agora VoIP scaffolding, Speaker Guard runs a controlled SBI script — honestly scoring five out of one hundred as threshold tuning continues.
 
-[00:53 - 01:13] SCENE 5: THE INTELLIGENCE TRANSFORMATION
-"Activating compatible local AI models unlocks conversational intelligence and speech understanding. SuSagi uses Llama for contextual explanations and Whisper to transform supported speech into analyzable text."
+[67.93s - 85.93s] 04 — Respond.
+Zero four: Respond. Call Audit and Threat Logs capture multi-vector evidence — from UPI requests to raw-IP APK traps — preparing reports for Helpline 1930 alongside voice diagnostics pending hardware validation.
 
-[01:13 - 01:33] SCENE 6: TECHNICAL ARCHITECTURE
-"At its core, SuSagi couples a deterministic Contextual Security Engine with Meta's ExecuTorch runtime on Arm64. Messages decompose into structured intent and requested actions, delivering sub-four-millisecond risk evaluation entirely within the local device boundary."
+[85.93s - 98.73s] 05 — Expand intelligence.
+Zero five: Expand intelligence. Sensor toggles, a trusted-contact form, local models, regional Indian scripts, and explicit Android permission boundaries keep control with the user.
 
-[01:33 - 01:47] SCENE 7: ENGINEERING & EVALUATION
-"SuSagi combines dedicated security logic with an edge AI architecture, prioritizing understandable evidence, responsible risk assessment, and privacy-conscious processing across 318 verified unit tests."
+[98.73s - 110.99s] ARCHITECTURE
+Intent capture, deterministic screening, ARM64 local AI, and human reporting. SuSagi Guardian. Bharat AI-SoC Challenge twenty twenty-six to twenty-seven.
 
-[01:47 - 02:00] SCENE 8: CLOSING
-"SuSagi Guardian is designed to make cybersecurity more accessible, intelligent, and understandable. Think before you click. Know before you trust."
-
-TAGLINE:
-"SUSAGI GUARDIAN — Intelligent cybersecurity for everyday digital life."
